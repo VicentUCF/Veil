@@ -6,7 +6,7 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import dev.vicent.veil.launcher.ResolvedLauncherContext
@@ -52,6 +53,7 @@ import kotlin.math.min
 fun AppCluster(
     context: ResolvedLauncherContext,
     onAppSelected: (LauncherApp) -> Unit,
+    onAppLongPressed: (LauncherApp) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
@@ -76,7 +78,11 @@ fun AppCluster(
                 )
             } else {
                 context.apps.forEach { app ->
-                    AppShortcut(app = app, onClick = { onAppSelected(app) })
+                    AppShortcut(
+                        app = app,
+                        onClick = { onAppSelected(app) },
+                        onLongClick = { onAppLongPressed(app) },
+                    )
                 }
             }
         }
@@ -87,52 +93,28 @@ fun AppCluster(
 private fun AppShortcut(
     app: LauncherApp,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
     val locale = LocalLocale.current.platformLocale
-    val icon = remember(app.icon) { app.icon?.toRenderedIcon() }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .widthIn(min = 220.dp, max = 292.dp)
             .height(54.dp)
-            .clickable(
+            .combinedClickable(
                 role = Role.Button,
-                onClickLabel = "Open ${app.label}",
+                onClickLabel = "Abrir ${app.label}",
+                onLongClickLabel = "Opciones de ${app.label}",
+                onLongClick = onLongClick,
                 onClick = onClick,
             )
             .semantics { stateDescription = app.label }
             .padding(horizontal = 12.dp),
     ) {
-        if (icon != null) {
-            Image(
-                bitmap = icon.bitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                colorFilter = if (icon.shouldTint) {
-                    ColorFilter.tint(
-                        color = palette.contentPrimary,
-                        blendMode = BlendMode.SrcIn,
-                    )
-                } else {
-                    null
-                },
-                modifier = Modifier.size(21.dp),
-            )
-        } else {
-            ComposeCanvas(modifier = Modifier.size(21.dp)) {
-                drawCircle(
-                    color = palette.contentSecondary,
-                    style = Stroke(width = 1.dp.toPx()),
-                )
-                drawCircle(
-                    color = palette.contentSecondary,
-                    radius = 1.5.dp.toPx(),
-                )
-            }
-        }
+        LauncherAppIcon(app = app, size = 21.dp)
 
         BasicText(
             text = app.label.uppercase(locale),
@@ -141,6 +123,44 @@ private fun AppShortcut(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 28.dp),
         )
+    }
+}
+
+@Composable
+fun LauncherAppIcon(
+    app: LauncherApp,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val palette = LocalVeilPalette.current
+    val icon = remember(app.icon) { app.icon?.toRenderedIcon() }
+
+    if (icon != null) {
+        Image(
+            bitmap = icon.bitmap,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            colorFilter = if (icon.shouldTint) {
+                ColorFilter.tint(
+                    color = palette.contentPrimary,
+                    blendMode = BlendMode.SrcIn,
+                )
+            } else {
+                null
+            },
+            modifier = modifier.size(size),
+        )
+    } else {
+        ComposeCanvas(modifier = modifier.size(size)) {
+            drawCircle(
+                color = palette.contentSecondary,
+                style = Stroke(width = 1.dp.toPx()),
+            )
+            drawCircle(
+                color = palette.contentSecondary,
+                radius = 1.5.dp.toPx(),
+            )
+        }
     }
 }
 

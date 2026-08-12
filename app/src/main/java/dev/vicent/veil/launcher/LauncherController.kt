@@ -17,8 +17,10 @@ data class ResolvedLauncherContext(
 
 data class LauncherUiState(
     val contexts: List<ResolvedLauncherContext>,
+    val installedApps: List<LauncherApp> = emptyList(),
     val activeContextIndex: Int = 0,
     val isLoading: Boolean = true,
+    val isDrawerOpen: Boolean = false,
 )
 
 class LauncherController(
@@ -60,8 +62,26 @@ class LauncherController(
             }
 
             mutableState.update { currentState ->
-                currentState.copy(contexts = resolvedContexts, isLoading = false)
+                currentState.copy(
+                    contexts = resolvedContexts,
+                    installedApps = installedApps,
+                    isLoading = false,
+                )
             }
+        }
+    }
+
+    fun openDrawer() {
+        mutableState.update { currentState -> currentState.copy(isDrawerOpen = true) }
+    }
+
+    fun closeDrawer() {
+        mutableState.update { currentState -> currentState.copy(isDrawerOpen = false) }
+    }
+
+    fun toggleDrawer() {
+        mutableState.update { currentState ->
+            currentState.copy(isDrawerOpen = !currentState.isDrawerOpen)
         }
     }
 
@@ -82,6 +102,9 @@ class LauncherController(
     fun removeUnavailableApp(packageName: String) {
         mutableState.update { currentState ->
             currentState.copy(
+                installedApps = currentState.installedApps.filterNot {
+                    it.packageName == packageName
+                },
                 contexts = currentState.contexts.map { context ->
                     context.copy(apps = context.apps.filterNot { it.packageName == packageName })
                 },

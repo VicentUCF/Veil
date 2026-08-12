@@ -10,6 +10,8 @@ data class VeilPalette(
     val contentMuted: Color,
     val accentActive: Color,
     val barBackground: Color,
+    val drawerBackground: Color,
+    val fieldBackground: Color,
     val divider: Color,
     val error: Color,
     val success: Color,

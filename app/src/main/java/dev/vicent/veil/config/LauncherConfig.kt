@@ -11,6 +11,8 @@ object LauncherConfig {
         contentMuted = Color(0xFF747C81),
         accentActive = Color(0xFFF09B8D),
         barBackground = Color(0x8F171C20),
+        drawerBackground = Color(0xF2111518),
+        fieldBackground = Color(0xFF20262A),
         divider = Color(0x387D858A),
         error = Color(0xFFD96D6D),
         success = Color(0xFF80A884),

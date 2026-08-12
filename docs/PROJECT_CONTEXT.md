@@ -54,6 +54,11 @@ Veil is not a literal Qtile clone, a terminal-themed UI, a Niagara clone, a conv
 - Return to Veil through the Home action.
 - Discover launchable applications installed on the device.
 - Launch real applications.
+- Open the complete application drawer with an upward gesture from Home.
+- Open the drawer when Home is pressed while Veil is already running.
+- Close the drawer when Home is pressed again while the drawer is open.
+- Search installed applications and useful Android settings shortcuts.
+- Open a contextual bottom sheet when an application is long-pressed.
 
 ### Home
 
@@ -68,9 +73,20 @@ Veil is not a literal Qtile clone, a terminal-themed UI, a Niagara clone, a conv
 
 Do not use cards, Material surfaces, a conventional app grid, a traditional bottom dock, widgets, decorative gradients, or large Android-style icons.
 
+### Drawer and search
+
+- Present all discovered launchable applications in an alphabetical typographic list.
+- Keep search immediately available and tolerant of case and accents.
+- Match application labels and package names.
+- Include direct links to common Android settings categories without attempting to replace the system Settings app.
+- Treat the drawer as a progressive layer over Home, not as the primary visual state.
+- Provide Back and a visible close action as alternatives to gestures.
+- A long press on an app from Home or the drawer opens the same contextual action sheet.
+- Contextual app actions may open the app, system app details, or Android's uninstall confirmation.
+
 ## Explicit non-goals for v0.1
 
-Do not implement Android widgets, Panels, weather, music controls, calendar, smart-home features, notification badges, NotificationListener, UsageStats, AI, wallpaper analysis, app prediction, cloud sync, accounts, backend services, databases, Room, analytics, plugins, icon packs, complete settings, a custom DSL, advanced animation systems, overlays, search, a complete drawer, folders, app hiding, or a gesture editor.
+Do not implement Android widgets, Panels, weather, music controls, calendar, smart-home features, notification badges, NotificationListener, UsageStats, AI, wallpaper analysis, app prediction, cloud sync, accounts, backend services, databases, Room, analytics, plugins, icon packs, a replacement settings UI, a custom DSL, advanced animation systems, arbitrary overlays, folders, app hiding, or a gesture editor.
 
 Future possibilities must not be blocked, but do not build speculative abstractions for them.
 
@@ -173,8 +189,9 @@ Performance is critical because Home opens constantly: no package queries during
 3. Add app discovery: models, repository, real launchable apps, configured resolution, and missing-app handling.
 4. Build v0.1 Home: wallpaper, top bar, contexts, status, lower-left app cluster, accent, labels, icons, and tap-to-launch.
 5. Scaffold contexts: HOME, WORK, MEDIA, SOCIAL, and TOOLS; add horizontal context swiping only if it remains simple.
+6. Add the explicitly requested application drawer: upward gesture, Home reentry, complete app list, search, and Android settings shortcuts.
 
-Do not implement Drawer, Search, or Panels in these phases unless the scope is explicitly changed.
+Do not implement Panels or expand app management beyond the explicitly requested contextual actions unless the scope is changed again.
 
 ## Definition of done for v0.1
 
@@ -185,6 +202,10 @@ Do not implement Drawer, Search, or Panels in these phases unless the scope is e
 - Home returns correctly to Veil.
 - Veil discovers real apps and resolves configured apps.
 - Tapping an app launches it.
+- Swiping upward and pressing Home on a running Veil instance open the drawer.
+- Pressing Home again closes an open drawer.
+- The drawer lists and filters real applications and opens Android settings shortcuts.
+- Long-pressing an application opens actions for launch, system app details, and uninstall request.
 - Missing configured apps never crash the launcher.
 - Wallpaper remains visually dominant.
 - The top bar is minimal and the apps use the lower-left editorial composition.

@@ -1,5 +1,6 @@
 package dev.vicent.veil
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.WindowManager
@@ -17,6 +18,7 @@ import dev.vicent.veil.config.LauncherConfig
 import dev.vicent.veil.launcher.LauncherController
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.system.AndroidAppLauncher
+import dev.vicent.veil.launcher.system.AndroidSettingsLauncher
 import dev.vicent.veil.ui.LauncherScreen
 import dev.vicent.veil.ui.theme.VeilTheme
 
@@ -30,6 +32,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val appLauncher by lazy { AndroidAppLauncher(applicationContext) }
+    private val settingsLauncher by lazy { AndroidSettingsLauncher(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,15 +52,43 @@ class MainActivity : ComponentActivity() {
             VeilTheme(palette = LauncherConfig.palette) {
                 LauncherScreen(
                     state = state,
+                    settingsShortcuts = settingsLauncher.shortcuts,
                     onContextSelected = controller::selectContext,
                     onContextStep = controller::stepContext,
+                    onOpenDrawer = controller::openDrawer,
+                    onCloseDrawer = controller::closeDrawer,
                     onAppSelected = { app ->
-                        if (!appLauncher.launch(app)) {
+                        if (appLauncher.launch(app)) {
+                            controller.closeDrawer()
+                        } else {
                             controller.removeUnavailableApp(app.packageName)
+                        }
+                    },
+                    onSettingsSelected = { shortcut ->
+                        if (settingsLauncher.launch(shortcut)) {
+                            controller.closeDrawer()
+                        }
+                    },
+                    onAppInfoSelected = { app ->
+                        if (appLauncher.openAppInfo(app)) {
+                            controller.closeDrawer()
+                        }
+                    },
+                    onAppUninstallSelected = { app ->
+                        if (appLauncher.requestUninstall(app)) {
+                            controller.closeDrawer()
                         }
                     },
                 )
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            controller.toggleDrawer()
         }
     }
 
