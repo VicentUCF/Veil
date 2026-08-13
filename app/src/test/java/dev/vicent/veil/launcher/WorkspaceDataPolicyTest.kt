@@ -6,6 +6,7 @@ import dev.vicent.veil.launcher.model.LauncherContextKind
 import java.util.Calendar
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class WorkspaceDataPolicyTest {
     @Test
@@ -77,6 +78,36 @@ class WorkspaceDataPolicyTest {
                 nowMillis = 95_000L,
             ),
         )
+    }
+
+    @Test
+    fun `expired running focus reaches zero for repository completion`() {
+        assertEquals(
+            0L,
+            WorkspaceDataPolicy.focusRemainingMillis(
+                status = FocusTimerStatus.RUNNING,
+                endAtMillis = 50_000L,
+                storedRemainingMillis = 70_000L,
+                nowMillis = 55_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun `system usage reports the used fraction`() {
+        assertEquals(0.75f, WorkspaceDataPolicy.usedFraction(availableBytes = 25L, totalBytes = 100L))
+    }
+
+    @Test
+    fun `system usage bounds invalid available values`() {
+        assertEquals(1f, WorkspaceDataPolicy.usedFraction(availableBytes = -1L, totalBytes = 100L))
+        assertEquals(0f, WorkspaceDataPolicy.usedFraction(availableBytes = 150L, totalBytes = 100L))
+    }
+
+    @Test
+    fun `system usage is unavailable without a valid total`() {
+        assertNull(WorkspaceDataPolicy.usedFraction(availableBytes = 0L, totalBytes = 0L))
+        assertNull(WorkspaceDataPolicy.usedFraction(availableBytes = 0L, totalBytes = -1L))
     }
 
     private fun event(title: String, startMillis: Long) = CalendarEventSummary(

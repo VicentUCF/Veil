@@ -31,11 +31,17 @@ data class FocusTimerState(
 )
 
 data class SystemStatus(
-    val batteryPercent: Int = 0,
+    val batteryPercent: Int? = null,
     val isCharging: Boolean = false,
     val storageAvailableBytes: Long = 0,
     val storageTotalBytes: Long = 0,
+    val memoryAvailableBytes: Long = 0,
+    val memoryTotalBytes: Long = 0,
     val connectionLabel: String = "Sin conexión",
+    val deviceManufacturer: String? = null,
+    val deviceModel: String? = null,
+    val androidVersion: String? = null,
+    val securityPatch: String? = null,
 )
 
 enum class AudioChannel { MEDIA, RING, ALARM }

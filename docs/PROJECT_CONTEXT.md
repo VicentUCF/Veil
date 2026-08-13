@@ -30,7 +30,7 @@ All workspaces use a responsive two-column grid with 16 dp outer padding and 10 
 - **WORK**: today's agenda (up to three events) is primary. A terminal-styled status tile uses only real Veil state—agenda count and published work progress—and Focus supports it. It never repeats the dock applications.
 - **MEDIA**: the active/recent media session is primary, including artwork, timeline and only supported transport controls. With no session, the same stable geometry becomes a library surface. Sound/output and collection context are secondary; applications remain in the dock.
 - **SOCIAL**: the composition frames direct communication, communities, visual content and calls without duplicating application launchers. Veil never reads or renders conversation content, people, badges or unread counts, and the UI does not fill empty space with privacy notices.
-- **TOOLS**: Veil Focus is primary. Battery/storage and connectivity are secondary, followed by a full-width control centre with direct entries for display, sound, applications, security and all settings. Restricted controls open the relevant Android Settings surface rather than being simulated.
+- **TOOLS**: a device dashboard is primary, showing only public Android data: manufacturer/model, Android version and security patch, storage and memory. Battery and connectivity are secondary, followed by a full-width control centre with direct entries for display, sound, applications, security and all settings. Restricted controls open the relevant Android Settings surface rather than being simulated. Focus remains available from WORK.
 
 Wallpaper remains perceptible around and through every tile. Dense does not mean equal: only one tile per workspace uses the accent and prominent type.
 
@@ -64,7 +64,7 @@ Focus provides 25- and 50-minute presets plus custom durations from 5 to 180 min
 
 ### System status
 
-Battery, charging, storage and active transport come from Android system APIs. Veil does not replace Settings and does not toggle restricted controls indirectly.
+Battery, charging, storage, memory, device identity, Android version, security patch and active transport come from Android system APIs. Missing values remain explicitly unavailable. Veil does not replace Settings and does not toggle restricted controls indirectly.
 
 No data is transmitted except the disclosed Open-Meteo weather request. There are no analytics, accounts, cloud sync, backend services or databases.
 

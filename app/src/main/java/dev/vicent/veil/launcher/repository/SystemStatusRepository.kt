@@ -1,11 +1,13 @@
 package dev.vicent.veil.launcher.repository
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
+import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import dev.vicent.veil.launcher.model.SystemStatus
@@ -19,10 +21,21 @@ class SystemStatusRepository(private val context: Context) {
 
     fun refresh() {
         val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) ?: 0
-        val scale = battery?.getIntExtra(BatteryManager.EXTRA_SCALE, 100)?.coerceAtLeast(1) ?: 100
-        val status = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-        val storage = StatFs(Environment.getDataDirectory().absolutePath)
+        val level = battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = battery?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val batteryPercent = if (level >= 0 && scale > 0) {
+            (level * 100 / scale).coerceIn(0, 100)
+        } else {
+            null
+        }
+        val batteryStatus = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val storage = runCatching {
+            StatFs(Environment.getDataDirectory().absolutePath)
+        }.getOrNull()
+        val memory = ActivityManager.MemoryInfo()
+        runCatching {
+            context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(memory)
+        }
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val capabilities = runCatching {
             connectivity.getNetworkCapabilities(connectivity.activeNetwork)
@@ -35,11 +48,18 @@ class SystemStatusRepository(private val context: Context) {
             else -> "Conectado"
         }
         mutableStatus.value = SystemStatus(
-            batteryPercent = level * 100 / scale,
-            isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL,
-            storageAvailableBytes = storage.availableBytes,
-            storageTotalBytes = storage.totalBytes,
+            batteryPercent = batteryPercent,
+            isCharging = batteryStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
+                batteryStatus == BatteryManager.BATTERY_STATUS_FULL,
+            storageAvailableBytes = storage?.availableBytes ?: 0L,
+            storageTotalBytes = storage?.totalBytes ?: 0L,
+            memoryAvailableBytes = memory.availMem,
+            memoryTotalBytes = memory.totalMem,
             connectionLabel = connection,
+            deviceManufacturer = Build.MANUFACTURER.trim().takeIf(String::isNotEmpty),
+            deviceModel = Build.MODEL.trim().takeIf(String::isNotEmpty),
+            androidVersion = Build.VERSION.RELEASE.trim().takeIf(String::isNotEmpty),
+            securityPatch = Build.VERSION.SECURITY_PATCH.trim().takeIf(String::isNotEmpty),
         )
     }
 }

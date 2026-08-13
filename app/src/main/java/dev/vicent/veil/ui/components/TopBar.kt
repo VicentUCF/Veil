@@ -99,7 +99,7 @@ fun TopBar(
                 modifier = Modifier.size(width = 21.dp, height = 11.dp),
             )
             BasicText(
-                text = "${systemStatus.batteryPercent}%",
+                text = systemStatus.batteryPercent?.let { "$it%" } ?: "—",
                 style = TextStyle(
                     color = palette.contentSecondary,
                     fontFamily = FontFamily.Monospace,
@@ -152,13 +152,13 @@ private fun ConnectionGlyph(connected: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun BatteryGlyph(percent: Int, charging: Boolean, modifier: Modifier = Modifier) {
+private fun BatteryGlyph(percent: Int?, charging: Boolean, modifier: Modifier = Modifier) {
     val palette = LocalVeilPalette.current
     Canvas(modifier) {
         val stroke = Stroke(1.dp.toPx())
         drawRect(palette.contentSecondary, topLeft = Offset(0f, 0f), size = size.copy(width = size.width * .86f), style = stroke)
         drawRect(palette.contentSecondary, topLeft = Offset(size.width * .88f, size.height * .28f), size = size.copy(width = size.width * .1f, height = size.height * .44f))
-        val fill = percent.coerceIn(0, 100) / 100f
+        val fill = percent?.coerceIn(0, 100)?.div(100f) ?: 0f
         drawRect(
             if (charging) palette.accentActive else palette.contentPrimary,
             topLeft = Offset(2.dp.toPx(), 2.dp.toPx()),

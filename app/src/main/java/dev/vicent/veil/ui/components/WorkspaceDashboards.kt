@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -81,7 +82,9 @@ import kotlinx.coroutines.isActive
 private val PrimaryTileHeight = 220.dp
 private val SecondaryTileHeight = 154.dp
 private val AudioMixerTileHeight = 154.dp
-private val SettingsTileHeight = 190.dp
+private val DeviceDashboardTileHeight = 184.dp
+private val ToolsSecondaryTileHeight = 116.dp
+private val SettingsTileHeight = 150.dp
 
 @Composable
 fun WorkspaceDashboard(
@@ -132,6 +135,9 @@ fun WorkspaceDashboard(
                 onCalendarEventSelected,
                 onContinuityAction,
                 onFocusStart,
+                onFocusPause,
+                onFocusResume,
+                onFocusFinish,
             )
             LauncherContextKind.MEDIA -> MediaWorkspace(
                 state,
@@ -146,10 +152,6 @@ fun WorkspaceDashboard(
             LauncherContextKind.TOOLS -> ToolsWorkspace(
                 state,
                 compact,
-                onFocusStart,
-                onFocusPause,
-                onFocusResume,
-                onFocusFinish,
                 onSettingsSelected = { id -> settingsShortcuts.find { it.id == id }?.let(onSettingsSelected) },
             )
         }
@@ -173,7 +175,7 @@ private fun CurrentWorkspace(
                 item = continuity,
                 prominent = true,
                 onAction = onContinuityAction,
-                modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
+                modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
             )
         } else {
             CalmCurrentTile(
@@ -203,6 +205,9 @@ private fun WorkWorkspace(
     onCalendarEventSelected: (Long) -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
     onFocusStart: (Int) -> Unit,
+    onFocusPause: () -> Unit,
+    onFocusResume: () -> Unit,
+    onFocusFinish: () -> Unit,
 ) {
     val workEvents = remember(state.calendarEvents) {
         WorkspaceDataPolicy.workEvents(state.calendarEvents, System.currentTimeMillis())
@@ -211,7 +216,7 @@ private fun WorkWorkspace(
         CozyTile(
             label = "Agenda",
             prominent = true,
-            modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
+            modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
         ) {
             if (!state.calendarAccessGranted) {
                 TileAction("Conectar calendario", onCalendarPermissionRequested)
@@ -230,15 +235,13 @@ private fun WorkWorkspace(
                 onContinuityAction = onContinuityAction,
             )
         }, right = {
-            CozyTile(
-                label = "Focus",
-                onClick = { onFocusStart(25) },
-                modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight),
-            ) {
-                TileTitle("25:00")
-                TileBody("Una entrada limpia a trabajo profundo.")
-                TileAction("Empezar", onClick = { onFocusStart(25) })
-            }
+            WorkFocusTile(
+                state = state,
+                onStart = onFocusStart,
+                onPause = onFocusPause,
+                onResume = onFocusResume,
+                onFinish = onFocusFinish,
+            )
         })
     }
 }
@@ -285,7 +288,9 @@ private fun AudioMixerTile(
 ) {
     CozyTile(
         label = "Mezclador",
-        modifier = Modifier.fillMaxWidth().height(if (compact) 268.dp else AudioMixerTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(
+            min = if (compact) 268.dp else AudioMixerTileHeight,
+        ),
     ) {
         if (compact) {
             AudioVolumeControls(state.channels, onVolumeChanged)
@@ -457,7 +462,7 @@ private fun SocialWorkspace(compact: Boolean) {
         CozyTile(
             label = "Directo",
             prominent = true,
-            modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
+            modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
         ) {
             TileTitle("Tus canales, sin una bandeja más", prominent = true)
             TileBody("Elige abajo dónde quieres entrar. Las posiciones nunca cambian.")
@@ -467,7 +472,7 @@ private fun SocialWorkspace(compact: Boolean) {
         ResponsivePair(compact = compact, left = {
             CozyTile(
                 label = "Comunidades",
-                modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight),
+                modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
             ) {
                 TileTitle("Entrar con intención")
                 TileBody("Grupos, servidores y foros en un mismo contexto.")
@@ -475,7 +480,7 @@ private fun SocialWorkspace(compact: Boolean) {
         }, right = {
             CozyTile(
                 label = "Visual y llamadas",
-                modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight),
+                modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
             ) {
                 TileTitle("Ver o estar")
                 TileBody("Contenido visual, llamadas y presencia.")
@@ -488,36 +493,109 @@ private fun SocialWorkspace(compact: Boolean) {
 private fun ToolsWorkspace(
     state: LauncherUiState,
     compact: Boolean,
-    onFocusStart: (Int) -> Unit,
-    onFocusPause: () -> Unit,
-    onFocusResume: () -> Unit,
-    onFocusFinish: () -> Unit,
     onSettingsSelected: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        FocusTile(state, onFocusStart, onFocusPause, onFocusResume, onFocusFinish)
+        DeviceDashboardTile(state, onSettingsSelected)
         ResponsivePair(compact = compact, left = {
             val system = state.systemStatus
             CozyTile(
-                label = "Sistema",
-                onClick = { onSettingsSelected("battery") },
-                modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight),
+                label = "Batería",
+                modifier = Modifier.fillMaxWidth().heightIn(min = ToolsSecondaryTileHeight),
             ) {
-                TileTitle("${system.batteryPercent}%${if (system.isCharging) " · cargando" else ""}")
-                val freeGb = system.storageAvailableBytes / 1_073_741_824.0
-                TileBody("${"%.1f".format(freeGb)} GB libres")
+                TileTitle(
+                    system.batteryPercent
+                        ?.let { "$it%${if (system.isCharging) " · cargando" else ""}" }
+                        ?: "No disponible",
+                )
+                TileBody(
+                    when {
+                        system.batteryPercent == null -> "Android no ha publicado el estado"
+                        system.isCharging -> "Conectado a la corriente"
+                        else -> "Funcionando con batería"
+                    },
+                )
+                TileAction("Abrir batería") { onSettingsSelected("battery") }
             }
         }, right = {
             CozyTile(
                 label = "Conectividad",
-                onClick = { onSettingsSelected("network") },
-                modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight),
+                modifier = Modifier.fillMaxWidth().heightIn(min = ToolsSecondaryTileHeight),
             ) {
                 TileTitle(state.systemStatus.connectionLabel)
-                TileBody("Abrir redes y conexiones")
+                TileBody(
+                    if (state.systemStatus.connectionLabel == "Sin conexión") {
+                        "No hay una red activa"
+                    } else {
+                        "Transporte activo"
+                    },
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    TileAction("Redes") { onSettingsSelected("network") }
+                    TileAction("Bluetooth") { onSettingsSelected("bluetooth") }
+                }
             }
         })
         SettingsPanel(onSettingsSelected)
+    }
+}
+
+@Composable
+private fun DeviceDashboardTile(
+    state: LauncherUiState,
+    onSettingsSelected: (String) -> Unit,
+) {
+    val system = state.systemStatus
+    val deviceName = listOfNotNull(system.deviceManufacturer, system.deviceModel)
+        .distinct()
+        .joinToString(" ")
+        .ifBlank { "Dispositivo no disponible" }
+    val androidLabel = system.androidVersion?.let { "Android $it" } ?: "Android no disponible"
+    val patchLabel = system.securityPatch?.let { "Parche $it" } ?: "Parche no disponible"
+
+    CozyTile(
+        label = "Dispositivo",
+        prominent = true,
+        modifier = Modifier.fillMaxWidth().heightIn(min = DeviceDashboardTileHeight),
+    ) {
+        TileTitle(deviceName, prominent = true)
+        TileBody("$androidLabel · $patchLabel")
+        DeviceMetric(
+            label = "Almacenamiento",
+            availableBytes = system.storageAvailableBytes,
+            totalBytes = system.storageTotalBytes,
+        )
+        DeviceMetric(
+            label = "Memoria RAM",
+            availableBytes = system.memoryAvailableBytes,
+            totalBytes = system.memoryTotalBytes,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            TileAction("Detalles") { onSettingsSelected("device_info") }
+            TileAction("Almacenamiento") { onSettingsSelected("storage") }
+        }
+    }
+}
+
+@Composable
+private fun DeviceMetric(label: String, availableBytes: Long, totalBytes: Long) {
+    val palette = LocalVeilPalette.current
+    val usedFraction = WorkspaceDataPolicy.usedFraction(availableBytes, totalBytes)
+    val detail = if (usedFraction == null) {
+        "NO DISPONIBLE"
+    } else {
+        val usedBytes = totalBytes - availableBytes.coerceIn(0L, totalBytes)
+        "${formatCapacity(usedBytes)} / ${formatCapacity(totalBytes)}"
+    }
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        BasicText(label.uppercase(), style = workspaceMonoStyle(palette.contentMuted, 9))
+        BasicText(detail, style = workspaceMonoStyle(palette.contentSecondary, 9))
+    }
+    if (usedFraction != null) {
+        SimpleProgress(usedFraction)
     }
 }
 
@@ -531,7 +609,7 @@ private fun WorkTerminalTile(
     val palette = LocalVeilPalette.current
     CozyTile(
         label = "Terminal",
-        modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
     ) {
         BasicText(
             text = "veil@work:~ $ status",
@@ -575,7 +653,7 @@ private fun EmptyMediaTile(
     CozyTile(
         label = "Media",
         prominent = true,
-        modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
     ) {
         TileTitle("Nada reproduciéndose", prominent = true)
         BasicText(
@@ -614,7 +692,7 @@ private fun SocialModeRow(index: String, title: String, detail: String) {
 private fun SettingsPanel(onSettingsSelected: (String) -> Unit) {
     CozyTile(
         label = "Centro de control",
-        modifier = Modifier.fillMaxWidth().height(SettingsTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = SettingsTileHeight),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SettingsCell("Pantalla", "display", onSettingsSelected, Modifier.weight(1f))
@@ -682,7 +760,7 @@ private fun CalmCurrentTile(
     CozyTile(
         label = "Ahora",
         prominent = true,
-        modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
     ) {
         BasicText(
             text = DateFormat.getTimeFormat(context).format(now),
@@ -751,7 +829,7 @@ private fun MediaPlayerTile(
     CozyTile(
         label = "Ahora suena",
         prominent = true,
-        modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
     ) {
         AnimatedContent(
             targetState = track,
@@ -895,7 +973,10 @@ private fun CalendarTile(
     onPermissionRequested: () -> Unit,
     onEventSelected: (Long) -> Unit,
 ) {
-    CozyTile(label = "Próximo", modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight)) {
+    CozyTile(
+        label = "Próximo",
+        modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
+    ) {
         when {
             !accessGranted -> TileAction("Conectar calendario", onPermissionRequested)
             events.isEmpty() -> {
@@ -911,7 +992,10 @@ private fun CalendarTile(
 private fun WeatherTile(state: LauncherUiState, onPermissionRequested: () -> Unit) {
     val weather = state.weather
     val uriHandler = LocalUriHandler.current
-    CozyTile(label = "Tiempo", modifier = Modifier.fillMaxWidth().height(SecondaryTileHeight)) {
+    CozyTile(
+        label = "Tiempo",
+        modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
+    ) {
         when (weather.availability) {
             WeatherAvailability.NEEDS_PERMISSION -> TileAction("Usar ubicación aproximada", onPermissionRequested)
             WeatherAvailability.LOADING -> TileBody("Actualizando…")
@@ -930,7 +1014,7 @@ private fun WeatherTile(state: LauncherUiState, onPermissionRequested: () -> Uni
 }
 
 @Composable
-private fun FocusTile(
+private fun WorkFocusTile(
     state: LauncherUiState,
     onStart: (Int) -> Unit,
     onPause: () -> Unit,
@@ -941,13 +1025,12 @@ private fun FocusTile(
     var customMinutes by remember { mutableIntStateOf(25) }
     CozyTile(
         label = "Focus",
-        prominent = true,
-        modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
     ) {
         when (focus.status) {
             FocusTimerStatus.IDLE -> {
-                TileTitle("Trabajo profundo", prominent = true)
-                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                TileTitle("Trabajo profundo")
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     TileAction("25 min") { onStart(25) }
                     TileAction("50 min") { onStart(50) }
                 }
@@ -955,17 +1038,19 @@ private fun FocusTile(
                     TileAction("−") { customMinutes = (customMinutes - 5).coerceAtLeast(5) }
                     BasicText(
                         text = "$customMinutes min",
-                        style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 13),
-                        modifier = Modifier.padding(horizontal = 14.dp),
+                        style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 10),
+                        modifier = Modifier.padding(horizontal = 7.dp),
                     )
                     TileAction("+") { customMinutes = (customMinutes + 5).coerceAtMost(180) }
-                    TileAction("Iniciar") { onStart(customMinutes) }
+                    TileAction("Ir") { onStart(customMinutes) }
                 }
             }
             FocusTimerStatus.RUNNING, FocusTimerStatus.PAUSED -> {
-                TileTitle(formatDuration(focus.remainingMillis), prominent = true)
-                TileBody(if (focus.status == FocusTimerStatus.RUNNING) "Sesión en curso" else "Sesión pausada")
-                Row(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                TileTitle(formatDuration(focus.remainingMillis))
+                val status = if (focus.status == FocusTimerStatus.RUNNING) "Sesión en curso" else "Sesión pausada"
+                val warning = if (!focus.exactAlarmAvailable || !focus.notificationsAvailable) " · aviso limitado" else ""
+                TileBody(status + warning)
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     if (focus.status == FocusTimerStatus.RUNNING) TileAction("Pausa", onPause)
                     else TileAction("Reanudar", onResume)
                     TileAction("Finalizar", onFinish)
@@ -975,9 +1060,6 @@ private fun FocusTile(
                 TileTitle("Sesión completada", prominent = true)
                 TileAction("Cerrar", onFinish)
             }
-        }
-        if (!focus.exactAlarmAvailable || !focus.notificationsAvailable) {
-            TileBody("El aviso fuera de Veil no está garantizado.")
         }
     }
 }
@@ -1086,4 +1168,14 @@ private fun weatherDescription(code: Int?): String = when (code) {
 private fun formatDuration(millis: Long): String {
     val totalSeconds = (millis / 1000).coerceAtLeast(0)
     return "%02d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+}
+
+private fun formatCapacity(bytes: Long): String {
+    if (bytes < 0L) return "No disponible"
+    val gibibytes = bytes / 1_073_741_824.0
+    return if (gibibytes >= 1.0) {
+        String.format(Locale.getDefault(), "%.1f GB", gibibytes)
+    } else {
+        String.format(Locale.getDefault(), "%.0f MB", bytes / 1_048_576.0)
+    }
 }

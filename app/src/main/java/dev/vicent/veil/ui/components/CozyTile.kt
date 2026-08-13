@@ -45,7 +45,7 @@ fun CozyTile(
             .background(Color(0xFF101418).copy(alpha = alpha))
             .border(BorderStroke(1.dp, palette.divider), shape)
             .then(clickModifier)
-            .padding(14.dp),
+            .padding(16.dp),
     ) {
         BasicText(
             text = label.uppercase(),

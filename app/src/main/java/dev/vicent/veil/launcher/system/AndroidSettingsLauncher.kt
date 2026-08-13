@@ -45,6 +45,12 @@ class AndroidSettingsLauncher(private val context: Context) {
             action = Settings.ACTION_APPLICATION_SETTINGS,
         ),
         SettingsShortcut(
+            id = "storage",
+            label = "Almacenamiento",
+            searchTerms = "almacenamiento espacio memoria archivos storage",
+            action = Settings.ACTION_INTERNAL_STORAGE_SETTINGS,
+        ),
+        SettingsShortcut(
             id = "battery",
             label = "Batería",
             searchTerms = "bateria energia ahorro consumo",
@@ -55,6 +61,12 @@ class AndroidSettingsLauncher(private val context: Context) {
             label = "Seguridad",
             searchTerms = "privacidad bloqueo pantalla pin huella contrasena",
             action = Settings.ACTION_SECURITY_SETTINGS,
+        ),
+        SettingsShortcut(
+            id = "device_info",
+            label = "Información del dispositivo",
+            searchTerms = "telefono dispositivo modelo android version parche informacion",
+            action = Settings.ACTION_DEVICE_INFO_SETTINGS,
         ),
         SettingsShortcut(
             id = "language",
