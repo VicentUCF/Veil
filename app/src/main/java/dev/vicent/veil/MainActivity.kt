@@ -172,6 +172,8 @@ class MainActivity : ComponentActivity() {
                     onCloseDrawer = controller::closeDrawer,
                     onOpenSettings = controller::openSettings,
                     onCloseSettings = controller::closeSettings,
+                    onOpenMusicProviderPicker = controller::openMusicProviderPicker,
+                    onOpenContextSlotPicker = controller::openContextSlotPicker,
                     onAppSelected = { app ->
                         if (appLauncher.launch(app)) {
                             externalSurfaceLaunched = true
@@ -262,6 +264,9 @@ class MainActivity : ComponentActivity() {
                         launchExternal(settingsLauncher::openGeneralSettings)
                     },
                     onResetAppearance = controller::resetAppearance,
+                    onSettingsAppSelected = controller::selectSettingsApp,
+                    onMusicProviderCleared = controller::clearMusicProvider,
+                    onContextSlotCleared = controller::clearContextSlot,
                 )
             }
         }

@@ -124,6 +124,7 @@ fun WorkspaceDashboard(
     onAudioVolumeChanged: (AudioChannel, Float) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
     onVeilSettingsSelected: () -> Unit,
+    onMusicProviderSelectionRequested: () -> Unit,
     onFocusStart: (Int) -> Unit,
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
@@ -133,6 +134,7 @@ fun WorkspaceDashboard(
     onQuickNoteDeleted: (Long) -> Unit,
     onAppSelected: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
     onAppLongPressed: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
+    onEmptyContextSlotSelected: (LauncherContextKind, Int) -> Unit,
     onHomeButtonTap: () -> Unit,
     onHomeButtonLongPress: () -> Unit,
     modifier: Modifier = Modifier,
@@ -144,9 +146,12 @@ fun WorkspaceDashboard(
         when (context.definition.kind) {
             LauncherContextKind.CURRENT -> CurrentHome(
                 state = state,
-                apps = context.apps,
+                actions = context.quickActions,
                 onAppSelected = onAppSelected,
                 onAppLongPressed = onAppLongPressed,
+                onEmptySlotSelected = { slotIndex ->
+                    onEmptyContextSlotSelected(context.definition.kind, slotIndex)
+                },
                 onLocationPermissionRequested = onLocationPermissionRequested,
                 onClockOpenRequested = onClockOpenRequested,
                 onCalendarOpenRequested = onCalendarOpenRequested,
@@ -182,6 +187,7 @@ fun WorkspaceDashboard(
                 onAudioVolumeChanged,
                 onSettingsSelected = { id -> settingsShortcuts.find { it.id == id }?.let(onSettingsSelected) },
                 onAppSelected = onAppSelected,
+                onMusicProviderSelectionRequested = onMusicProviderSelectionRequested,
             )
             LauncherContextKind.SOCIAL -> SocialWorkspace(compact)
             LauncherContextKind.TOOLS -> ToolsWorkspace(
@@ -495,19 +501,22 @@ private fun MediaWorkspace(
     onAudioVolumeChanged: (AudioChannel, Float) -> Unit,
     onSettingsSelected: (String) -> Unit,
     onAppSelected: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
+    onMusicProviderSelectionRequested: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         val media = state.mediaContinuity
         if (media != null) {
             MediaPlayerTile(media, onContinuityAction)
         } else {
-            val youtubeMusic = YouTubeMusicPackages.firstNotNullOfOrNull { packageName ->
+            val musicProvider = state.preferences.musicProviderPackage?.let { packageName ->
                 state.installedApps.firstOrNull { app -> app.packageName == packageName }
             }
             EmptyMediaTile(
                 continuityEnabled = state.continuityAccessGranted,
                 onContinuityAccessRequested = onContinuityAccessRequested,
-                onOpenYouTubeMusic = youtubeMusic?.let { app -> { onAppSelected(app) } },
+                musicProviderLabel = musicProvider?.label,
+                onOpenMusicProvider = musicProvider?.let { app -> { onAppSelected(app) } },
+                onChooseMusicProvider = onMusicProviderSelectionRequested,
             )
         }
         AudioMixerTile(
@@ -1168,15 +1177,22 @@ private fun RofiChecklistEditorRow(
 private fun EmptyMediaTile(
     continuityEnabled: Boolean,
     onContinuityAccessRequested: () -> Unit,
-    onOpenYouTubeMusic: (() -> Unit)?,
+    musicProviderLabel: String?,
+    onOpenMusicProvider: (() -> Unit)?,
+    onChooseMusicProvider: () -> Unit,
 ) {
     CozyTile(
         label = "Media",
         prominent = true,
-        onClick = onOpenYouTubeMusic,
+        onClick = onOpenMusicProvider,
         modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
     ) {
-        EmptyMediaArtwork(canOpenYouTubeMusic = onOpenYouTubeMusic != null)
+        EmptyMediaArtwork(musicProviderLabel = musicProviderLabel)
+        if (onOpenMusicProvider != null && musicProviderLabel != null) {
+            TileAction("Abrir $musicProviderLabel", onOpenMusicProvider)
+        } else {
+            TileAction("Elegir proveedor de música", onChooseMusicProvider)
+        }
         if (!continuityEnabled) {
             TileAction("Activar continuidad", onContinuityAccessRequested)
         }
@@ -1184,14 +1200,14 @@ private fun EmptyMediaTile(
 }
 
 @Composable
-private fun EmptyMediaArtwork(canOpenYouTubeMusic: Boolean) {
+private fun EmptyMediaArtwork(musicProviderLabel: String?) {
     val palette = LocalVeilPalette.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = if (canOpenYouTubeMusic) {
-                    "Abrir YouTube Music"
+                contentDescription = if (musicProviderLabel != null) {
+                    "Abrir $musicProviderLabel"
                 } else {
                     "Sin reproducción activa"
                 }
@@ -1576,11 +1592,6 @@ private fun estimatedMediaPosition(media: ContinuityItem.Media, durationMillis: 
 }
 
 private const val MEDIA_PROGRESS_TICK_MILLIS = 1_000L
-private val YouTubeMusicPackages = listOf(
-    "com.google.android.apps.youtube.music",
-    "app.revanced.android.apps.youtube.music",
-)
-
 @Composable
 private fun CalendarTile(
     events: List<CalendarEventSummary>,

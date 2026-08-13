@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.vicent.veil.launcher.LauncherUiState
+import dev.vicent.veil.launcher.ResolvedQuickAction
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.LauncherApp
@@ -76,9 +77,10 @@ import kotlinx.coroutines.isActive
 @Composable
 fun CurrentHome(
     state: LauncherUiState,
-    apps: List<LauncherApp>,
+    actions: List<ResolvedQuickAction>,
     onAppSelected: (LauncherApp) -> Unit,
     onAppLongPressed: (LauncherApp) -> Unit,
+    onEmptySlotSelected: (Int) -> Unit,
     onLocationPermissionRequested: () -> Unit,
     onClockOpenRequested: () -> Unit,
     onCalendarOpenRequested: () -> Unit,
@@ -131,13 +133,18 @@ fun CurrentHome(
                 verticalArrangement = Arrangement.spacedBy(1.dp),
                 modifier = Modifier.padding(top = 10.dp).widthIn(max = 278.dp),
             ) {
-                apps.take(5).forEach { app ->
-                    HomeAppRow(
-                        app = app,
-                        hasNotification = app.packageName in state.notificationIndicatorPackages,
-                        onClick = { onAppSelected(app) },
-                        onLongClick = { onAppLongPressed(app) },
-                    )
+                actions.take(5).forEachIndexed { index, action ->
+                    val app = (action as? ResolvedQuickAction.App)?.app
+                    if (app != null) {
+                        HomeAppRow(
+                            app = app,
+                            hasNotification = app.packageName in state.notificationIndicatorPackages,
+                            onClick = { onAppSelected(app) },
+                            onLongClick = { onAppLongPressed(app) },
+                        )
+                    } else {
+                        EmptyHomeAppRow(onClick = { onEmptySlotSelected(index) })
+                    }
                 }
             }
         }
@@ -146,6 +153,37 @@ fun CurrentHome(
             onClick = onQuickButtonTap,
             onLongClick = onQuickButtonLongPress,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 2.dp, bottom = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun EmptyHomeAppRow(onClick: () -> Unit) {
+    val palette = LocalVeilPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(49.dp)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Elegir aplicación para el slot vacío",
+                onClick = onClick,
+            ),
+    ) {
+        Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.width(39.dp)) {
+            BasicText("+", style = homeSmallMonoStyle(palette.contentMuted))
+        }
+        BasicText(
+            text = "ELEGIR APP",
+            style = TextStyle(
+                color = palette.contentMuted,
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Light,
+                fontSize = 12.sp,
+                letterSpacing = 3.4.sp,
+            ),
+            modifier = Modifier.padding(start = 5.dp),
         )
     }
 }

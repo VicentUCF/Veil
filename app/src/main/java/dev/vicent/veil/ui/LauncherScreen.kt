@@ -60,6 +60,12 @@ import dev.vicent.veil.ui.components.WorkspaceDashboard
 import dev.vicent.veil.ui.theme.VeilMotion
 import kotlinx.coroutines.launch
 
+private data class AppActionsTarget(
+    val app: LauncherApp,
+    val contextKind: dev.vicent.veil.launcher.model.LauncherContextKind? = null,
+    val slotIndex: Int? = null,
+)
+
 @Composable
 fun LauncherScreen(
     state: LauncherUiState,
@@ -69,6 +75,8 @@ fun LauncherScreen(
     onOpenDrawer: () -> Unit,
     onCloseDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenMusicProviderPicker: () -> Unit,
+    onOpenContextSlotPicker: (dev.vicent.veil.launcher.model.LauncherContextKind, Int) -> Unit,
     onCloseSettings: () -> Unit,
     onAppSelected: (LauncherApp) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
@@ -104,9 +112,12 @@ fun LauncherScreen(
     onDefaultHomeSelected: () -> Boolean,
     onAndroidSettingsSelected: () -> Boolean,
     onResetAppearance: () -> Unit,
+    onSettingsAppSelected: (String) -> Unit,
+    onMusicProviderCleared: () -> Unit,
+    onContextSlotCleared: (dev.vicent.veil.launcher.model.LauncherContextKind, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var appWithOpenActions by remember { mutableStateOf<LauncherApp?>(null) }
+    var appWithOpenActions by remember { mutableStateOf<AppActionsTarget?>(null) }
     var showLocationDisclosure by remember { mutableStateOf(false) }
     var showAudioVisualizerDisclosure by remember { mutableStateOf(false) }
     var showContinuityDisclosure by remember { mutableStateOf(false) }
@@ -229,6 +240,7 @@ fun LauncherScreen(
                             onAudioVolumeChanged = onAudioVolumeChanged,
                             onSettingsSelected = onSettingsSelected,
                             onVeilSettingsSelected = onOpenSettings,
+                            onMusicProviderSelectionRequested = onOpenMusicProviderPicker,
                             onFocusStart = onFocusStartRequested,
                             onFocusPause = onFocusPause,
                             onFocusResume = onFocusResume,
@@ -237,7 +249,17 @@ fun LauncherScreen(
                             onQuickNoteUpdated = onQuickNoteUpdated,
                             onQuickNoteDeleted = onQuickNoteDeleted,
                             onAppSelected = onAppSelected,
-                            onAppLongPressed = { appWithOpenActions = it },
+                            onAppLongPressed = { app ->
+                                appWithOpenActions = AppActionsTarget(
+                                    app = app,
+                                    contextKind = renderedContext.definition.kind,
+                                    slotIndex = renderedContext.quickActions.indexOfFirst { action ->
+                                        (action as? dev.vicent.veil.launcher.ResolvedQuickAction.App)
+                                            ?.app?.packageName == app.packageName
+                                    }.takeIf { it >= 0 },
+                                )
+                            },
+                            onEmptyContextSlotSelected = onOpenContextSlotPicker,
                             onHomeButtonTap = onHomeButtonTap,
                             onHomeButtonLongPress = onHomeButtonLongPress,
                             modifier = Modifier
@@ -264,8 +286,23 @@ fun LauncherScreen(
                                 notificationIndicatorPackages = state.notificationIndicatorPackages,
                                 settingsShortcuts = settingsShortcuts,
                                 onAppSelected = onAppSelected,
-                                onAppLongPressed = { appWithOpenActions = it },
+                                onAppLongPressed = { app ->
+                                    appWithOpenActions = AppActionsTarget(
+                                        app = app,
+                                        contextKind = renderedContext.definition.kind,
+                                        slotIndex = renderedContext.quickActions.indexOfFirst { action ->
+                                            (action as? dev.vicent.veil.launcher.ResolvedQuickAction.App)
+                                                ?.app?.packageName == app.packageName
+                                        }.takeIf { it >= 0 },
+                                    )
+                                },
                                 onSettingSelected = onSettingsSelected,
+                                onEmptySlotSelected = { slotIndex ->
+                                    onOpenContextSlotPicker(
+                                        renderedContext.definition.kind,
+                                        slotIndex,
+                                    )
+                                },
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .fillMaxWidth()
@@ -352,7 +389,7 @@ fun LauncherScreen(
                 settingsShortcuts = settingsShortcuts,
                 isLoading = state.isLoading,
                 onAppSelected = onAppSelected,
-                onAppLongPressed = { appWithOpenActions = it },
+                onAppLongPressed = { appWithOpenActions = AppActionsTarget(it) },
                 onSettingsSelected = onSettingsSelected,
                 onVeilSettingsSelected = onOpenSettings,
                 continuityAccessGranted = state.continuityAccessGranted,
@@ -387,9 +424,14 @@ fun LauncherScreen(
             LauncherSettingsScreen(
                 preferences = state.preferences,
                 access = state.access,
+                installedApps = state.installedApps,
+                appTarget = state.settingsAppTarget,
                 systemAccent = systemAccent,
                 onBack = onCloseSettings,
                 onAccentSelected = onAccentSelected,
+                onOpenMusicProviderPicker = onOpenMusicProviderPicker,
+                onSettingsAppSelected = onSettingsAppSelected,
+                onMusicProviderCleared = onMusicProviderCleared,
                 onWallpaperSelected = onWallpaperSelected,
                 onContinuitySelected = {
                     if (state.access.continuityGranted) {
@@ -498,13 +540,31 @@ fun LauncherScreen(
         }
     }
 
-    appWithOpenActions?.let { app ->
+    appWithOpenActions?.let { target ->
+        val app = target.app
         AppActionsBottomSheet(
             app = app,
             onDismiss = { appWithOpenActions = null },
             onOpen = { appWithOpenActions = null; onAppSelected(app) },
             onAppInfo = { appWithOpenActions = null; onAppInfoSelected(app) },
             onUninstall = { appWithOpenActions = null; onAppUninstallSelected(app) },
+            contextLabel = target.contextKind?.name,
+            onReplaceInContext = target.contextKind?.let { kind ->
+                target.slotIndex?.let { slotIndex ->
+                    {
+                        appWithOpenActions = null
+                        onOpenContextSlotPicker(kind, slotIndex)
+                    }
+                }
+            },
+            onRemoveFromContext = target.contextKind?.let { kind ->
+                target.slotIndex?.let { slotIndex ->
+                    {
+                        appWithOpenActions = null
+                        onContextSlotCleared(kind, slotIndex)
+                    }
+                }
+            },
         )
     }
 }

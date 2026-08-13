@@ -36,7 +36,7 @@ Wallpaper remains perceptible around and through every tile. Dense does not mean
 
 ## Context dock and applications
 
-Each context owns five declarative, stable quick-action slots. WORK, MEDIA, SOCIAL and TOOLS expose them continuously in a bottom dock; CURRENT keeps its configured set available to the model but does not render a dock. The dock has no floating trigger, expanded state or overlay. It uses recognizable real application icons in uniform 48 dp slots. A missing configured app is replaced deterministically without moving the other available configured apps. There is no usage prediction or position reshuffling. The essential Veil settings screen does not edit dock assignments; those remain source-configured in this personal version.
+Each context owns five stable quick-action slots. WORK, MEDIA, SOCIAL and TOOLS expose them continuously in a bottom dock; CURRENT keeps its configured set available to the model but does not render a dock. The dock has no floating trigger, expanded state or overlay. It uses recognizable real application icons in uniform 48 dp slots. Source defaults and deterministic category fallback provide the initial setup. Once the user customizes a context in Veil settings, its five exact positions are persisted: an empty or uninstalled slot remains empty and never moves or causes another slot to be refilled. There is no usage prediction or position reshuffling.
 
 Applications shown in the dock must not be repeated as portal rows inside the same workspace. Workspace tiles add context—status, continuity, library, Focus or system controls—while the dock owns launching.
 
@@ -46,9 +46,11 @@ Everything preserves the full alphabetical app list, search, settings shortcuts 
 
 ## Essential launcher settings
 
-Veil provides a deliberately bounded internal settings screen, reachable from Everything and TOOLS. It controls only the Veil accent, delegates wallpaper selection to Android, reports and links to the permissions and special accesses already used by the launcher, reports the active HOME role and can restore the default accent. Changes apply immediately. The screen does not expose layout, dock, icon, font, folder, widget or gesture customization.
+Veil provides a deliberately bounded internal settings screen, reachable from Everything and TOOLS. It controls the Veil accent, delegates wallpaper selection to Android, reports and links to the permissions and special accesses already used by the launcher, reports the active HOME role and chooses the preferred app opened by MEDIA's empty state. Context apps are edited in place: holding an occupied app offers replace/remove actions and tapping an empty `+` slot opens the app picker. Changes apply immediately. The screen does not expose layout geometry, icon, font, folder, widget or gesture customization.
 
 The accent may use the Veil coral, a short accessible preset palette or Android's wallpaper-derived dynamic color on Android 12 and later. Veil never reads or stores wallpaper imagery; Android owns wallpaper selection and rendering.
+
+The preferred music provider affects only the action shown when MEDIA has no active session. Ambient Continuity continues to display the highest-ranked public media session from any compatible application.
 
 ## Real data and privacy boundaries
 
@@ -87,7 +89,7 @@ No data is transmitted except the disclosed Open-Meteo weather request. There ar
 - Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
 - A single `app` module and no dependency-injection or state-management framework.
 - Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
-- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the single essential launcher-accent preference. Do not add Room or broader configuration persistence.
+- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the bounded launcher preferences: accent, preferred music provider and five nullable app-package slots per context. Do not add Room or broader configuration persistence.
 - Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
 - Prefer platform APIs. No runtime third-party dependency is currently required.
 
@@ -120,7 +122,7 @@ Do not introduce a generic widget engine or speculative plugin architecture. Eac
 
 ## Explicit non-goals
 
-Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, custom fonts, editable grids or docks, theme export, manual launcher backups, smart-home controls, a gesture editor or a general user-customization system. The bounded accent/wallpaper/access screen above is the only customization exception. The sole badge-like surface is the binary, content-free active-notification dot defined above.
+Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, custom fonts, editable grid geometry, theme export, manual launcher backups, smart-home controls, a gesture editor or a general user-customization system. The bounded accent/wallpaper/access/app-slot screen above is the only customization exception. The sole badge-like surface is the binary, content-free active-notification dot defined above.
 
 Do not promise access to third-party internal state such as a Kindle chapter unless that application publishes a compatible Android session or notification. Veil cannot embed or transform another application's task as if it were a desktop window.
 

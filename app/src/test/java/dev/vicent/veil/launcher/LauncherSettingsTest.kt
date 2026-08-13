@@ -4,6 +4,8 @@ import dev.vicent.veil.launcher.model.AccentMode
 import dev.vicent.veil.launcher.model.LauncherNavigationState
 import dev.vicent.veil.launcher.model.LauncherPreferences
 import dev.vicent.veil.launcher.model.LauncherPreferencesPolicy
+import dev.vicent.veil.launcher.model.ContextAppPreferencesPolicy
+import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.LauncherSurface
 import kotlin.test.assertEquals
 import org.junit.Test
@@ -23,7 +25,35 @@ class LauncherSettingsTest {
     fun `missing or unknown accent falls back to Veil`() {
         assertEquals(AccentMode.VEIL, LauncherPreferencesPolicy.decodeAccent(null).accentMode)
         assertEquals(AccentMode.VEIL, LauncherPreferencesPolicy.decodeAccent("future").accentMode)
-        assertEquals(AccentMode.VEIL, LauncherPreferencesPolicy.resetAppearance().accentMode)
+        val customized = LauncherPreferences(
+            accentMode = AccentMode.SKY,
+            musicProviderPackage = "com.spotify.music",
+            contextAppOverrides = mapOf(LauncherContextKind.WORK to listOf("com.example")),
+        )
+        val reset = LauncherPreferencesPolicy.resetAppearance(customized)
+        assertEquals(AccentMode.VEIL, reset.accentMode)
+        assertEquals(customized.musicProviderPackage, reset.musicProviderPackage)
+        assertEquals(customized.contextAppOverrides, reset.contextAppOverrides)
+    }
+
+    @Test
+    fun `clearing one context slot preserves position and other apps`() {
+        val slots = listOf("one", "teams", "three", "four", "five")
+
+        assertEquals(
+            listOf("one", null, "three", "four", "five"),
+            ContextAppPreferencesPolicy.update(slots, 1, null),
+        )
+    }
+
+    @Test
+    fun `replacing one context slot does not reorder the others`() {
+        val slots = listOf("one", null, "three", "four", "five")
+
+        assertEquals(
+            listOf("one", "new", "three", "four", "five"),
+            ContextAppPreferencesPolicy.update(slots, 1, "new"),
+        )
     }
 
     @Test

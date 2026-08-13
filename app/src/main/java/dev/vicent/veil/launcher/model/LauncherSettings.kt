@@ -16,6 +16,8 @@ enum class AccentMode(val persistedValue: String) {
 
 data class LauncherPreferences(
     val accentMode: AccentMode = AccentMode.VEIL,
+    val musicProviderPackage: String? = null,
+    val contextAppOverrides: Map<LauncherContextKind, List<String?>> = emptyMap(),
 )
 
 object LauncherPreferencesPolicy {
@@ -25,7 +27,33 @@ object LauncherPreferencesPolicy {
     fun encodeAccent(preferences: LauncherPreferences): String =
         preferences.accentMode.persistedValue
 
-    fun resetAppearance(): LauncherPreferences = LauncherPreferences()
+    fun resetAppearance(current: LauncherPreferences): LauncherPreferences =
+        current.copy(accentMode = AccentMode.VEIL)
+}
+
+object ContextAppPreferencesPolicy {
+    fun normalize(slots: List<String?>, count: Int = 5): List<String?> =
+        (slots.take(count) + List(count) { null }).take(count)
+
+    fun update(
+        currentSlots: List<String?>,
+        slotIndex: Int,
+        packageName: String?,
+        count: Int = 5,
+    ): List<String?> {
+        if (slotIndex !in 0 until count) return normalize(currentSlots, count)
+        return normalize(currentSlots, count).toMutableList().apply {
+            this[slotIndex] = packageName
+        }
+    }
+}
+
+sealed interface SettingsAppTarget {
+    data object MusicProvider : SettingsAppTarget
+    data class ContextSlot(
+        val kind: LauncherContextKind,
+        val slotIndex: Int,
+    ) : SettingsAppTarget
 }
 
 data class LauncherAccessState(

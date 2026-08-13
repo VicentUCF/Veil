@@ -6,6 +6,7 @@ import dev.vicent.veil.launcher.model.LauncherAccessState
 import dev.vicent.veil.launcher.model.LauncherNavigationState
 import dev.vicent.veil.launcher.model.LauncherPreferences
 import dev.vicent.veil.launcher.model.LauncherSurface
+import dev.vicent.veil.launcher.model.SettingsAppTarget
 import dev.vicent.veil.launcher.model.LauncherContext
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
@@ -46,6 +47,7 @@ data class ResolvedLauncherContext(
 sealed interface ResolvedQuickAction {
     data class App(val app: LauncherApp) : ResolvedQuickAction
     data class Setting(val id: String) : ResolvedQuickAction
+    data class Empty(val slotIndex: Int) : ResolvedQuickAction
 }
 
 data class LauncherUiState(
@@ -56,6 +58,8 @@ data class LauncherUiState(
     val navigation: LauncherNavigationState = LauncherNavigationState(),
     val preferences: LauncherPreferences = LauncherPreferences(),
     val access: LauncherAccessState = LauncherAccessState(),
+    val settingsAppTarget: SettingsAppTarget? = null,
+    val settingsPickerReturnsToSettings: Boolean = false,
     val notificationIndicatorPackages: Set<String> = emptySet(),
     val currentContinuity: ContinuityItem? = null,
     val mediaContinuity: ContinuityItem.Media? = null,
@@ -117,7 +121,10 @@ class LauncherController(
         focusTimerRepository.startObserving(scope)
         scope.launch {
             preferencesRepository.state.collect { preferences ->
-                mutableState.update { it.copy(preferences = preferences) }
+                mutableState.update { currentState ->
+                    currentState.copy(preferences = preferences)
+                        .withInstalledApps(currentState.installedApps)
+                }
             }
         }
         scope.launch {
@@ -307,19 +314,108 @@ class LauncherController(
 
     fun openSettings() {
         mutableState.update { currentState ->
-            currentState.copy(navigation = currentState.navigation.openSettings())
+            currentState.copy(
+                navigation = if (currentState.isSettingsOpen) {
+                    currentState.navigation
+                } else {
+                    currentState.navigation.openSettings()
+                },
+                settingsAppTarget = null,
+                settingsPickerReturnsToSettings = false,
+            )
         }
     }
 
     fun closeSettings() {
         mutableState.update { currentState ->
-            currentState.copy(navigation = currentState.navigation.closeSettings())
+            if (currentState.settingsAppTarget != null) {
+                if (currentState.settingsPickerReturnsToSettings) {
+                    currentState.copy(
+                        settingsAppTarget = null,
+                        settingsPickerReturnsToSettings = false,
+                    )
+                } else {
+                    currentState.copy(
+                        navigation = currentState.navigation.closeSettings(),
+                        settingsAppTarget = null,
+                        settingsPickerReturnsToSettings = false,
+                    )
+                }
+            } else {
+                currentState.copy(navigation = currentState.navigation.closeSettings())
+            }
         }
     }
 
     fun setAccentMode(mode: AccentMode) = preferencesRepository.setAccentMode(mode)
 
     fun resetAppearance() = preferencesRepository.resetAppearance()
+
+    fun openMusicProviderPicker() {
+        mutableState.update { currentState ->
+            currentState.copy(
+                navigation = if (currentState.isSettingsOpen) {
+                    currentState.navigation
+                } else {
+                    currentState.navigation.openSettings()
+                },
+                settingsAppTarget = SettingsAppTarget.MusicProvider,
+                settingsPickerReturnsToSettings = currentState.isSettingsOpen,
+            )
+        }
+    }
+
+    fun openContextSlotPicker(kind: LauncherContextKind, slotIndex: Int) {
+        if (slotIndex !in 0 until quickActionCount) return
+        mutableState.update { currentState ->
+            currentState.copy(
+                navigation = currentState.navigation.openSettings(),
+                settingsAppTarget = SettingsAppTarget.ContextSlot(kind, slotIndex),
+                settingsPickerReturnsToSettings = false,
+            )
+        }
+    }
+
+    fun selectSettingsApp(packageName: String) {
+        val currentState = mutableState.value
+        when (val target = currentState.settingsAppTarget) {
+            SettingsAppTarget.MusicProvider -> preferencesRepository.setMusicProvider(packageName)
+            is SettingsAppTarget.ContextSlot -> preferencesRepository.setContextSlot(
+                kind = target.kind,
+                slotIndex = target.slotIndex,
+                packageName = packageName,
+                currentSlots = currentState.contextPackageSlots(target.kind),
+            )
+            null -> return
+        }
+        mutableState.update {
+            if (it.settingsPickerReturnsToSettings) {
+                it.copy(
+                    settingsAppTarget = null,
+                    settingsPickerReturnsToSettings = false,
+                )
+            } else {
+                it.copy(
+                    navigation = it.navigation.closeSettings(),
+                    settingsAppTarget = null,
+                    settingsPickerReturnsToSettings = false,
+                )
+            }
+        }
+    }
+
+    fun clearMusicProvider() = preferencesRepository.setMusicProvider(null)
+
+    fun clearContextSlot(kind: LauncherContextKind, slotIndex: Int) {
+        preferencesRepository.setContextSlot(
+            kind = kind,
+            slotIndex = slotIndex,
+            packageName = null,
+            currentSlots = mutableState.value.contextPackageSlots(kind),
+        )
+    }
+
+    fun resetContextApps(kind: LauncherContextKind) = preferencesRepository.resetContext(kind)
 
     fun refreshAccessState(scope: CoroutineScope) {
         val access = accessMonitor.snapshot()
@@ -361,7 +457,10 @@ class LauncherController(
     private fun LauncherUiState.withInstalledApps(
         installedApps: List<LauncherApp>,
     ): LauncherUiState {
-        val resolvedContexts = resolveContexts(installedApps)
+        val resolvedContexts = resolveContexts(
+            installedApps = installedApps,
+            preferences = preferences,
+        )
         val workPackages = resolvedContexts
             .firstOrNull { it.definition.kind == LauncherContextKind.WORK }
             ?.apps
@@ -378,11 +477,27 @@ class LauncherController(
         )
     }
 
-    private fun resolveContexts(installedApps: List<LauncherApp>): List<ResolvedLauncherContext> {
+    private fun resolveContexts(
+        installedApps: List<LauncherApp>,
+        preferences: LauncherPreferences,
+    ): List<ResolvedLauncherContext> {
         val appsByPackage = installedApps.associateBy(LauncherApp::packageName)
         val candidates = installedApps.map { AppCandidate(it.packageName, it.category) }
 
         return initialContexts.map { context ->
+            val override = preferences.contextAppOverrides[context.definition.kind]
+            if (override != null) {
+                val slots = (override + List(quickActionCount) { null }).take(quickActionCount)
+                val quickActions = slots.mapIndexed { index, packageName ->
+                    packageName?.let(appsByPackage::get)
+                        ?.let(ResolvedQuickAction::App)
+                        ?: ResolvedQuickAction.Empty(index)
+                }
+                return@map context.copy(
+                    apps = quickActions.mapNotNull { (it as? ResolvedQuickAction.App)?.app },
+                    quickActions = quickActions,
+                )
+            }
             val configuredPackages = context.definition.quickActions
                 .filterIsInstance<QuickActionSpec.App>()
                 .map(QuickActionSpec.App::packageName)
@@ -393,7 +508,7 @@ class LauncherController(
                 count = quickActionCount,
             ).mapNotNull(appsByPackage::get)
             val appIterator = apps.iterator()
-            val quickActions = context.definition.quickActions.mapNotNull { spec ->
+            val resolvedDefaults = context.definition.quickActions.mapNotNull { spec ->
                 when (spec) {
                     is QuickActionSpec.App -> if (appIterator.hasNext()) {
                         ResolvedQuickAction.App(appIterator.next())
@@ -401,8 +516,19 @@ class LauncherController(
                     is QuickActionSpec.Setting -> ResolvedQuickAction.Setting(spec.id)
                 }
             }.take(quickActionCount)
+            val quickActions = (
+                resolvedDefaults + List(quickActionCount) { index ->
+                    ResolvedQuickAction.Empty(resolvedDefaults.size + index)
+                }
+            ).take(quickActionCount)
 
             context.copy(apps = apps, quickActions = quickActions)
         }
     }
+
+    private fun LauncherUiState.contextPackageSlots(kind: LauncherContextKind): List<String?> =
+        contexts.firstOrNull { it.definition.kind == kind }
+            ?.quickActions
+            ?.map { action -> (action as? ResolvedQuickAction.App)?.app?.packageName }
+            .orEmpty()
 }

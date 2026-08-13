@@ -32,6 +32,9 @@ fun AppActionsBottomSheet(
     onOpen: () -> Unit,
     onAppInfo: () -> Unit,
     onUninstall: () -> Unit,
+    contextLabel: String? = null,
+    onReplaceInContext: (() -> Unit)? = null,
+    onRemoveFromContext: (() -> Unit)? = null,
 ) {
     RofiDialog(
         title = "app actions",
@@ -41,6 +44,20 @@ fun AppActionsBottomSheet(
         AppSheetHeader(app = app)
         SheetDivider()
         AppSheetAction(marker = ">", label = "Abrir", onClick = onOpen)
+        if (contextLabel != null && onReplaceInContext != null && onRemoveFromContext != null) {
+            AppSheetAction(
+                marker = "↺",
+                label = "Cambiar en $contextLabel",
+                onClick = onReplaceInContext,
+            )
+            AppSheetAction(
+                marker = "−",
+                label = "Quitar de $contextLabel",
+                labelColor = LocalVeilPalette.current.error,
+                onClick = onRemoveFromContext,
+            )
+            SheetDivider()
+        }
         AppSheetAction(marker = "i", label = "Información de la aplicación", onClick = onAppInfo)
         AppSheetAction(
             marker = "x",

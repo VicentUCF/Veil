@@ -39,6 +39,7 @@ fun ContextDock(
     onAppSelected: (LauncherApp) -> Unit,
     onAppLongPressed: (LauncherApp) -> Unit,
     onSettingSelected: (SettingsShortcut) -> Unit,
+    onEmptySlotSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
@@ -57,7 +58,8 @@ fun ContextDock(
             val setting = (action as? ResolvedQuickAction.Setting)?.let { resolved ->
                 settingsShortcuts.firstOrNull { it.id == resolved.id }
             }
-            val label = app?.label ?: setting?.label ?: return@forEach
+            val emptySlot = (action as? ResolvedQuickAction.Empty)?.slotIndex
+            val label = app?.label ?: setting?.label ?: "Vacío"
             val hasNotification = app != null && app.packageName in notificationIndicatorPackages
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -70,6 +72,7 @@ fun ContextDock(
                         onClick = {
                             if (app != null) onAppSelected(app)
                             else if (setting != null) onSettingSelected(setting)
+                            else if (emptySlot != null) onEmptySlotSelected(emptySlot)
                         },
                         onLongClick = app?.let { selected -> { onAppLongPressed(selected) } },
                     )
@@ -100,7 +103,14 @@ fun ContextDock(
                             )
                         }
                     } else {
-                        ActivityGlyph(ActivityGlyphKind.TOOLS, size = 24.dp)
+                        BasicText(
+                            text = "+",
+                            style = TextStyle(
+                                color = palette.contentMuted,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 22.sp,
+                            ),
+                        )
                     }
                 }
                 BasicText(
