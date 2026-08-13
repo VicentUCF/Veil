@@ -28,6 +28,7 @@ import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
 import dev.vicent.veil.launcher.repository.AppRepository
+import dev.vicent.veil.launcher.repository.AudioMixerRepository
 import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
@@ -46,6 +47,7 @@ class MainActivity : ComponentActivity() {
             weatherRepository = WeatherRepository(applicationContext),
             focusTimerRepository = FocusTimerRepository(applicationContext),
             systemStatusRepository = SystemStatusRepository(applicationContext),
+            audioMixerRepository = AudioMixerRepository(applicationContext),
             contexts = LauncherConfig.contexts,
             quickActionCount = LauncherConfig.quickActionCount,
         )
@@ -74,6 +76,10 @@ class MainActivity : ComponentActivity() {
         requestExactAlarmAfterNotification = false
     }
 
+    private val audioVisualizerPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> controller.setAudioVisualizerPermissionGranted(granted) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -86,6 +92,7 @@ class MainActivity : ComponentActivity() {
 
         controller.load(lifecycleScope)
         controller.setContinuityAccessGranted(hasContinuityAccess())
+        controller.setAudioVisualizerPermissionGranted(hasPermission(Manifest.permission.RECORD_AUDIO))
 
         setContent {
             val state by controller.state.collectAsState()
@@ -148,6 +155,10 @@ class MainActivity : ComponentActivity() {
                         controller.performContinuityAction(itemId, action, position)
                     },
                     onHomeMediaDismissed = controller::dismissHomeMedia,
+                    onAudioVisualizerPermissionRequested = {
+                        audioVisualizerPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    },
+                    onAudioVolumeChanged = controller::setAudioVolume,
                     onFocusStartRequested = ::startFocusWithPermissions,
                     onFocusPause = controller::pauseFocus,
                     onFocusResume = controller::resumeFocus,
@@ -168,6 +179,7 @@ class MainActivity : ComponentActivity() {
         isLauncherResumed = true
         externalSurfaceLaunched = false
         controller.setContinuityAccessGranted(hasContinuityAccess())
+        controller.setAudioVisualizerPermissionGranted(hasPermission(Manifest.permission.RECORD_AUDIO))
         controller.setCalendarAccessGranted(hasPermission(Manifest.permission.READ_CALENDAR), lifecycleScope)
         controller.setLocationAccessGranted(hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION), lifecycleScope)
         controller.restoreFocusAlarm()

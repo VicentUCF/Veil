@@ -6,11 +6,14 @@ import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.CalendarEventSummary
+import dev.vicent.veil.launcher.model.AudioChannel
+import dev.vicent.veil.launcher.model.AudioMixerState
 import dev.vicent.veil.launcher.model.FocusTimerState
 import dev.vicent.veil.launcher.model.QuickActionSpec
 import dev.vicent.veil.launcher.model.SystemStatus
 import dev.vicent.veil.launcher.model.WeatherState
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
+import dev.vicent.veil.launcher.repository.AudioMixerRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
@@ -50,6 +53,7 @@ data class LauncherUiState(
     val locationAccessGranted: Boolean = false,
     val focusTimer: FocusTimerState = FocusTimerState(),
     val systemStatus: SystemStatus = SystemStatus(),
+    val audioMixer: AudioMixerState = AudioMixerState(),
     val isContinuityOnboardingDismissed: Boolean = continuityOnboardingDismissed,
 )
 
@@ -60,6 +64,7 @@ class LauncherController(
     private val weatherRepository: WeatherRepository,
     private val focusTimerRepository: FocusTimerRepository,
     private val systemStatusRepository: SystemStatusRepository,
+    private val audioMixerRepository: AudioMixerRepository,
     contexts: List<LauncherContext>,
     private val quickActionCount: Int,
 ) {
@@ -77,15 +82,18 @@ class LauncherController(
         hasLoaded = true
 
         continuityRepository.start(scope)
+        audioMixerRepository.start(scope)
         calendarRepository.startObserving(scope) { mutableState.value.calendarAccessGranted }
         focusTimerRepository.startObserving(scope)
         scope.launch {
             continuityRepository.items.collect { items ->
                 val now = System.currentTimeMillis()
                 mutableState.update { currentState ->
+                    val selectedMedia = ContinuityRanker.selectMedia(items, now)
+                    audioMixerRepository.setMediaPlaying(selectedMedia?.isPlaying == true)
                     currentState.copy(
                         currentContinuity = ContinuityRanker.selectCurrent(items, now),
-                        mediaContinuity = ContinuityRanker.selectMedia(items, now),
+                        mediaContinuity = selectedMedia,
                         workProgress = ContinuityRanker.selectWorkProgress(
                             items = items,
                             workPackages = currentState.contexts
@@ -164,6 +172,11 @@ class LauncherController(
                 mutableState.update { it.copy(systemStatus = systemStatus) }
             }
         }
+        scope.launch {
+            audioMixerRepository.state.collect { audioMixer ->
+                mutableState.update { it.copy(audioMixer = audioMixer) }
+            }
+        }
         systemStatusRepository.refresh()
     }
 
@@ -183,6 +196,14 @@ class LauncherController(
 
     fun dismissHomeMedia(itemId: String) {
         continuityRepository.pauseMedia(itemId)
+    }
+
+    fun setAudioVisualizerPermissionGranted(granted: Boolean) {
+        audioMixerRepository.setVisualizerPermissionGranted(granted)
+    }
+
+    fun setAudioVolume(channel: AudioChannel, fraction: Float) {
+        audioMixerRepository.setVolume(channel, fraction)
     }
 
     fun setCalendarAccessGranted(granted: Boolean, scope: CoroutineScope) {
@@ -238,6 +259,9 @@ class LauncherController(
 
     fun selectContext(index: Int) {
         if (index !in mutableState.value.contexts.indices) return
+        audioMixerRepository.setMediaWorkspaceVisible(
+            mutableState.value.contexts[index].definition.kind == LauncherContextKind.MEDIA,
+        )
         mutableState.update { currentState ->
             currentState.copy(activeContextIndex = index)
         }

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.WorkspaceDataPolicy
 import dev.vicent.veil.launcher.model.ContinuityAction
+import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.ui.components.AppActionsBottomSheet
@@ -67,6 +68,8 @@ fun LauncherScreen(
     onCalendarEventSelected: (Long) -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
     onHomeMediaDismissed: (String) -> Unit,
+    onAudioVisualizerPermissionRequested: () -> Unit,
+    onAudioVolumeChanged: (AudioChannel, Float) -> Unit,
     onFocusStartRequested: (Int) -> Unit,
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
@@ -79,6 +82,7 @@ fun LauncherScreen(
     var appWithOpenActions by remember { mutableStateOf<LauncherApp?>(null) }
     var pendingFocusMinutes by remember { mutableIntStateOf(0) }
     var showLocationDisclosure by remember { mutableStateOf(false) }
+    var showAudioVisualizerDisclosure by remember { mutableStateOf(false) }
     val showsContextDock = activeContext?.definition?.kind
         ?.let(WorkspaceDataPolicy::showsContextDock) == true
     var lastDockContextIndex by remember { mutableIntStateOf(state.activeContextIndex) }
@@ -171,6 +175,10 @@ fun LauncherScreen(
                         onCalendarEventSelected = onCalendarEventSelected,
                         onContinuityAction = onContinuityAction,
                         onHomeMediaDismissed = onHomeMediaDismissed,
+                        onAudioVisualizerPermissionRequested = {
+                            showAudioVisualizerDisclosure = true
+                        },
+                        onAudioVolumeChanged = onAudioVolumeChanged,
                         onSettingsSelected = onSettingsSelected,
                         onFocusStart = { pendingFocusMinutes = it },
                         onFocusPause = onFocusPause,
@@ -363,6 +371,31 @@ fun LauncherScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showLocationDisclosure = false }) { Text("Cancelar") }
+            },
+        )
+    }
+
+    if (showAudioVisualizerDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showAudioVisualizerDisclosure = false },
+            title = { Text("Espectro de audio") },
+            text = {
+                Text(
+                    "Android exige permiso de micrófono para analizar la mezcla de salida. " +
+                        "Veil sólo recibe una señal FFT de baja calidad mientras MEDIA está visible; " +
+                        "no graba, guarda ni transmite audio.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAudioVisualizerDisclosure = false
+                    onAudioVisualizerPermissionRequested()
+                }) { Text("Activar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAudioVisualizerDisclosure = false }) {
+                    Text("Ahora no")
+                }
             },
         )
     }
