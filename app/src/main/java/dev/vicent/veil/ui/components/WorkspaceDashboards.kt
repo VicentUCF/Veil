@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.rememberScrollState
@@ -55,6 +56,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
@@ -80,15 +82,21 @@ import dev.vicent.veil.launcher.model.AudioSpectrumAvailability
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.FocusTimerStatus
+import dev.vicent.veil.launcher.model.GameFeedAvailability
+import dev.vicent.veil.launcher.model.GameFeedState
+import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.QuickNote
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
 import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.model.SettingsShortcut
+import dev.vicent.veil.launcher.model.SteamChartEntry
+import dev.vicent.veil.launcher.model.SteamNewsItem
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import dev.vicent.veil.ui.theme.VeilMotion
 import java.text.SimpleDateFormat
+import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -99,6 +107,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 private val PrimaryTileHeight = 220.dp
+private val GameChartTileHeight = 204.dp
+private val GameSecondaryTileHeight = 142.dp
 private val SecondaryTileHeight = 154.dp
 private val AudioMixerTileHeight = 154.dp
 private val DeviceDashboardTileHeight = 184.dp
@@ -132,6 +142,7 @@ fun WorkspaceDashboard(
     onQuickNoteAdded: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
     onQuickNoteUpdated: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
     onQuickNoteDeleted: (Long) -> Unit,
+    onExternalLinkSelected: (String) -> Unit,
     onAppSelected: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
     onAppLongPressed: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
     onEmptyContextSlotSelected: (LauncherContextKind, Int) -> Unit,
@@ -189,7 +200,14 @@ fun WorkspaceDashboard(
                 onAppSelected = onAppSelected,
                 onMusicProviderSelectionRequested = onMusicProviderSelectionRequested,
             )
-            LauncherContextKind.SOCIAL -> SocialWorkspace(compact)
+            LauncherContextKind.GAME -> GameWorkspace(
+                feed = state.gameFeed,
+                library = WorkspaceDataPolicy.gameLibrary(state.installedApps, context.apps),
+                compact = compact,
+                onExternalLinkSelected = onExternalLinkSelected,
+                onAppSelected = onAppSelected,
+                onAppLongPressed = onAppLongPressed,
+            )
             LauncherContextKind.TOOLS -> ToolsWorkspace(
                 state,
                 compact,
@@ -710,37 +728,411 @@ private fun AudioSpectrumPanel(
 }
 
 @Composable
-private fun SocialWorkspace(compact: Boolean) {
+private fun GameWorkspace(
+    feed: GameFeedState,
+    library: List<LauncherApp>,
+    compact: Boolean,
+    onExternalLinkSelected: (String) -> Unit,
+    onAppSelected: (LauncherApp) -> Unit,
+    onAppLongPressed: (LauncherApp) -> Unit,
+) {
+    var showNews by remember { mutableStateOf(false) }
+    var showLibrary by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        CozyTile(
-            label = "Directo",
-            prominent = true,
-            modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
-        ) {
-            TileTitle("Tus canales, sin una bandeja más", prominent = true)
-            TileBody("Elige abajo dónde quieres entrar. Las posiciones nunca cambian.")
-            SocialModeRow("01", "Conversación", "texto y voz")
-            SocialModeRow("02", "Comunidad", "grupos y servidores")
-        }
-        ResponsivePair(compact = compact, left = {
-            CozyTile(
-                label = "Comunidades",
-                modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
-            ) {
-                TileTitle("Entrar con intención")
-                TileBody("Grupos, servidores y foros en un mismo contexto.")
-            }
-        }, right = {
-            CozyTile(
-                label = "Visual y llamadas",
-                modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
-            ) {
-                TileTitle("Ver o estar")
-                TileBody("Contenido visual, llamadas y presencia.")
-            }
+        SteamChartTile(
+            feed = feed,
+            onEntrySelected = onExternalLinkSelected,
+            onFullChartSelected = { onExternalLinkSelected(STEAM_CHART_URL) },
+            modifier = Modifier.fillMaxWidth().height(GameChartTileHeight),
+        )
+        GameSecondaryRow(compact = compact, news = {
+            SteamNewsTile(
+                feed = feed,
+                onSelected = onExternalLinkSelected,
+                onMore = { showNews = true },
+            )
+        }, library = {
+            GameLibraryTile(
+                library = library,
+                onOpen = { showLibrary = true },
+            )
         })
     }
+
+    if (showNews) {
+        SteamNewsDialog(
+            news = feed.news,
+            onDismiss = { showNews = false },
+            onSelected = onExternalLinkSelected,
+        )
+    }
+    if (showLibrary) {
+        GameLibraryDialog(
+            library = library,
+            onDismiss = { showLibrary = false },
+            onAppSelected = onAppSelected,
+            onAppLongPressed = onAppLongPressed,
+        )
+    }
 }
+
+@Composable
+private fun SteamChartTile(
+    feed: GameFeedState,
+    onEntrySelected: (String) -> Unit,
+    onFullChartSelected: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val top = feed.chart.firstOrNull()
+    CozyTile(
+        label = "Steam · Más jugados",
+        prominent = true,
+        onClick = onFullChartSelected,
+        modifier = modifier,
+    ) {
+        when {
+            top != null -> {
+                val artwork = feed.heroArtwork?.let { bitmap ->
+                    remember(bitmap) { bitmap.asImageBitmap() }
+                }
+                if (artwork != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(72.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .clickable(role = Role.Button) { onEntrySelected(top.storeUrl) },
+                    ) {
+                        Image(
+                            bitmap = artwork,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .52f)))
+                        Column(modifier = Modifier.align(Alignment.BottomStart).padding(10.dp)) {
+                            BasicText(
+                                text = "#${top.rank}  ${top.title}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = workspaceTitleStyle(Color.White, prominent = true),
+                            )
+                            top.peakPlayers?.let { peak ->
+                                BasicText(
+                                    text = "PICO  ${formatPlayers(peak)}",
+                                    style = workspaceMonoStyle(Color.White.copy(alpha = .76f), 8),
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    BasicText(
+                        "#${top.rank}  ${top.title}",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = workspaceTitleStyle(LocalVeilPalette.current.contentPrimary, prominent = true),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(role = Role.Button) { onEntrySelected(top.storeUrl) }
+                            .padding(vertical = 4.dp),
+                    )
+                    top.peakPlayers?.let { TileBody("Pico de ${formatPlayers(it)} jugadores") }
+                }
+                feed.chart.drop(1).take(4).forEach { entry ->
+                    SteamCompactRank(entry) { onEntrySelected(entry.storeUrl) }
+                }
+                if (feed.isStale) {
+                    BasicText(
+                        "DATOS GUARDADOS · SIN ACTUALIZAR",
+                        style = workspaceMonoStyle(LocalVeilPalette.current.contentMuted, 8),
+                        modifier = Modifier.padding(top = 5.dp),
+                    )
+                }
+            }
+            feed.availability == GameFeedAvailability.LOADING -> {
+                TileTitle("Consultando Steam", prominent = true)
+                TileBody("Cargando el ranking público y las noticias oficiales.")
+            }
+            feed.availability == GameFeedAvailability.UNAVAILABLE -> {
+                TileTitle("Steam no está disponible", prominent = true)
+                TileBody("La biblioteca local sigue accesible. Se reintentará al volver a GAME.")
+            }
+            else -> {
+                TileTitle("Steam Charts", prominent = true)
+                TileBody("El ranking se carga únicamente al entrar en GAME.")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SteamCompactRank(entry: SteamChartEntry, onClick: () -> Unit) {
+    val palette = LocalVeilPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(top = 5.dp, bottom = 3.dp),
+    ) {
+        BasicText("#${entry.rank}", style = workspaceMonoStyle(palette.accentActive, 9), modifier = Modifier.width(30.dp))
+        BasicText(
+            entry.title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = workspaceMonoStyle(palette.contentPrimary, 9),
+            modifier = Modifier.weight(1f),
+        )
+        BasicText(rankMovement(entry), style = workspaceMonoStyle(palette.contentMuted, 8))
+    }
+}
+
+@Composable
+private fun SteamNewsTile(
+    feed: GameFeedState,
+    onSelected: (String) -> Unit,
+    onMore: () -> Unit,
+) {
+    CozyTile(
+        label = "Noticias oficiales",
+        modifier = Modifier.fillMaxWidth().height(GameSecondaryTileHeight),
+    ) {
+        if (feed.news.isNotEmpty()) {
+            feed.news.take(2).forEach { item ->
+                SteamNewsCompactRow(item) { onSelected(item.url) }
+            }
+            BasicText(
+                "VER MÁS  →",
+                style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 9),
+                modifier = Modifier
+                    .clickable(role = Role.Button, onClickLabel = "Ver más", onClick = onMore)
+                    .padding(top = 4.dp, bottom = 1.dp),
+            )
+        } else {
+            TileTitle("Sin titulares disponibles")
+            TileBody("Las noticias no bloquean el ranking ni tu biblioteca.")
+        }
+    }
+}
+
+@Composable
+private fun GameLibraryTile(library: List<LauncherApp>, onOpen: () -> Unit) {
+    CozyTile(
+        label = "Biblioteca local",
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth().height(GameSecondaryTileHeight),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            GameFolderGlyph(modifier = Modifier.size(62.dp))
+            BasicText(
+                if (library.size == 1) "1 JUEGO" else "${library.size} JUEGOS",
+                style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 10),
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SteamNewsDialog(
+    news: List<SteamNewsItem>,
+    onDismiss: () -> Unit,
+    onSelected: (String) -> Unit,
+) {
+    RofiDialog(
+        title = "noticias Steam",
+        onDismiss = onDismiss,
+        actions = { RofiAction("cerrar", onDismiss) },
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+        ) {
+            news.forEach { item ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(LocalVeilPalette.current.fieldBackground.copy(alpha = .52f))
+                        .clickable(role = Role.Button) { onSelected(item.url) }
+                        .padding(11.dp),
+                ) {
+                    BasicText(
+                        "${item.gameTitle.uppercase()} · ${formatNewsDate(item.publishedAtMillis).uppercase()}",
+                        style = workspaceMonoStyle(LocalVeilPalette.current.accentActive, 8),
+                    )
+                    BasicText(
+                        item.title,
+                        style = workspaceBodyStyle(LocalVeilPalette.current.contentPrimary),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SteamNewsCompactRow(item: SteamNewsItem, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(vertical = 5.dp),
+    ) {
+        BasicText(
+            item.title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = workspaceBodyStyle(LocalVeilPalette.current.contentPrimary),
+        )
+        BasicText(
+            "${item.gameTitle.uppercase()} · ${formatNewsDate(item.publishedAtMillis).uppercase()}",
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = workspaceMonoStyle(LocalVeilPalette.current.contentMuted, 7),
+        )
+    }
+}
+
+@Composable
+private fun GameFolderGlyph(modifier: Modifier = Modifier) {
+    val palette = LocalVeilPalette.current
+    Canvas(modifier = modifier) {
+        val strokeWidth = 1.2.dp.toPx()
+        val outline = Path().apply {
+            moveTo(size.width * .12f, size.height * .30f)
+            lineTo(size.width * .39f, size.height * .30f)
+            lineTo(size.width * .49f, size.height * .20f)
+            lineTo(size.width * .76f, size.height * .20f)
+            lineTo(size.width * .88f, size.height * .36f)
+            lineTo(size.width * .88f, size.height * .78f)
+            lineTo(size.width * .12f, size.height * .78f)
+            close()
+        }
+        drawPath(outline, palette.accentActive, style = Stroke(width = strokeWidth))
+        repeat(3) { index ->
+            drawRoundRect(
+                color = palette.contentSecondary,
+                topLeft = Offset(size.width * (.27f + index * .17f), size.height * .48f),
+                size = Size(size.width * .10f, size.width * .10f),
+                cornerRadius = CornerRadius(size.width * .02f),
+                style = Stroke(width = strokeWidth),
+            )
+        }
+    }
+}
+
+@Composable
+private fun GameSecondaryRow(
+    compact: Boolean,
+    news: @Composable () -> Unit,
+    library: @Composable () -> Unit,
+) {
+    if (compact) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            news()
+            library()
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(modifier = Modifier.weight(1.55f)) { news() }
+            Box(modifier = Modifier.weight(.85f)) { library() }
+        }
+    }
+}
+
+@Composable
+private fun GameLibraryDialog(
+    library: List<LauncherApp>,
+    onDismiss: () -> Unit,
+    onAppSelected: (LauncherApp) -> Unit,
+    onAppLongPressed: (LauncherApp) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val normalizedQuery = remember(query) { query.normalizeForSearch() }
+    val visible = remember(library, normalizedQuery) {
+        if (normalizedQuery.isBlank()) library else library.filter { app ->
+            "${app.label} ${app.packageName}".normalizeForSearch().contains(normalizedQuery)
+        }
+    }
+    RofiDialog(
+        title = "biblioteca · ${library.size}",
+        onDismiss = onDismiss,
+        actions = { RofiAction("cerrar", onDismiss) },
+    ) {
+        RofiEditorField(
+            label = "buscar",
+            value = query,
+            onValueChange = { query = it.take(80) },
+            hint = "${visible.size} resultados",
+            singleLine = true,
+        )
+        Column(
+            modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+        ) {
+            if (visible.isEmpty()) {
+                RofiBody(if (library.isEmpty()) "No hay juegos locales detectados." else "No hay coincidencias.")
+            }
+            visible.forEach { app ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            role = Role.Button,
+                            onClick = {
+                                onDismiss()
+                                onAppSelected(app)
+                            },
+                            onLongClick = {
+                                onDismiss()
+                                onAppLongPressed(app)
+                            },
+                        )
+                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                ) {
+                    LauncherAppIcon(app = app, size = 34.dp)
+                    Column(modifier = Modifier.padding(start = 11.dp).weight(1f)) {
+                        BasicText(
+                            app.label,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = workspaceBodyStyle(LocalVeilPalette.current.contentPrimary),
+                        )
+                        BasicText(
+                            app.packageName,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = workspaceMonoStyle(LocalVeilPalette.current.contentMuted, 7),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun rankMovement(entry: SteamChartEntry): String {
+    val previous = entry.previousRank ?: return "NUEVO"
+    val movement = previous - entry.rank
+    return when {
+        movement > 0 -> "▲$movement"
+        movement < 0 -> "▼${-movement}"
+        else -> "—"
+    }
+}
+
+private fun formatPlayers(value: Int): String = NumberFormat.getIntegerInstance().format(value)
+
+private fun formatNewsDate(value: Long): String =
+    SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(value))
+
+private const val STEAM_CHART_URL = "https://store.steampowered.com/charts/mostplayed"
 
 @Composable
 private fun ToolsWorkspace(
@@ -1268,24 +1660,6 @@ private fun EmptyMediaArtwork(musicProviderLabel: String?) {
                     modifier = Modifier.padding(vertical = 10.dp, horizontal = 2.dp),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun SocialModeRow(index: String, title: String, detail: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-    ) {
-        BasicText(
-            text = index,
-            style = workspaceMonoStyle(LocalVeilPalette.current.accentActive, 9),
-            modifier = Modifier.width(30.dp),
-        )
-        Column {
-            BasicText(title, style = workspaceBodyStyle(LocalVeilPalette.current.contentPrimary))
-            BasicText(detail, style = workspaceMonoStyle(LocalVeilPalette.current.contentMuted, 9))
         }
     }
 }

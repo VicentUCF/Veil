@@ -42,10 +42,12 @@ import dev.vicent.veil.launcher.repository.FocusTimerRepository
 import dev.vicent.veil.launcher.repository.LauncherPreferencesRepository
 import dev.vicent.veil.launcher.repository.QuickNotesRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
+import dev.vicent.veil.launcher.repository.SteamGameRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
 import dev.vicent.veil.launcher.system.AndroidAppLauncher
 import dev.vicent.veil.launcher.system.AndroidClockLauncher
 import dev.vicent.veil.launcher.system.AndroidSettingsLauncher
+import dev.vicent.veil.launcher.system.AndroidWebLauncher
 import dev.vicent.veil.launcher.system.LauncherAccessMonitor
 import dev.vicent.veil.ui.LauncherScreen
 import dev.vicent.veil.ui.theme.VeilTheme
@@ -64,6 +66,7 @@ class MainActivity : ComponentActivity() {
             quickNotesRepository = QuickNotesRepository(applicationContext),
             systemStatusRepository = SystemStatusRepository(applicationContext),
             audioMixerRepository = AudioMixerRepository(applicationContext),
+            steamGameRepository = SteamGameRepository(applicationContext),
             preferencesRepository = preferencesRepository,
             accessMonitor = accessMonitor,
             contexts = LauncherConfig.contexts,
@@ -74,6 +77,7 @@ class MainActivity : ComponentActivity() {
     private val appLauncher by lazy { AndroidAppLauncher(applicationContext) }
     private val clockLauncher by lazy { AndroidClockLauncher(applicationContext) }
     private val settingsLauncher by lazy { AndroidSettingsLauncher(applicationContext) }
+    private val webLauncher by lazy { AndroidWebLauncher(applicationContext) }
     private var requestExactAlarmAfterNotification = false
     private var externalSurfaceLaunched = false
     private var isLauncherResumed = false
@@ -242,6 +246,9 @@ class MainActivity : ComponentActivity() {
                     onQuickNoteAdded = controller::addQuickNote,
                     onQuickNoteUpdated = controller::updateQuickNote,
                     onQuickNoteDeleted = controller::deleteQuickNote,
+                    onExternalLinkSelected = { url ->
+                        launchExternal { webLauncher.open(url) }
+                    },
                     onHomeButtonTap = {
                         performHomeButtonAction(LauncherConfig.homeButton.onTap, state)
                     },

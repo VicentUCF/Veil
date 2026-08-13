@@ -17,6 +17,7 @@ import dev.vicent.veil.launcher.model.CalendarEventSummary
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.AudioMixerState
 import dev.vicent.veil.launcher.model.FocusTimerState
+import dev.vicent.veil.launcher.model.GameFeedState
 import dev.vicent.veil.launcher.model.QuickActionSpec
 import dev.vicent.veil.launcher.model.QuickNote
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
@@ -31,6 +32,7 @@ import dev.vicent.veil.launcher.repository.FocusTimerRepository
 import dev.vicent.veil.launcher.repository.LauncherPreferencesRepository
 import dev.vicent.veil.launcher.repository.QuickNotesRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
+import dev.vicent.veil.launcher.repository.SteamGameRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
 import dev.vicent.veil.launcher.system.LauncherAccessMonitor
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +74,7 @@ data class LauncherUiState(
     val quickNotes: List<QuickNote> = emptyList(),
     val systemStatus: SystemStatus = SystemStatus(),
     val audioMixer: AudioMixerState = AudioMixerState(),
+    val gameFeed: GameFeedState = GameFeedState(),
     val isContinuityOnboardingDismissed: Boolean = false,
 ) {
     val isDrawerOpen: Boolean get() = navigation.surface == LauncherSurface.EVERYTHING
@@ -90,6 +93,7 @@ class LauncherController(
     private val quickNotesRepository: QuickNotesRepository,
     private val systemStatusRepository: SystemStatusRepository,
     private val audioMixerRepository: AudioMixerRepository,
+    private val steamGameRepository: SteamGameRepository,
     private val preferencesRepository: LauncherPreferencesRepository,
     private val accessMonitor: LauncherAccessMonitor,
     contexts: List<LauncherContext>,
@@ -104,6 +108,7 @@ class LauncherController(
             contexts = initialContexts,
             preferences = preferencesRepository.state.value,
             access = accessMonitor.snapshot(),
+            gameFeed = steamGameRepository.state.value,
             isContinuityOnboardingDismissed =
                 continuityRepository.isNotificationOnboardingSeen(),
         ),
@@ -194,6 +199,11 @@ class LauncherController(
                 mutableState.update { it.copy(audioMixer = audioMixer) }
             }
         }
+        scope.launch {
+            steamGameRepository.state.collect { gameFeed ->
+                mutableState.update { it.copy(gameFeed = gameFeed) }
+            }
+        }
     }
 
     fun setContinuityAccessGranted(granted: Boolean) {
@@ -256,6 +266,11 @@ class LauncherController(
                 ?.definition?.kind == LauncherContextKind.CURRENT
         ) {
             scope.launch { weatherRepository.refresh(mutableState.value.locationAccessGranted) }
+        }
+        if (mutableState.value.contexts.getOrNull(mutableState.value.activeContextIndex)
+                ?.definition?.kind == LauncherContextKind.GAME
+        ) {
+            scope.launch { steamGameRepository.refresh() }
         }
     }
 

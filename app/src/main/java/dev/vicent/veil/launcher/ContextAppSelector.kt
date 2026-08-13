@@ -63,7 +63,7 @@ object ContextAppSelector {
     private fun wantedCategory(kind: LauncherContextKind): AppCategory? = when (kind) {
         LauncherContextKind.WORK -> AppCategory.WORK
         LauncherContextKind.MEDIA -> AppCategory.MEDIA
-        LauncherContextKind.SOCIAL -> AppCategory.SOCIAL
+        LauncherContextKind.GAME -> AppCategory.GAME
         else -> null
     }
 }

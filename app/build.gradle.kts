@@ -35,4 +35,5 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     testImplementation(kotlin("test"))
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")
 }

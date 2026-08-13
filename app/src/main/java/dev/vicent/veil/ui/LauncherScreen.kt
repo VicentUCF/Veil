@@ -106,6 +106,7 @@ fun LauncherScreen(
     onQuickNoteAdded: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
     onQuickNoteUpdated: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
     onQuickNoteDeleted: (Long) -> Unit,
+    onExternalLinkSelected: (String) -> Unit,
     onHomeButtonTap: () -> Unit,
     onHomeButtonLongPress: () -> Unit,
     onAccentSelected: (AccentMode) -> Unit,
@@ -286,6 +287,7 @@ fun LauncherScreen(
                             onQuickNoteAdded = onQuickNoteAdded,
                             onQuickNoteUpdated = onQuickNoteUpdated,
                             onQuickNoteDeleted = onQuickNoteDeleted,
+                            onExternalLinkSelected = onExternalLinkSelected,
                             onAppSelected = onAppSelected,
                             onAppLongPressed = { app ->
                                 appWithOpenActions = AppActionsTarget(

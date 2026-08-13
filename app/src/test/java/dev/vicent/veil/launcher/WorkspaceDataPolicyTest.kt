@@ -17,7 +17,7 @@ class WorkspaceDataPolicyTest {
             listOf(
                 LauncherContextKind.WORK,
                 LauncherContextKind.MEDIA,
-                LauncherContextKind.SOCIAL,
+                LauncherContextKind.GAME,
                 LauncherContextKind.TOOLS,
             ).map(WorkspaceDataPolicy::showsContextDock),
         )
@@ -108,6 +108,22 @@ class WorkspaceDataPolicyTest {
     fun `system usage is unavailable without a valid total`() {
         assertNull(WorkspaceDataPolicy.usedFraction(availableBytes = 0L, totalBytes = 0L))
         assertNull(WorkspaceDataPolicy.usedFraction(availableBytes = 0L, totalBytes = -1L))
+    }
+
+    @Test
+    fun `game library includes games and pinned misclassified apps in stable order`() {
+        val installed = listOf(
+            GameLibraryCandidate("game.z", "Zelda", dev.vicent.veil.launcher.model.AppCategory.GAME),
+            GameLibraryCandidate("emulator", "Dolphin", dev.vicent.veil.launcher.model.AppCategory.GENERAL),
+            GameLibraryCandidate("other", "Calculator", dev.vicent.veil.launcher.model.AppCategory.GENERAL),
+            GameLibraryCandidate("game.a", "álamo", dev.vicent.veil.launcher.model.AppCategory.GAME),
+            GameLibraryCandidate("game.a", "álamo duplicate", dev.vicent.veil.launcher.model.AppCategory.GAME),
+        )
+
+        assertEquals(
+            listOf("emulator", "game.z", "game.a"),
+            WorkspaceDataPolicy.gameLibraryPackages(installed, setOf("emulator")),
+        )
     }
 
     private fun event(title: String, startMillis: Long) = CalendarEventSummary(

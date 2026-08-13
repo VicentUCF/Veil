@@ -76,15 +76,15 @@ object LauncherConfig {
             ),
         ),
         LauncherContext(
-            id = "social",
-            label = "SOCIAL",
-            kind = LauncherContextKind.SOCIAL,
+            id = "game",
+            label = "GAME",
+            kind = LauncherContextKind.GAME,
             quickActions = apps(
-                "com.whatsapp",
-                "org.telegram.messenger",
-                "com.discord",
-                "com.instagram.android",
-                "com.reddit.frontpage",
+                "com.playstack.balatro.android",
+                "com.poncle.vampiresurvivors",
+                "jp.pokemon.pokemontcgp",
+                "org.dolphinemu.dolphinemu",
+                "com.retroarch",
             ),
         ),
         LauncherContext(

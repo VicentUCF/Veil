@@ -14,6 +14,6 @@ data class LauncherApp(
 enum class AppCategory {
     WORK,
     MEDIA,
-    SOCIAL,
+    GAME,
     GENERAL,
 }

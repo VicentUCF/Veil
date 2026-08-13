@@ -527,7 +527,7 @@ private fun EmptyResult(query: String) {
     }
 }
 
-private fun String.normalizeForSearch(): String = Normalizer
+internal fun String.normalizeForSearch(): String = Normalizer
     .normalize(this, Normalizer.Form.NFD)
     .replace(COMBINING_MARKS, "")
     .lowercase(Locale.ROOT)

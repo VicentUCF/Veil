@@ -28,6 +28,6 @@ enum class LauncherContextKind {
     CURRENT,
     WORK,
     MEDIA,
-    SOCIAL,
+    GAME,
     TOOLS,
 }

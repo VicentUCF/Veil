@@ -65,13 +65,13 @@ class ContextAppSelectorTest {
     @Test
     fun `missing configured apps duplicates and overflow are removed`() {
         val installed = listOf(
-            AppCandidate("one", AppCategory.SOCIAL),
-            AppCandidate("two", AppCategory.SOCIAL),
-            AppCandidate("three", AppCategory.SOCIAL),
+            AppCandidate("one", AppCategory.GAME),
+            AppCandidate("two", AppCategory.GAME),
+            AppCandidate("three", AppCategory.GAME),
         )
 
         val result = ContextAppSelector.selectPackageNames(
-            kind = LauncherContextKind.SOCIAL,
+            kind = LauncherContextKind.GAME,
             configuredPackageNames = listOf("missing", "one", "one"),
             installedApps = installed,
             count = 2,

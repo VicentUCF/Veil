@@ -23,7 +23,7 @@ enum class ActivityGlyphKind {
     CURRENT,
     WORK,
     MEDIA,
-    SOCIAL,
+    GAME,
     TOOLS,
     PHONE,
     MESSAGE,
@@ -58,7 +58,7 @@ internal fun activityGlyphFor(
         listOf("camera", "camara").any(searchable::contains) -> ActivityGlyphKind.CAMERA
         category == AppCategory.WORK -> ActivityGlyphKind.WORK
         category == AppCategory.MEDIA -> ActivityGlyphKind.MEDIA
-        category == AppCategory.SOCIAL -> ActivityGlyphKind.SOCIAL
+        category == AppCategory.GAME -> ActivityGlyphKind.GAME
         else -> ActivityGlyphKind.APP
     }
 }
@@ -67,7 +67,7 @@ fun LauncherContextKind.activityGlyph(): ActivityGlyphKind = when (this) {
     LauncherContextKind.CURRENT -> ActivityGlyphKind.CURRENT
     LauncherContextKind.WORK -> ActivityGlyphKind.WORK
     LauncherContextKind.MEDIA -> ActivityGlyphKind.MEDIA
-    LauncherContextKind.SOCIAL -> ActivityGlyphKind.SOCIAL
+    LauncherContextKind.GAME -> ActivityGlyphKind.GAME
     LauncherContextKind.TOOLS -> ActivityGlyphKind.TOOLS
 }
 
@@ -125,16 +125,19 @@ fun ActivityGlyph(
                     style = if (isActive) androidx.compose.ui.graphics.drawscope.Fill else stroke,
                 )
             }
-            ActivityGlyphKind.SOCIAL -> {
+            ActivityGlyphKind.GAME -> {
                 drawRoundRect(
                     glyphColor,
-                    Offset(w * .2f, h * .24f),
-                    Size(w * .6f, h * .46f),
-                    CornerRadius(w * .08f),
+                    Offset(w * .16f, h * .31f),
+                    Size(w * .68f, h * .42f),
+                    CornerRadius(w * .16f),
                     style = if (isActive) androidx.compose.ui.graphics.drawscope.Fill else stroke,
                 )
-                drawLine(glyphColor, Offset(w * .32f, h * .7f), Offset(w * .25f, h * .82f), stroke.width)
-                drawLine(glyphColor, Offset(w * .32f, h * .7f), Offset(w * .45f, h * .7f), stroke.width)
+                val detailColor = if (isActive) palette.tileBackground else glyphColor
+                drawLine(detailColor, Offset(w * .29f, h * .52f), Offset(w * .45f, h * .52f), stroke.width)
+                drawLine(detailColor, Offset(w * .37f, h * .44f), Offset(w * .37f, h * .60f), stroke.width)
+                drawCircle(detailColor, w * .035f, Offset(w * .65f, h * .47f))
+                drawCircle(detailColor, w * .035f, Offset(w * .72f, h * .57f))
             }
             ActivityGlyphKind.TOOLS -> {
                 drawCircle(

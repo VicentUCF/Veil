@@ -52,7 +52,6 @@ class AppRepository(context: Context) {
         val installedPackages = installedApps.mapTo(mutableSetOf(), LauncherApp::packageName)
         val preferredPackage = when (kind) {
             LauncherContextKind.MEDIA -> resolvePreferredPackage(musicIntent(), installedPackages)
-            LauncherContextKind.SOCIAL -> resolvePreferredPackage(messagesIntent(), installedPackages)
             else -> null
         }
         val selectedPackages = ContextAppSelector.selectPackageNames(
@@ -156,7 +155,7 @@ class AppRepository(context: Context) {
         android.content.pm.ApplicationInfo.CATEGORY_VIDEO,
         android.content.pm.ApplicationInfo.CATEGORY_IMAGE,
         -> AppCategory.MEDIA
-        android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> AppCategory.SOCIAL
+        android.content.pm.ApplicationInfo.CATEGORY_GAME -> AppCategory.GAME
         else -> AppCategory.GENERAL
     }
 }

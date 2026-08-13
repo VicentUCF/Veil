@@ -6,7 +6,7 @@
 
 Veil is a native Android launcher that behaves as a quiet operating-system layer. Its defining idea is **Ambient Continuity**: Home remembers public Android activities and helps the user resume them. Nothing starts on Home; everything continues.
 
-Veil uses five stable context lenses—CURRENT, WORK, MEDIA, SOCIAL and TOOLS. Each lens has its own **Cozy Workspace**: an asymmetric arrangement of dark translucent tiles inspired by Qtile windows with picom. A workspace may contain several useful surfaces, but exactly one surface owns visual priority.
+Veil uses five stable context lenses—CURRENT, WORK, MEDIA, GAME and TOOLS. Each lens has its own **Cozy Workspace**: an asymmetric arrangement of dark translucent tiles inspired by Qtile windows with picom. A workspace may contain several useful surfaces, but exactly one surface owns visual priority.
 
 ## Decision hierarchy
 
@@ -16,7 +16,7 @@ Prioritize reliability as an Android Home app, one-tap usability, trustworthy da
 
 - The thin transparent top rail is aligned to the physical top edge, selects the five contexts and shows restrained system status.
 - Horizontal swipes move between contexts.
-- WORK, MEDIA, SOCIAL and TOOLS always show a fixed five-slot application dock. CURRENT deliberately hides it so the primary Home remains quiet.
+- WORK, MEDIA, GAME and TOOLS always show a fixed five-slot application dock. CURRENT deliberately hides it so the primary Home remains quiet.
 - An upward swipe on Home opens Everything directly; Search remains part of Everything.
 - Back closes Everything. Home closes Everything first and opens it on the next press.
 - Tile geometry is stable. Missing data becomes an honest empty/permission/portal state instead of rearranging the screen.
@@ -29,16 +29,16 @@ All workspaces use a responsive two-column grid with 16 dp outer padding and 10 
 - **CURRENT**: the highest-ranked ongoing activity is primary. The next calendar event and current weather support it. Without continuity, time/date and a quiet state become primary.
 - **WORK**: today's agenda (up to three events) is primary and may include one compact, published work-progress state. Up to three local quick notes and a compact Pomodoro support it. It never repeats the dock applications.
 - **MEDIA**: the active/recent media session is primary, including artwork, timeline and only supported transport controls. With no session, the same stable geometry becomes a library surface. Sound/output and collection context are secondary; applications remain in the dock.
-- **SOCIAL**: the composition frames direct communication, communities, visual content and calls without duplicating application launchers. Veil never reads or renders conversation content, people or unread counts. A configured app may show the same binary active-notification indicator used by the other docks; the workspace itself does not render notification content or fill empty space with privacy notices.
+- **GAME**: a Steam-inspired but Veil-native game centre. The public Steam most-played chart is primary; official news for its leading games and a searchable library of locally installed Android games support it. The dock owns five configurable favourite games. The complete library may repeat those favourites deliberately because it is an exhaustive collection rather than a portal row. GAME uses no Steam account, API key, ownership data, UsageStats or inferred play history.
 - **TOOLS**: a device dashboard is primary, showing only public Android data: manufacturer/model, Android version and security patch, storage and memory. Battery and connectivity are secondary, followed by a full-width control centre with direct entries for display, sound, applications, security and all settings. Restricted controls open the relevant Android Settings surface rather than being simulated. Focus remains available from WORK.
 
 Wallpaper remains perceptible around and through every tile. Dense does not mean equal: only one tile per workspace uses the accent and prominent type.
 
 ## Context dock and applications
 
-Each context owns five stable quick-action slots. WORK, MEDIA, SOCIAL and TOOLS expose them continuously in a bottom dock; CURRENT keeps its configured set available to the model but does not render a dock. The dock has no floating trigger, expanded state or overlay. It uses recognizable real application icons in uniform 48 dp slots. Source defaults and deterministic category fallback provide the initial setup. Once the user customizes a context in Veil settings, its five exact positions are persisted: an empty or uninstalled slot remains empty and never moves or causes another slot to be refilled. There is no usage prediction or position reshuffling.
+Each context owns five stable quick-action slots. WORK, MEDIA, GAME and TOOLS expose them continuously in a bottom dock; CURRENT keeps its configured set available to the model but does not render a dock. The dock has no floating trigger, expanded state or overlay. It uses recognizable real application icons in uniform 48 dp slots. Source defaults and deterministic category fallback provide the initial setup. Once the user customizes a context in Veil settings, its five exact positions are persisted: an empty or uninstalled slot remains empty and never moves or causes another slot to be refilled. There is no usage prediction or position reshuffling.
 
-Applications shown in the dock must not be repeated as portal rows inside the same workspace. Workspace tiles add context—status, continuity, library, Focus or system controls—while the dock owns launching.
+Applications shown in the dock must not be repeated as portal rows inside the same workspace. GAME's exhaustive library is the sole exception: its five favourites may also appear in that complete collection. Workspace tiles add context—status, continuity, library, Focus or system controls—while the dock owns quick launching.
 
 CURRENT app rows and the four contextual docks may show one restrained binary dot when Android exposes at least one active, badge-eligible notification for that package. The dot never contains a count or content, does not claim to represent unread state and remains synchronized with Android rather than being cleared locally when the app opens. Everything, workspace tiles and the top rail do not show these indicators.
 
@@ -82,21 +82,25 @@ WORK stores up to three local quick notes for capture and recall. Each note has 
 
 Battery, charging, storage, memory, device identity, Android version, security patch and active transport come from Android system APIs. Missing values remain explicitly unavailable. Veil does not replace Settings and does not toggle restricted controls indirectly.
 
-No data is transmitted except the disclosed Open-Meteo weather request. There are no analytics, accounts, cloud sync, backend services or databases.
+### Steam game feed
+
+GAME connects directly to public Steam HTTPS surfaces only while that workspace is visible. It retrieves the five most-played entries, public store metadata and up to two official news items for each of the three leading games. The merged result is bounded, cached locally for one hour and marked stale after 24 hours; the last successful cache remains visible during failures. Artwork is decoded to a bounded bitmap. Requests contain no Veil account, Steam account, owned-library data or personal identifier beyond ordinary network metadata such as IP address and locale. Store metadata is best-effort and may fail without hiding the chart rank or breaking the local library.
+
+No data is transmitted except the disclosed Open-Meteo weather request and the on-demand public Steam requests described above. There are no analytics, accounts, cloud sync, backend services or databases.
 
 ## Technology and architecture
 
 - Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
 - A single `app` module and no dependency-injection or state-management framework.
 - Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
-- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the bounded launcher preferences: accent, CURRENT text tone/weight, wallpaper-scrim state/intensity, preferred music provider and five nullable app-package slots per context. Do not add Room or broader configuration persistence.
+- SharedPreferences is allowed only for Focus state, weather cache, the bounded Steam public-content cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the bounded launcher preferences: accent, CURRENT text tone/weight, wallpaper-scrim state/intensity, preferred music provider and five nullable app-package slots per context. Do not add Room or broader configuration persistence.
 - Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
 - Prefer platform APIs. No runtime third-party dependency is currently required.
 
 The main data direction is:
 
 ```text
-Android APIs / Open-Meteo
+Android APIs / Open-Meteo / public Steam surfaces
         ↓
 small repositories and system adapters
         ↓
@@ -115,7 +119,7 @@ Do not introduce a generic widget engine or speculative plugin architecture. Eac
 - Icon rasterization respects device density and adaptive drawables.
 - No package, calendar, location or network query occurs during recomposition.
 - Permissions may be accepted, denied or revoked without making Veil unusable.
-- Weather/network failure and absent providers retain honest fallback states.
+- Weather/Steam network failure and absent providers retain honest fallback states.
 - Missing/uninstalled quick apps never crash the launcher.
 - Focus survives process death and reboot and clearly reports when an external alert is not guaranteed.
 - Unit tests cover deterministic slots, continuity ranking/policy, weather parsing and workspace data policies. Build and install validation must use the connected physical device when available.
@@ -132,5 +136,5 @@ Do not promise access to third-party internal state such as a Kindle chapter unl
 - Horizontal context navigation, top indicators, the four contextual docks, upward Everything gesture, Back and Home-layer behavior all work together.
 - The configured personal quick apps resolve in fixed order with deterministic fallback and crisp real icons.
 - Calendar, weather, Focus, system status and enhanced media use real data and degrade safely.
-- Social never surfaces private notification or conversation information.
+- GAME remains useful offline through its cached public feed and local game library.
 - The app compiles, unit tests pass, an installable debug APK is produced and core flows are exercised on the connected Xiaomi device.

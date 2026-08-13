@@ -4,10 +4,12 @@
         <exclude domain="sharedpref" path="veil_quick_notes.xml" />
         <exclude domain="sharedpref" path="veil_notification_access.xml" />
         <exclude domain="sharedpref" path="veil_launcher_preferences.xml" />
+        <exclude domain="sharedpref" path="veil_game_feed.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="veil_quick_notes.xml" />
         <exclude domain="sharedpref" path="veil_notification_access.xml" />
         <exclude domain="sharedpref" path="veil_launcher_preferences.xml" />
+        <exclude domain="sharedpref" path="veil_game_feed.xml" />
     </device-transfer>
 </data-extraction-rules>

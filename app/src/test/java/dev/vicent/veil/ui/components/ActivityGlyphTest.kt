@@ -12,7 +12,7 @@ class ActivityGlyphTest {
             activityGlyphFor("com.google.android.apps.messaging", "Mensajes", AppCategory.GENERAL),
             activityGlyphFor("com.brave.browser", "Brave", AppCategory.GENERAL),
             activityGlyphFor("com.android.camera", "Cámara", AppCategory.GENERAL),
-            activityGlyphFor("com.whatsapp", "WhatsApp", AppCategory.SOCIAL),
+            activityGlyphFor("com.whatsapp", "WhatsApp", AppCategory.GENERAL),
         )
 
         assertEquals(
@@ -24,6 +24,14 @@ class ActivityGlyphTest {
                 ActivityGlyphKind.WHATSAPP,
             ),
             glyphs,
+        )
+    }
+
+    @Test
+    fun `game category resolves to the game glyph`() {
+        assertEquals(
+            ActivityGlyphKind.GAME,
+            activityGlyphFor("com.example.game", "Juego", AppCategory.GAME),
         )
     }
 }
