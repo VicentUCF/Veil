@@ -12,10 +12,14 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,20 +33,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
@@ -53,9 +64,11 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import dev.vicent.veil.launcher.LauncherUiState
+import dev.vicent.veil.launcher.QuickNotesPolicy
 import dev.vicent.veil.launcher.ResolvedLauncherContext
 import dev.vicent.veil.launcher.WorkspaceDataPolicy
 import dev.vicent.veil.launcher.model.CalendarEventSummary
@@ -67,6 +80,9 @@ import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.FocusTimerStatus
 import dev.vicent.veil.launcher.model.LauncherContextKind
+import dev.vicent.veil.launcher.model.QuickNote
+import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
+import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.ui.theme.LocalVeilPalette
@@ -76,6 +92,8 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -95,6 +113,9 @@ fun WorkspaceDashboard(
     onLocationPermissionRequested: () -> Unit,
     onContinuityAccessRequested: () -> Unit,
     onCalendarEventSelected: (Long) -> Unit,
+    onCalendarEventCreateRequested: () -> Unit,
+    onCalendarOpenRequested: () -> Unit,
+    onGoogleCalendarConfigureRequested: () -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
     onHomeMediaDismissed: (String) -> Unit,
     onAudioVisualizerPermissionRequested: () -> Unit,
@@ -104,6 +125,9 @@ fun WorkspaceDashboard(
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
     onFocusFinish: () -> Unit,
+    onQuickNoteAdded: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onQuickNoteUpdated: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onQuickNoteDeleted: (Long) -> Unit,
     onAppSelected: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
     onAppLongPressed: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
     onHomeButtonTap: () -> Unit,
@@ -130,14 +154,19 @@ fun WorkspaceDashboard(
             LauncherContextKind.WORK -> WorkWorkspace(
                 state,
                 compact,
-                context.quickActions.size,
                 onCalendarPermissionRequested,
                 onCalendarEventSelected,
+                onCalendarEventCreateRequested,
+                onCalendarOpenRequested,
+                onGoogleCalendarConfigureRequested,
                 onContinuityAction,
                 onFocusStart,
                 onFocusPause,
                 onFocusResume,
                 onFocusFinish,
+                onQuickNoteAdded,
+                onQuickNoteUpdated,
+                onQuickNoteDeleted,
             )
             LauncherContextKind.MEDIA -> MediaWorkspace(
                 state,
@@ -200,22 +229,29 @@ private fun CurrentWorkspace(
 private fun WorkWorkspace(
     state: LauncherUiState,
     compact: Boolean,
-    pinnedToolCount: Int,
     onCalendarPermissionRequested: () -> Unit,
     onCalendarEventSelected: (Long) -> Unit,
+    onCalendarEventCreateRequested: () -> Unit,
+    onCalendarOpenRequested: () -> Unit,
+    onGoogleCalendarConfigureRequested: () -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
     onFocusStart: (Int) -> Unit,
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
     onFocusFinish: () -> Unit,
+    onQuickNoteAdded: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onQuickNoteUpdated: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onQuickNoteDeleted: (Long) -> Unit,
 ) {
     val workEvents = remember(state.calendarEvents) {
         WorkspaceDataPolicy.workEvents(state.calendarEvents, System.currentTimeMillis())
     }
+    var agendaDialog by remember { mutableStateOf<AgendaDialogMode?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         CozyTile(
             label = "Agenda",
             prominent = true,
+            onClick = { agendaDialog = AgendaDialogMode.ACTIONS },
             modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
         ) {
             if (!state.calendarAccessGranted) {
@@ -226,23 +262,219 @@ private fun WorkWorkspace(
             } else {
                 workEvents.forEach { event -> EventRow(event, onCalendarEventSelected) }
             }
+            state.workProgress?.let { progress ->
+                WorkProgressSummary(progress, onContinuityAction)
+            }
         }
-        ResponsivePair(compact = compact, left = {
-            WorkTerminalTile(
-                agendaCount = workEvents.size,
-                pinnedToolCount = pinnedToolCount,
-                progress = state.workProgress,
-                onContinuityAction = onContinuityAction,
+        WorkSecondaryRow(compact = compact, notes = {
+            WorkQuickNotesTile(
+                notes = state.quickNotes,
+                onAdd = onQuickNoteAdded,
+                onUpdate = onQuickNoteUpdated,
+                onDelete = onQuickNoteDeleted,
             )
-        }, right = {
-            WorkFocusTile(
+        }, pomodoro = {
+            WorkPomodoroTile(
                 state = state,
+                compact = compact,
                 onStart = onFocusStart,
                 onPause = onFocusPause,
                 onResume = onFocusResume,
                 onFinish = onFocusFinish,
             )
         })
+    }
+
+    agendaDialog?.let { mode ->
+        AgendaRofiDialog(
+            mode = mode,
+            events = state.calendarEvents,
+            accessGranted = state.calendarAccessGranted,
+            onDismiss = { agendaDialog = null },
+            onBack = { agendaDialog = AgendaDialogMode.ACTIONS },
+            onShowWeek = { agendaDialog = AgendaDialogMode.WEEK },
+            onPermissionRequested = {
+                agendaDialog = null
+                onCalendarPermissionRequested()
+            },
+            onCreateEvent = {
+                agendaDialog = null
+                onCalendarEventCreateRequested()
+            },
+            onOpenCalendar = {
+                agendaDialog = null
+                onCalendarOpenRequested()
+            },
+            onConfigureGoogle = {
+                agendaDialog = null
+                onGoogleCalendarConfigureRequested()
+            },
+            onEventSelected = { eventId ->
+                agendaDialog = null
+                onCalendarEventSelected(eventId)
+            },
+        )
+    }
+}
+
+private enum class AgendaDialogMode { ACTIONS, WEEK }
+
+@Composable
+private fun AgendaRofiDialog(
+    mode: AgendaDialogMode,
+    events: List<CalendarEventSummary>,
+    accessGranted: Boolean,
+    onDismiss: () -> Unit,
+    onBack: () -> Unit,
+    onShowWeek: () -> Unit,
+    onPermissionRequested: () -> Unit,
+    onCreateEvent: () -> Unit,
+    onOpenCalendar: () -> Unit,
+    onConfigureGoogle: () -> Unit,
+    onEventSelected: (Long) -> Unit,
+) {
+    if (mode == AgendaDialogMode.WEEK) {
+        WeekSummaryDialog(
+            events = events,
+            onDismiss = onDismiss,
+            onBack = onBack,
+            onEventSelected = onEventSelected,
+        )
+        return
+    }
+    RofiDialog(
+        title = "agenda",
+        onDismiss = onDismiss,
+        actions = { RofiAction("cerrar", onDismiss) },
+    ) {
+        if (!accessGranted) {
+            AgendaCommand(
+                command = "conectar_calendario",
+                detail = "Permitir que Veil lea los calendarios visibles de Android",
+                onClick = onPermissionRequested,
+            )
+        } else {
+            AgendaCommand(
+                command = "resumen_semana",
+                detail = "Ver los próximos siete días",
+                onClick = onShowWeek,
+            )
+            AgendaCommand(
+                command = "nuevo_evento",
+                detail = "Abrir el compositor del calendario instalado",
+                onClick = onCreateEvent,
+            )
+            AgendaCommand(
+                command = "abrir_calendario",
+                detail = "Continuar en tu aplicación de calendario",
+                onClick = onOpenCalendar,
+            )
+        }
+        AgendaCommand(
+            command = "configurar_google",
+            detail = "Abrir Google Calendar para cuenta y sincronización",
+            onClick = onConfigureGoogle,
+        )
+        RofiBody(
+            "Veil combina todos los calendarios visibles sincronizados por Android, " +
+                "incluidos los eventos de Google Calendar.",
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun AgendaCommand(command: String, detail: String, onClick: () -> Unit) {
+    val palette = LocalVeilPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(3.dp))
+            .background(palette.fieldBackground.copy(alpha = 0.52f))
+            .border(1.dp, palette.divider, RoundedCornerShape(3.dp))
+            .clickable(role = Role.Button, onClickLabel = command, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+    ) {
+        BasicText(">", style = workspaceMonoStyle(palette.accentActive, 11))
+        Column(modifier = Modifier.padding(start = 9.dp)) {
+            BasicText(command, style = workspaceMonoStyle(palette.contentPrimary, 10))
+            BasicText(
+                detail,
+                style = workspaceMonoStyle(palette.contentMuted, 8),
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeekSummaryDialog(
+    events: List<CalendarEventSummary>,
+    onDismiss: () -> Unit,
+    onBack: () -> Unit,
+    onEventSelected: (Long) -> Unit,
+) {
+    val locale = Locale.forLanguageTag(LocalLocale.current.toLanguageTag())
+    val dayKey = remember(locale) { SimpleDateFormat("yyyyMMdd", locale) }
+    val dayLabel = remember(locale) { SimpleDateFormat("EEEE, d MMM", locale) }
+    val groupedEvents = remember(events, locale) {
+        events.groupBy { event -> dayKey.format(Date(event.startMillis)) }
+    }
+    RofiDialog(
+        title = "resumen semana",
+        onDismiss = onDismiss,
+        actions = {
+            RofiAction("volver", onBack)
+            RofiAction("cerrar", onDismiss)
+        },
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .heightIn(max = 560.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            if (groupedEvents.isEmpty()) {
+                RofiBody("No hay eventos visibles en los próximos siete días.")
+            } else {
+                groupedEvents.values.forEach { dayEvents ->
+                    BasicText(
+                        dayLabel.format(Date(dayEvents.first().startMillis)).uppercase(locale),
+                        style = workspaceMonoStyle(LocalVeilPalette.current.accentActive, 9),
+                    )
+                    dayEvents.forEach { event -> WeekEventRow(event, onEventSelected) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekEventRow(event: CalendarEventSummary, onSelected: (Long) -> Unit) {
+    val context = LocalContext.current
+    val palette = LocalVeilPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Abrir ${event.title}",
+            ) { onSelected(event.id) }
+            .padding(vertical = 7.dp),
+    ) {
+        BasicText(
+            DateFormat.getTimeFormat(context).format(Date(event.startMillis)),
+            style = workspaceMonoStyle(palette.accentActive, 10),
+            modifier = Modifier.width(58.dp),
+        )
+        BasicText(
+            event.title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = workspaceMonoStyle(palette.contentPrimary, 10),
+        )
     }
 }
 
@@ -600,47 +832,322 @@ private fun DeviceMetric(label: String, availableBytes: Long, totalBytes: Long) 
 }
 
 @Composable
-private fun WorkTerminalTile(
-    agendaCount: Int,
-    pinnedToolCount: Int,
-    progress: ContinuityItem.Progress?,
+private fun WorkProgressSummary(
+    progress: ContinuityItem.Progress,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
 ) {
     val palette = LocalVeilPalette.current
+    Spacer(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp)
+            .height(1.dp)
+            .background(palette.divider),
+    )
+    BasicText(
+        text = if (progress.isComplete) "COMPLETADO" else "EN CURSO",
+        style = workspaceMonoStyle(palette.accentActive, 9),
+        modifier = Modifier.padding(top = 8.dp),
+    )
+    BasicText(
+        text = progress.title,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        style = workspaceBodyStyle(palette.contentPrimary),
+        modifier = Modifier.padding(top = 4.dp),
+    )
+    progress.progress?.let { value -> SimpleProgress(value) }
+    if (ContinuityAction.OPEN in progress.supportedActions) {
+        TileAction("Retomar") {
+            onContinuityAction(progress.id, ContinuityAction.OPEN, null)
+        }
+    }
+}
+
+@Composable
+private fun WorkQuickNotesTile(
+    notes: List<QuickNote>,
+    onAdd: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onUpdate: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onDelete: (Long) -> Unit,
+) {
+    var editingNote by remember { mutableStateOf<QuickNote?>(null) }
+    var creatingNote by remember { mutableStateOf(false) }
     CozyTile(
-        label = "Terminal",
+        label = "Notas rápidas",
         modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
     ) {
-        BasicText(
-            text = "veil@work:~ $ status",
-            style = workspaceMonoStyle(palette.accentActive, 10),
-        )
-        BasicText(
-            text = "agenda  ${if (agendaCount == 0) "clear" else "$agendaCount next"}",
-            style = workspaceMonoStyle(palette.contentSecondary, 10),
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        if (progress == null) {
-            BasicText(
-                text = "session ready\n$pinnedToolCount tools pinned",
-                style = workspaceMonoStyle(palette.contentMuted, 10),
-                modifier = Modifier.padding(top = 5.dp),
-            )
+        if (notes.isEmpty()) {
+            TileBody("Captura una idea sin salir de WORK.")
         } else {
-            BasicText(
-                text = progress.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = workspaceMonoStyle(palette.contentPrimary, 10),
-                modifier = Modifier.padding(top = 5.dp),
-            )
-            progress.progress?.let { value -> SimpleProgress(value) }
-            if (ContinuityAction.OPEN in progress.supportedActions) {
-                TileAction("Retomar") {
-                    onContinuityAction(progress.id, ContinuityAction.OPEN, null)
+            notes.forEach { note ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = "Editar ${note.title}",
+                        ) { editingNote = note }
+                        .padding(vertical = 5.dp),
+                ) {
+                    BasicText(
+                        text = if (note.type == QuickNoteType.CHECKLIST) "[ ]" else "·",
+                        style = workspaceMonoStyle(LocalVeilPalette.current.accentActive, 11),
+                        modifier = Modifier.padding(end = 7.dp),
+                    )
+                    BasicText(
+                        text = note.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = workspaceBodyStyle(LocalVeilPalette.current.contentPrimary),
+                    )
                 }
             }
         }
+        if (notes.size < 3) TileAction("Añadir") { creatingNote = true }
+    }
+
+    if (creatingNote) {
+        QuickNoteEditorDialog(
+            note = null,
+            onDismiss = { creatingNote = false },
+            onSave = { title, type, body, checklist ->
+                creatingNote = false
+                onAdd(title, type, body, checklist)
+            },
+            onDelete = null,
+        )
+    }
+    editingNote?.let { note ->
+        QuickNoteEditorDialog(
+            note = note,
+            onDismiss = { editingNote = null },
+            onSave = { title, type, body, checklist ->
+                editingNote = null
+                onUpdate(note.id, title, type, body, checklist)
+            },
+            onDelete = { editingNote = null; onDelete(note.id) },
+        )
+    }
+}
+
+@Composable
+private fun QuickNoteEditorDialog(
+    note: QuickNote?,
+    onDismiss: () -> Unit,
+    onSave: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onDelete: (() -> Unit)?,
+) {
+    var title by remember(note?.id) { mutableStateOf(note?.title.orEmpty()) }
+    var type by remember(note?.id) { mutableStateOf(note?.type ?: QuickNoteType.TEXT) }
+    var body by remember(note?.id) { mutableStateOf(note?.body.orEmpty()) }
+    var checklist by remember(note?.id) { mutableStateOf(note?.checklist.orEmpty()) }
+    val validTitle = QuickNotesPolicy.sanitizeTitle(title)
+    RofiDialog(
+        title = if (note == null) "nueva nota" else "editar nota",
+        onDismiss = onDismiss,
+        actions = {
+            if (onDelete != null) RofiAction("eliminar", onDelete, danger = true)
+            Spacer(Modifier.weight(1f))
+            RofiAction("cancelar", onDismiss)
+            RofiAction(
+                label = "guardar",
+                enabled = validTitle != null,
+                onClick = {
+                    validTitle?.let { cleanTitle ->
+                        onSave(cleanTitle, type, body, checklist)
+                    }
+                },
+            )
+        },
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .heightIn(max = 560.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            RofiEditorField(
+                label = "title",
+                value = title,
+                hint = "visible en WORK · ${title.length}/${QuickNotesPolicy.MaxTitleLength}",
+                singleLine = true,
+                onValueChange = { value ->
+                    title = value.replace('\n', ' ').replace('\r', ' ')
+                        .take(QuickNotesPolicy.MaxTitleLength)
+                },
+            )
+            RofiNoteTypeSelector(selected = type, onSelected = { type = it })
+            when (type) {
+                QuickNoteType.TEXT -> RofiEditorField(
+                    label = "content",
+                    value = body,
+                    hint = "texto libre · ${body.length}/${QuickNotesPolicy.MaxBodyLength}",
+                    minHeight = 170.dp,
+                    onValueChange = { body = it.take(QuickNotesPolicy.MaxBodyLength) },
+                )
+                QuickNoteType.CHECKLIST -> {
+                    checklist.forEach { item ->
+                        RofiChecklistEditorRow(
+                            item = item,
+                            onCheckedChange = { checked ->
+                                checklist = checklist.map { current ->
+                                    if (current.id == item.id) current.copy(checked = checked)
+                                    else current
+                                }
+                            },
+                            onTextChange = { value ->
+                                checklist = checklist.map { current ->
+                                    if (current.id == item.id) current.copy(
+                                        text = value.replace('\n', ' ').replace('\r', ' ')
+                                            .take(QuickNotesPolicy.MaxChecklistItemLength),
+                                    ) else current
+                                }
+                            },
+                            onDelete = {
+                                checklist = checklist.filterNot { it.id == item.id }
+                            },
+                        )
+                    }
+                    if (checklist.size < QuickNotesPolicy.MaxChecklistItems) {
+                        RofiAction(
+                            label = "+ item",
+                            onClick = {
+                                val nextId =
+                                    (checklist.maxOfOrNull(QuickNoteChecklistItem::id) ?: 0L) + 1L
+                                checklist = checklist + QuickNoteChecklistItem(nextId, "")
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RofiEditorField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    hint: String,
+    singleLine: Boolean = false,
+    minHeight: Dp = 46.dp,
+) {
+    val palette = LocalVeilPalette.current
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            BasicText("$label:", style = workspaceMonoStyle(palette.accentActive, 9))
+            BasicText(hint, style = workspaceMonoStyle(palette.contentMuted, 8))
+        }
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = singleLine,
+            textStyle = workspaceMonoStyle(palette.contentPrimary, 11),
+            cursorBrush = SolidColor(palette.accentActive),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = minHeight)
+                .clip(RoundedCornerShape(3.dp))
+                .background(palette.fieldBackground.copy(alpha = 0.72f))
+                .border(1.dp, palette.divider, RoundedCornerShape(3.dp))
+                .padding(horizontal = 11.dp, vertical = 10.dp),
+        )
+    }
+}
+
+@Composable
+private fun RofiNoteTypeSelector(
+    selected: QuickNoteType,
+    onSelected: (QuickNoteType) -> Unit,
+) {
+    val palette = LocalVeilPalette.current
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        BasicText("mode:", style = workspaceMonoStyle(palette.accentActive, 9))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            listOf(
+                QuickNoteType.TEXT to "texto",
+                QuickNoteType.CHECKLIST to "checklist",
+            ).forEach { (type, label) ->
+                val active = selected == type
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            if (active) palette.accentActive.copy(alpha = 0.15f)
+                            else palette.fieldBackground.copy(alpha = 0.56f),
+                        )
+                        .border(
+                            1.dp,
+                            if (active) palette.accentActive else palette.divider,
+                            RoundedCornerShape(3.dp),
+                        )
+                        .clickable(role = Role.RadioButton) { onSelected(type) }
+                        .padding(horizontal = 11.dp, vertical = 10.dp),
+                ) {
+                    BasicText(
+                        if (active) ">" else " ",
+                        style = workspaceMonoStyle(palette.accentActive, 10),
+                    )
+                    BasicText(
+                        label,
+                        style = workspaceMonoStyle(
+                            if (active) palette.contentPrimary else palette.contentSecondary,
+                            10,
+                        ),
+                        modifier = Modifier.padding(start = 7.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RofiChecklistEditorRow(
+    item: QuickNoteChecklistItem,
+    onCheckedChange: (Boolean) -> Unit,
+    onTextChange: (String) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val palette = LocalVeilPalette.current
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(42.dp)
+                .clickable(role = Role.Checkbox) { onCheckedChange(!item.checked) },
+        ) {
+            BasicText(
+                if (item.checked) "[x]" else "[ ]",
+                style = workspaceMonoStyle(
+                    if (item.checked) palette.accentActive else palette.contentSecondary,
+                    11,
+                ),
+            )
+        }
+        BasicTextField(
+            value = item.text,
+            onValueChange = onTextChange,
+            singleLine = true,
+            textStyle = workspaceMonoStyle(palette.contentPrimary, 10),
+            cursorBrush = SolidColor(palette.accentActive),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 42.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(palette.fieldBackground.copy(alpha = 0.72f))
+                .border(1.dp, palette.divider, RoundedCornerShape(3.dp))
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+        )
+        RofiAction("x", onDelete, danger = true)
     }
 }
 
@@ -744,6 +1251,25 @@ private fun ResponsivePair(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(modifier = Modifier.weight(1f)) { left() }
             Column(modifier = Modifier.weight(1f)) { right() }
+        }
+    }
+}
+
+@Composable
+private fun WorkSecondaryRow(
+    compact: Boolean,
+    notes: @Composable () -> Unit,
+    pomodoro: @Composable () -> Unit,
+) {
+    if (compact) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            notes()
+            pomodoro()
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(modifier = Modifier.weight(2f)) { notes() }
+            Column(modifier = Modifier.weight(1f)) { pomodoro() }
         }
     }
 }
@@ -1014,8 +1540,9 @@ private fun WeatherTile(state: LauncherUiState, onPermissionRequested: () -> Uni
 }
 
 @Composable
-private fun WorkFocusTile(
+private fun WorkPomodoroTile(
     state: LauncherUiState,
+    compact: Boolean,
     onStart: (Int) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -1023,43 +1550,241 @@ private fun WorkFocusTile(
 ) {
     val focus = state.focusTimer
     var customMinutes by remember { mutableIntStateOf(25) }
+    var showDialog by remember { mutableStateOf(false) }
     CozyTile(
-        label = "Focus",
-        modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
+        label = "Pomodoro",
+        onClick = { showDialog = true },
+        modifier = Modifier.fillMaxWidth().heightIn(
+            min = if (compact) 112.dp else SecondaryTileHeight,
+        ),
+    ) {
+        PomodoroDial(focus)
+    }
+
+    if (showDialog) {
+        PomodoroDialog(
+            focus = focus,
+            customMinutes = customMinutes,
+            onCustomMinutesChanged = { customMinutes = it.coerceIn(5, 180) },
+            onDismiss = { showDialog = false },
+            onStart = { minutes -> showDialog = false; onStart(minutes) },
+            onPause = { showDialog = false; onPause() },
+            onResume = { showDialog = false; onResume() },
+            onFinish = { showDialog = false; onFinish() },
+        )
+    }
+}
+
+@Composable
+private fun PomodoroDial(focus: dev.vicent.veil.launcher.model.FocusTimerState) {
+    val palette = LocalVeilPalette.current
+    val progress = when (focus.status) {
+        FocusTimerStatus.IDLE -> 1f
+        else -> if (focus.durationMillis > 0L) {
+            (focus.remainingMillis.toFloat() / focus.durationMillis).coerceIn(0f, 1f)
+        } else 0f
+    }
+    val time = when (focus.status) {
+        FocusTimerStatus.IDLE -> "25m"
+        FocusTimerStatus.COMPLETED -> "00:00"
+        else -> formatDuration(focus.remainingMillis)
+    }
+    val status = when (focus.status) {
+        FocusTimerStatus.IDLE -> "Elegir"
+        FocusTimerStatus.RUNNING -> "En curso"
+        FocusTimerStatus.PAUSED -> "En pausa"
+        FocusTimerStatus.COMPLETED -> "Completado"
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(78.dp)
+                .semantics {
+                    progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
+                },
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val strokeWidth = 2.5.dp.toPx()
+                val centre = Offset(size.width / 2f, size.height / 2f + 5.dp.toPx())
+                val radius = 29.dp.toPx()
+                val arcSize = radius * 2f
+                val arcTopLeft = Offset(centre.x - radius, centre.y - radius)
+
+                // Crown, neck and side pusher give the silhouette of a physical timer.
+                drawRoundRect(
+                    color = palette.contentMuted,
+                    topLeft = Offset(centre.x - 8.dp.toPx(), 0f),
+                    size = Size(16.dp.toPx(), 5.dp.toPx()),
+                    cornerRadius = CornerRadius(2.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = palette.contentMuted,
+                    topLeft = Offset(centre.x - 3.dp.toPx(), 4.dp.toPx()),
+                    size = Size(6.dp.toPx(), 6.dp.toPx()),
+                    cornerRadius = CornerRadius(1.dp.toPx()),
+                )
+                drawLine(
+                    color = palette.contentMuted,
+                    start = Offset(centre.x + 21.dp.toPx(), centre.y - 22.dp.toPx()),
+                    end = Offset(centre.x + 27.dp.toPx(), centre.y - 28.dp.toPx()),
+                    strokeWidth = 5.dp.toPx(),
+                    cap = StrokeCap.Round,
+                )
+                drawLine(
+                    color = palette.contentMuted,
+                    start = Offset(centre.x + 24.dp.toPx(), centre.y - 27.dp.toPx()),
+                    end = Offset(centre.x + 29.dp.toPx(), centre.y - 22.dp.toPx()),
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round,
+                )
+
+                drawCircle(
+                    color = palette.fieldBackground.copy(alpha = 0.92f),
+                    radius = radius,
+                    center = centre,
+                )
+                drawArc(
+                    color = palette.divider,
+                    startAngle = -90f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = arcTopLeft,
+                    size = Size(arcSize, arcSize),
+                    style = Stroke(strokeWidth),
+                )
+                repeat(12) { index ->
+                    val angle = Math.toRadians((index * 30 - 90).toDouble())
+                    val outer = radius - 5.dp.toPx()
+                    val inner = outer - if (index % 3 == 0) 5.dp.toPx() else 3.dp.toPx()
+                    drawLine(
+                        color = if (index % 3 == 0) {
+                            palette.contentSecondary
+                        } else {
+                            palette.contentMuted.copy(alpha = 0.75f)
+                        },
+                        start = Offset(
+                            centre.x + cos(angle).toFloat() * inner,
+                            centre.y + sin(angle).toFloat() * inner,
+                        ),
+                        end = Offset(
+                            centre.x + cos(angle).toFloat() * outer,
+                            centre.y + sin(angle).toFloat() * outer,
+                        ),
+                        strokeWidth = if (index % 3 == 0) 2.dp.toPx() else 1.dp.toPx(),
+                        cap = StrokeCap.Round,
+                    )
+                }
+                drawArc(
+                    color = palette.accentActive,
+                    startAngle = -90f,
+                    sweepAngle = 360f * progress,
+                    useCenter = false,
+                    topLeft = arcTopLeft,
+                    size = Size(arcSize, arcSize),
+                    style = Stroke(4.dp.toPx(), cap = StrokeCap.Round),
+                )
+                val handAngle = Math.toRadians((-90f + 360f * progress).toDouble())
+                drawLine(
+                    color = palette.accentActive,
+                    start = centre,
+                    end = Offset(
+                        centre.x + cos(handAngle).toFloat() * 12.dp.toPx(),
+                        centre.y + sin(handAngle).toFloat() * 12.dp.toPx(),
+                    ),
+                    strokeWidth = 2.dp.toPx(),
+                    cap = StrokeCap.Round,
+                )
+                drawCircle(palette.contentPrimary, 2.5.dp.toPx(), centre)
+            }
+            BasicText(
+                time,
+                style = workspaceMonoStyle(palette.contentPrimary, 9),
+                modifier = Modifier
+                    .padding(top = 28.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(palette.fieldBackground.copy(alpha = 0.96f))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+            )
+        }
+        BasicText(
+            status.uppercase(),
+            style = workspaceMonoStyle(palette.contentSecondary, 8),
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}
+
+@Composable
+private fun PomodoroDialog(
+    focus: dev.vicent.veil.launcher.model.FocusTimerState,
+    customMinutes: Int,
+    onCustomMinutesChanged: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    onStart: (Int) -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onFinish: () -> Unit,
+) {
+    val title = when (focus.status) {
+        FocusTimerStatus.IDLE -> "nuevo pomodoro"
+        FocusTimerStatus.RUNNING -> "pomodoro en curso"
+        FocusTimerStatus.PAUSED -> "pomodoro en pausa"
+        FocusTimerStatus.COMPLETED -> "sesión completada"
+    }
+    RofiDialog(
+        title = title,
+        onDismiss = onDismiss,
+        actions = {
+            if (focus.status == FocusTimerStatus.RUNNING ||
+                focus.status == FocusTimerStatus.PAUSED
+            ) {
+                RofiAction("finalizar", onFinish, danger = true)
+            }
+            Spacer(Modifier.weight(1f))
+            RofiAction("cancelar", onDismiss)
+            when (focus.status) {
+                FocusTimerStatus.IDLE -> RofiAction("iniciar", { onStart(customMinutes) })
+                FocusTimerStatus.RUNNING -> RofiAction("pausar", onPause)
+                FocusTimerStatus.PAUSED -> RofiAction("reanudar", onResume)
+                FocusTimerStatus.COMPLETED -> RofiAction("cerrar", onFinish)
+            }
+        },
     ) {
         when (focus.status) {
             FocusTimerStatus.IDLE -> {
-                TileTitle("Trabajo profundo")
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    TileAction("25 min") { onStart(25) }
-                    TileAction("50 min") { onStart(50) }
+                BasicText(
+                    "duration:",
+                    style = workspaceMonoStyle(LocalVeilPalette.current.accentActive, 9),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RofiAction("25 min", { onCustomMinutesChanged(25) })
+                    RofiAction("50 min", { onCustomMinutesChanged(50) })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TileAction("−") { customMinutes = (customMinutes - 5).coerceAtLeast(5) }
+                    RofiAction("-5", { onCustomMinutesChanged(customMinutes - 5) })
                     BasicText(
-                        text = "$customMinutes min",
-                        style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 10),
-                        modifier = Modifier.padding(horizontal = 7.dp),
+                        "$customMinutes min",
+                        style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 18),
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
-                    TileAction("+") { customMinutes = (customMinutes + 5).coerceAtMost(180) }
-                    TileAction("Ir") { onStart(customMinutes) }
+                    RofiAction("+5", { onCustomMinutesChanged(customMinutes + 5) })
                 }
+                RofiBody(
+                    "Veil puede solicitar notificaciones y alarmas exactas para avisarte " +
+                        "incluso con la pantalla apagada.",
+                )
             }
             FocusTimerStatus.RUNNING, FocusTimerStatus.PAUSED -> {
-                TileTitle(formatDuration(focus.remainingMillis))
-                val status = if (focus.status == FocusTimerStatus.RUNNING) "Sesión en curso" else "Sesión pausada"
-                val warning = if (!focus.exactAlarmAvailable || !focus.notificationsAvailable) " · aviso limitado" else ""
-                TileBody(status + warning)
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    if (focus.status == FocusTimerStatus.RUNNING) TileAction("Pausa", onPause)
-                    else TileAction("Reanudar", onResume)
-                    TileAction("Finalizar", onFinish)
+                BasicText(
+                    formatDuration(focus.remainingMillis),
+                    style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 28),
+                )
+                if (!focus.exactAlarmAvailable || !focus.notificationsAvailable) {
+                    RofiBody("El aviso externo está limitado por los permisos actuales.")
                 }
             }
-            FocusTimerStatus.COMPLETED -> {
-                TileTitle("Sesión completada", prominent = true)
-                TileAction("Cerrar", onFinish)
-            }
+            FocusTimerStatus.COMPLETED -> RofiBody("Tu sesión ha terminado.")
         }
     }
 }

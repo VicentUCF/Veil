@@ -31,6 +31,7 @@ import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.AudioMixerRepository
 import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
+import dev.vicent.veil.launcher.repository.QuickNotesRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
 import dev.vicent.veil.launcher.system.AndroidAppLauncher
@@ -46,6 +47,7 @@ class MainActivity : ComponentActivity() {
             calendarRepository = CalendarRepository(applicationContext),
             weatherRepository = WeatherRepository(applicationContext),
             focusTimerRepository = FocusTimerRepository(applicationContext),
+            quickNotesRepository = QuickNotesRepository(applicationContext),
             systemStatusRepository = SystemStatusRepository(applicationContext),
             audioMixerRepository = AudioMixerRepository(applicationContext),
             contexts = LauncherConfig.contexts,
@@ -144,6 +146,15 @@ class MainActivity : ComponentActivity() {
                         externalSurfaceLaunched = true
                         controller.openCalendarEvent(eventId)
                     },
+                    onCalendarEventCreateRequested = {
+                        externalSurfaceLaunched = controller.createCalendarEvent()
+                    },
+                    onCalendarOpenRequested = {
+                        externalSurfaceLaunched = controller.openCalendar()
+                    },
+                    onGoogleCalendarConfigureRequested = {
+                        externalSurfaceLaunched = controller.configureGoogleCalendar()
+                    },
                     onContinuityAction = { itemId, action, position ->
                         if (action == dev.vicent.veil.launcher.model.ContinuityAction.OPEN) {
                             externalSurfaceLaunched = true
@@ -159,6 +170,9 @@ class MainActivity : ComponentActivity() {
                     onFocusPause = controller::pauseFocus,
                     onFocusResume = controller::resumeFocus,
                     onFocusFinish = controller::finishFocus,
+                    onQuickNoteAdded = controller::addQuickNote,
+                    onQuickNoteUpdated = controller::updateQuickNote,
+                    onQuickNoteDeleted = controller::deleteQuickNote,
                     onHomeButtonTap = {
                         performHomeButtonAction(LauncherConfig.homeButton.onTap, state)
                     },

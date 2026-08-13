@@ -6,18 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppActionsBottomSheet(
     app: LauncherApp,
@@ -41,53 +33,21 @@ fun AppActionsBottomSheet(
     onAppInfo: () -> Unit,
     onUninstall: () -> Unit,
 ) {
-    val palette = LocalVeilPalette.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = palette.drawerBackground,
-        contentColor = palette.contentPrimary,
-        scrimColor = Color.Black.copy(alpha = 0.58f),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 12.dp, bottom = 8.dp)
-                    .size(width = 36.dp, height = 3.dp)
-                    .background(
-                        color = palette.contentMuted,
-                        shape = RoundedCornerShape(2.dp),
-                    ),
-            )
-        },
+    RofiDialog(
+        title = "app actions",
+        onDismiss = onDismiss,
+        actions = { RofiAction("cerrar", onDismiss) },
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(bottom = 12.dp),
-        ) {
-            AppSheetHeader(app = app)
-            SheetDivider()
-            AppSheetAction(
-                marker = "↗",
-                label = "Abrir",
-                onClick = onOpen,
-            )
-            AppSheetAction(
-                marker = "i",
-                label = "Información de la aplicación",
-                onClick = onAppInfo,
-            )
-            AppSheetAction(
-                marker = "×",
-                label = "Desinstalar",
-                labelColor = palette.error,
-                onClick = onUninstall,
-            )
-        }
+        AppSheetHeader(app = app)
+        SheetDivider()
+        AppSheetAction(marker = ">", label = "Abrir", onClick = onOpen)
+        AppSheetAction(marker = "i", label = "Información de la aplicación", onClick = onAppInfo)
+        AppSheetAction(
+            marker = "x",
+            label = "Desinstalar",
+            labelColor = LocalVeilPalette.current.error,
+            onClick = onUninstall,
+        )
     }
 }
 
@@ -97,7 +57,7 @@ private fun AppSheetHeader(app: LauncherApp) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 18.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LauncherAppIcon(app = app, size = 38.dp)
@@ -108,8 +68,8 @@ private fun AppSheetHeader(app: LauncherApp) {
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     color = palette.contentPrimary,
-                    fontFamily = FontFamily.SansSerif,
-                    fontSize = 18.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 ),
             )
@@ -139,13 +99,13 @@ private fun AppSheetAction(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .height(48.dp)
             .clickable(
                 role = Role.Button,
                 onClickLabel = label,
                 onClick = onClick,
             )
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(
@@ -153,7 +113,7 @@ private fun AppSheetAction(
             style = TextStyle(
                 color = if (labelColor == palette.error) palette.error else palette.accentActive,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 17.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
             ),
             modifier = Modifier.size(28.dp),
@@ -162,8 +122,8 @@ private fun AppSheetAction(
             text = label,
             style = TextStyle(
                 color = labelColor,
-                fontFamily = FontFamily.SansSerif,
-                fontSize = 16.sp,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
             ),
             modifier = Modifier.padding(start = 18.dp),
         )

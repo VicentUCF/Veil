@@ -21,9 +21,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,10 +40,15 @@ import dev.vicent.veil.launcher.WorkspaceDataPolicy
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.LauncherApp
+import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
+import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.ui.components.AppActionsBottomSheet
 import dev.vicent.veil.ui.components.AppDrawer
 import dev.vicent.veil.ui.components.ContextDock
+import dev.vicent.veil.ui.components.RofiAction
+import dev.vicent.veil.ui.components.RofiBody
+import dev.vicent.veil.ui.components.RofiDialog
 import dev.vicent.veil.ui.components.TopBar
 import dev.vicent.veil.ui.components.WorkspaceDashboard
 import dev.vicent.veil.ui.theme.VeilMotion
@@ -67,6 +69,9 @@ fun LauncherScreen(
     onCalendarPermissionRequested: () -> Unit,
     onLocationPermissionRequested: () -> Unit,
     onCalendarEventSelected: (Long) -> Unit,
+    onCalendarEventCreateRequested: () -> Unit,
+    onCalendarOpenRequested: () -> Unit,
+    onGoogleCalendarConfigureRequested: () -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
     onHomeMediaDismissed: (String) -> Unit,
     onAudioVisualizerPermissionRequested: () -> Unit,
@@ -75,12 +80,14 @@ fun LauncherScreen(
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
     onFocusFinish: () -> Unit,
+    onQuickNoteAdded: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onQuickNoteUpdated: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
+    onQuickNoteDeleted: (Long) -> Unit,
     onHomeButtonTap: () -> Unit,
     onHomeButtonLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var appWithOpenActions by remember { mutableStateOf<LauncherApp?>(null) }
-    var pendingFocusMinutes by remember { mutableIntStateOf(0) }
     var showLocationDisclosure by remember { mutableStateOf(false) }
     var showAudioVisualizerDisclosure by remember { mutableStateOf(false) }
 
@@ -190,6 +197,9 @@ fun LauncherScreen(
                             onLocationPermissionRequested = { showLocationDisclosure = true },
                             onContinuityAccessRequested = onContinuityAccessRequested,
                             onCalendarEventSelected = onCalendarEventSelected,
+                            onCalendarEventCreateRequested = onCalendarEventCreateRequested,
+                            onCalendarOpenRequested = onCalendarOpenRequested,
+                            onGoogleCalendarConfigureRequested = onGoogleCalendarConfigureRequested,
                             onContinuityAction = onContinuityAction,
                             onHomeMediaDismissed = onHomeMediaDismissed,
                             onAudioVisualizerPermissionRequested = {
@@ -197,10 +207,13 @@ fun LauncherScreen(
                             },
                             onAudioVolumeChanged = onAudioVolumeChanged,
                             onSettingsSelected = onSettingsSelected,
-                            onFocusStart = { pendingFocusMinutes = it },
+                            onFocusStart = onFocusStartRequested,
                             onFocusPause = onFocusPause,
                             onFocusResume = onFocusResume,
                             onFocusFinish = onFocusFinish,
+                            onQuickNoteAdded = onQuickNoteAdded,
+                            onQuickNoteUpdated = onQuickNoteUpdated,
+                            onQuickNoteDeleted = onQuickNoteDeleted,
                             onAppSelected = onAppSelected,
                             onAppLongPressed = { appWithOpenActions = it },
                             onHomeButtonTap = onHomeButtonTap,
@@ -327,75 +340,44 @@ fun LauncherScreen(
 
     BackHandler(enabled = state.isDrawerOpen, onBack = onCloseDrawer)
 
-    if (pendingFocusMinutes > 0) {
-        AlertDialog(
-            onDismissRequest = { pendingFocusMinutes = 0 },
-            title = { Text("Focus fiable") },
-            text = {
-                Text(
-                    "Veil iniciará una sesión de $pendingFocusMinutes minutos. Para avisarte incluso " +
-                        "con la pantalla apagada puede solicitar notificaciones y acceso a alarmas exactas.",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val minutes = pendingFocusMinutes
-                    pendingFocusMinutes = 0
-                    onFocusStartRequested(minutes)
-                }) { Text("Iniciar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingFocusMinutes = 0 }) { Text("Cancelar") }
-            },
-        )
-    }
-
     if (showLocationDisclosure) {
-        AlertDialog(
-            onDismissRequest = { showLocationDisclosure = false },
-            title = { Text("Tiempo local") },
-            text = {
-                Text(
-                    "Veil usará únicamente ubicación aproximada mientras Home esté visible. " +
-                        "Las coordenadas aproximadas y tu IP se enviarán a Open‑Meteo; " +
-                        "Veil guardará sólo el último resultado durante la caché.",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
+        RofiDialog(
+            title = "tiempo local",
+            onDismiss = { showLocationDisclosure = false },
+            actions = {
+                RofiAction("cancelar", { showLocationDisclosure = false })
+                RofiAction("continuar", {
                     showLocationDisclosure = false
                     onLocationPermissionRequested()
-                }) { Text("Continuar") }
+                })
             },
-            dismissButton = {
-                TextButton(onClick = { showLocationDisclosure = false }) { Text("Cancelar") }
-            },
-        )
+        ) {
+            RofiBody(
+                "Veil usará únicamente ubicación aproximada mientras Home esté visible. " +
+                    "Las coordenadas aproximadas y tu IP se enviarán a Open‑Meteo; " +
+                    "Veil guardará sólo el último resultado durante la caché.",
+            )
+        }
     }
 
     if (showAudioVisualizerDisclosure) {
-        AlertDialog(
-            onDismissRequest = { showAudioVisualizerDisclosure = false },
-            title = { Text("Espectro de audio") },
-            text = {
-                Text(
-                    "Android exige permiso de micrófono para analizar la mezcla de salida. " +
-                        "Veil sólo recibe una señal FFT de baja calidad mientras MEDIA está visible; " +
-                        "no graba, guarda ni transmite audio.",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
+        RofiDialog(
+            title = "espectro de audio",
+            onDismiss = { showAudioVisualizerDisclosure = false },
+            actions = {
+                RofiAction("ahora no", { showAudioVisualizerDisclosure = false })
+                RofiAction("activar", {
                     showAudioVisualizerDisclosure = false
                     onAudioVisualizerPermissionRequested()
-                }) { Text("Activar") }
+                })
             },
-            dismissButton = {
-                TextButton(onClick = { showAudioVisualizerDisclosure = false }) {
-                    Text("Ahora no")
-                }
-            },
-        )
+        ) {
+            RofiBody(
+                "Android exige permiso de micrófono para analizar la mezcla de salida. " +
+                    "Veil sólo recibe una señal FFT de baja calidad mientras MEDIA está visible; " +
+                    "no graba, guarda ni transmite audio.",
+            )
+        }
     }
 
     appWithOpenActions?.let { app ->

@@ -10,6 +10,9 @@ import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.AudioMixerState
 import dev.vicent.veil.launcher.model.FocusTimerState
 import dev.vicent.veil.launcher.model.QuickActionSpec
+import dev.vicent.veil.launcher.model.QuickNote
+import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
+import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.model.SystemStatus
 import dev.vicent.veil.launcher.model.WeatherState
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
@@ -17,6 +20,7 @@ import dev.vicent.veil.launcher.repository.AudioMixerRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
+import dev.vicent.veil.launcher.repository.QuickNotesRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +56,7 @@ data class LauncherUiState(
     val weather: WeatherState = WeatherState(),
     val locationAccessGranted: Boolean = false,
     val focusTimer: FocusTimerState = FocusTimerState(),
+    val quickNotes: List<QuickNote> = emptyList(),
     val systemStatus: SystemStatus = SystemStatus(),
     val audioMixer: AudioMixerState = AudioMixerState(),
     val isContinuityOnboardingDismissed: Boolean = continuityOnboardingDismissed,
@@ -63,6 +68,7 @@ class LauncherController(
     private val calendarRepository: CalendarRepository,
     private val weatherRepository: WeatherRepository,
     private val focusTimerRepository: FocusTimerRepository,
+    private val quickNotesRepository: QuickNotesRepository,
     private val systemStatusRepository: SystemStatusRepository,
     private val audioMixerRepository: AudioMixerRepository,
     contexts: List<LauncherContext>,
@@ -168,6 +174,11 @@ class LauncherController(
             }
         }
         scope.launch {
+            quickNotesRepository.notes.collect { notes ->
+                mutableState.update { it.copy(quickNotes = notes) }
+            }
+        }
+        scope.launch {
             systemStatusRepository.status.collect { systemStatus ->
                 mutableState.update { it.copy(systemStatus = systemStatus) }
             }
@@ -227,12 +238,29 @@ class LauncherController(
     }
 
     fun openCalendarEvent(eventId: Long) = calendarRepository.open(eventId)
+    fun createCalendarEvent() = calendarRepository.createEvent()
+    fun openCalendar() = calendarRepository.openCalendar()
+    fun configureGoogleCalendar() = calendarRepository.configureGoogleCalendar()
 
     fun startFocus(minutes: Int) = focusTimerRepository.start(minutes)
     fun pauseFocus() = focusTimerRepository.pause()
     fun resumeFocus() = focusTimerRepository.resume()
     fun finishFocus() = focusTimerRepository.finish()
     fun restoreFocusAlarm() = focusTimerRepository.restoreScheduledAlarm()
+    fun addQuickNote(
+        title: String,
+        type: QuickNoteType,
+        body: String,
+        checklist: List<QuickNoteChecklistItem>,
+    ) = quickNotesRepository.add(title, type, body, checklist)
+    fun updateQuickNote(
+        id: Long,
+        title: String,
+        type: QuickNoteType,
+        body: String,
+        checklist: List<QuickNoteChecklistItem>,
+    ) = quickNotesRepository.update(id, title, type, body, checklist)
+    fun deleteQuickNote(id: Long) = quickNotesRepository.delete(id)
 
     fun openDrawer() {
         mutableState.update { currentState -> currentState.copy(isDrawerOpen = true) }

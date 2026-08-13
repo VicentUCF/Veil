@@ -7,6 +7,7 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.CalendarContract
+import android.provider.Settings
 import dev.vicent.veil.launcher.model.CalendarEventSummary
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +49,37 @@ class CalendarRepository(private val context: Context) {
         val intent = Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return runCatching { context.startActivity(intent) }.isSuccess
     }
+
+    fun createEvent(): Boolean = start(
+        Intent(Intent.ACTION_INSERT, CalendarContract.Events.CONTENT_URI),
+    )
+
+    fun openCalendar(): Boolean {
+        val uri = ContentUris.withAppendedId(
+            CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build(),
+            System.currentTimeMillis(),
+        )
+        return start(Intent(Intent.ACTION_VIEW, uri))
+    }
+
+    fun configureGoogleCalendar(): Boolean {
+        val launchGoogleCalendar = context.packageManager
+            .getLaunchIntentForPackage(GoogleCalendarPackage)
+        return if (launchGoogleCalendar != null) {
+            start(launchGoogleCalendar)
+        } else {
+            start(
+                Intent(Settings.ACTION_ADD_ACCOUNT).putExtra(
+                    Settings.EXTRA_ACCOUNT_TYPES,
+                    arrayOf("com.google"),
+                ),
+            )
+        }
+    }
+
+    private fun start(intent: Intent): Boolean = runCatching {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }.isSuccess
 
     private fun ensureObserver() {
         if (observer != null) return
@@ -108,5 +140,9 @@ class CalendarRepository(private val context: Context) {
                 }.distinctBy { it.id to it.startMillis }
             }.orEmpty()
         }.getOrDefault(emptyList())
+    }
+
+    private companion object {
+        const val GoogleCalendarPackage = "com.google.android.calendar"
     }
 }

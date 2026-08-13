@@ -7,6 +7,22 @@ data class CalendarEventSummary(
     val endMillis: Long,
 )
 
+data class QuickNote(
+    val id: Long,
+    val title: String,
+    val type: QuickNoteType = QuickNoteType.TEXT,
+    val body: String = "",
+    val checklist: List<QuickNoteChecklistItem> = emptyList(),
+)
+
+enum class QuickNoteType { TEXT, CHECKLIST }
+
+data class QuickNoteChecklistItem(
+    val id: Long,
+    val text: String,
+    val checked: Boolean = false,
+)
+
 enum class WeatherAvailability { NEEDS_PERMISSION, LOADING, AVAILABLE, UNAVAILABLE }
 
 data class WeatherState(

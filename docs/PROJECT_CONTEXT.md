@@ -27,7 +27,7 @@ Prioritize reliability as an Android Home app, one-tap usability, trustworthy da
 All workspaces use a responsive two-column grid with 16 dp outer padding and 10 dp gaps. Below 360 dp, paired tiles stack without changing their semantic order. Dominant and secondary tiles use shared height tokens so adjacent pieces keep the same baseline even when their contents differ. Tiles use dark 70–82% opaque fills, one-pixel low-contrast borders and moderate 12 dp corners. There is no runtime blur, decorative gradient, invented third-party data or desktop window chrome.
 
 - **CURRENT**: the highest-ranked ongoing activity is primary. The next calendar event and current weather support it. Without continuity, time/date and a quiet state become primary.
-- **WORK**: today's agenda (up to three events) is primary. A terminal-styled status tile uses only real Veil state—agenda count and published work progress—and Focus supports it. It never repeats the dock applications.
+- **WORK**: today's agenda (up to three events) is primary and may include one compact, published work-progress state. Up to three local quick notes and a compact Pomodoro support it. It never repeats the dock applications.
 - **MEDIA**: the active/recent media session is primary, including artwork, timeline and only supported transport controls. With no session, the same stable geometry becomes a library surface. Sound/output and collection context are secondary; applications remain in the dock.
 - **SOCIAL**: the composition frames direct communication, communities, visual content and calls without duplicating application launchers. Veil never reads or renders conversation content, people, badges or unread counts, and the UI does not fill empty space with privacy notices.
 - **TOOLS**: a device dashboard is primary, showing only public Android data: manufacturer/model, Android version and security patch, storage and memory. Battery and connectivity are secondary, followed by a full-width control centre with direct entries for display, sound, applications, security and all settings. Restricted controls open the relevant Android Settings surface rather than being simulated. Focus remains available from WORK.
@@ -52,7 +52,7 @@ Media may expose title, artist, artwork, position, duration and supported transp
 
 ### Calendar
 
-Calendar is optional and uses `CalendarContract.Instances` with `READ_CALENDAR`. Veil reads occurrences from now through seven days ahead and keeps only event ID, title, start and end in memory. It displays title and local time only: never calendar account, location, description, attendees or reminder contents. Tapping delegates to the installed calendar application.
+Calendar is optional and uses `CalendarContract.Instances` with `READ_CALENDAR`. Veil reads occurrences from all visible Android calendars—including locally synced Google Calendar events—from now through seven days ahead and keeps only event ID, title, start and end in memory. WORK can group those occurrences into a weekly summary; creating or editing an event delegates to the installed calendar application through public intents. It displays title and local time only: never calendar account, location, description, attendees or reminder contents. Google account setup and synchronization remain owned by Android and Google Calendar.
 
 ### Weather
 
@@ -61,6 +61,10 @@ Weather is optional. After a Veil disclosure, it requests foreground approximate
 ### Focus
 
 Focus provides 25- and 50-minute presets plus custom durations from 5 to 180 minutes. Running, paused, completed, duration and end time are the only persisted fields. An exact `AlarmManager` alarm and a completion notification are requested in context after an explanation; denial degrades to an inexact alert without breaking the timer. Running alarms are restored after reboot and time changes.
+
+### Quick notes
+
+WORK stores up to three local quick notes for capture and recall. Each note has a short title—the only part rendered on the workspace—and explicitly uses either a multiline text body or a bounded checklist. The editor and other launcher modals use Veil's compact, dark Rofi/Alacritty-inspired surface rather than default Material dialogs. Notes remain ordered, are excluded from cloud backup and device transfer, and are never shared with another application or service.
 
 ### System status
 
@@ -73,7 +77,7 @@ No data is transmitted except the disclosed Open-Meteo weather request. There ar
 - Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
 - A single `app` module and no dependency-injection or state-management framework.
 - Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
-- SharedPreferences is allowed only for Focus state and weather cache. Do not add Room or general configuration persistence.
+- SharedPreferences is allowed only for Focus state, weather cache and the bounded WORK quick-note list. Do not add Room or general configuration persistence.
 - Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
 - Prefer platform APIs. No runtime third-party dependency is currently required.
 

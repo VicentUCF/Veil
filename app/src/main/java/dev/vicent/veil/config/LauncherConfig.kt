@@ -55,7 +55,7 @@ object LauncherConfig {
                 "com.microsoft.office.outlook",
                 "com.microsoft.teams",
                 "notion.id",
-                "com.termux",
+                "com.google.android.apps.authenticator2",
             ),
         ),
         LauncherContext(
