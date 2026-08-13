@@ -1,9 +1,9 @@
 package dev.vicent.veil.ui.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,7 +15,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 
@@ -37,10 +36,16 @@ fun ContextIndicator(
                 selected = isActive
             }
             .clip(RoundedCornerShape(3.dp))
-            .background(if (isActive) palette.accentActive.copy(alpha = .88f) else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(role = Role.Tab, onClick = onClick)
             .drawBehind {
-                if (!isActive) {
+                if (isActive) {
+                    drawLine(
+                        color = palette.accentActive,
+                        start = Offset(size.width * .29f, size.height - 2.dp.toPx()),
+                        end = Offset(size.width * .71f, size.height - 2.dp.toPx()),
+                        strokeWidth = 1.dp.toPx(),
+                    )
+                } else {
                     drawLine(
                         color = palette.divider,
                         start = Offset(size.width, size.height * .28f),
@@ -54,7 +59,7 @@ fun ContextIndicator(
             kind = kind.activityGlyph(),
             size = 13.dp,
             isActive = isActive,
-            color = if (isActive) palette.drawerBackground else palette.contentSecondary,
+            color = if (isActive) palette.contentPrimary else palette.contentSecondary,
         )
     }
 }

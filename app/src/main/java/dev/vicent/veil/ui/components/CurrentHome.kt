@@ -654,11 +654,10 @@ private fun HomeQuickButton(
                 onLongClick = onLongClick,
             ),
     ) {
-        Canvas(Modifier.size(18.dp)) {
-            val stroke = 1.1.dp.toPx()
-            drawLine(palette.contentPrimary, start = center.copy(y = 0f), end = center.copy(y = size.height), strokeWidth = stroke)
-            drawLine(palette.contentPrimary, start = center.copy(x = 0f), end = center.copy(x = size.width), strokeWidth = stroke)
-        }
+        VeilGlyph(
+            color = palette.accentActive,
+            modifier = Modifier.size(width = 24.dp, height = 25.dp),
+        )
     }
 }
 

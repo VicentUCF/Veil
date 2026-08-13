@@ -70,7 +70,10 @@ fun TopBar(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(width = 38.dp, height = 40.dp)) {
-                VeilMark(Modifier.size(22.dp))
+                VeilWordmark(
+                    color = palette.accentActive,
+                    modifier = Modifier.size(width = 29.dp, height = 6.dp),
+                )
             }
             RailDivider()
             Spacer(Modifier.width(5.dp))
@@ -133,26 +136,6 @@ private fun RailDivider() {
     val color = LocalVeilPalette.current.divider
     Canvas(Modifier.width(1.dp).height(22.dp)) {
         drawLine(color, Offset(0f, 0f), Offset(0f, size.height), 1.dp.toPx())
-    }
-}
-
-@Composable
-private fun VeilMark(modifier: Modifier = Modifier) {
-    val palette = LocalVeilPalette.current
-    Canvas(modifier) {
-        val path = Path().apply {
-            moveTo(size.width * .5f, size.height * .12f)
-            lineTo(size.width * .86f, size.height * .82f)
-            lineTo(size.width * .16f, size.height * .82f)
-            close()
-        }
-        drawPath(path, palette.accentActive, style = Stroke(1.25.dp.toPx()))
-        drawLine(
-            palette.accentActive,
-            Offset(size.width * .33f, size.height * .64f),
-            Offset(size.width * .68f, size.height * .64f),
-            1.1.dp.toPx(),
-        )
     }
 }
 
