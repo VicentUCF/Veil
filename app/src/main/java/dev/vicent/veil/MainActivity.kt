@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -53,7 +54,10 @@ class MainActivity : ComponentActivity() {
     private val appLauncher by lazy { AndroidAppLauncher(applicationContext) }
     private val settingsLauncher by lazy { AndroidSettingsLauncher(applicationContext) }
     private var requestExactAlarmAfterNotification = false
-    private var isLauncherForeground = false
+    private var externalSurfaceLaunched = false
+    private var isLauncherResumed = false
+    private var hasLauncherWindowFocus = false
+    private var launcherPausedAtElapsedRealtime = Long.MIN_VALUE
 
     private val calendarPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -102,6 +106,7 @@ class MainActivity : ComponentActivity() {
                     onCloseDrawer = controller::closeDrawer,
                     onAppSelected = { app ->
                         if (appLauncher.launch(app)) {
+                            externalSurfaceLaunched = true
                             controller.closeDrawer()
                         } else {
                             controller.removeUnavailableApp(app.packageName)
@@ -109,16 +114,19 @@ class MainActivity : ComponentActivity() {
                     },
                     onSettingsSelected = { shortcut ->
                         if (settingsLauncher.launch(shortcut)) {
+                            externalSurfaceLaunched = true
                             controller.closeDrawer()
                         }
                     },
                     onAppInfoSelected = { app ->
                         if (appLauncher.openAppInfo(app)) {
+                            externalSurfaceLaunched = true
                             controller.closeDrawer()
                         }
                     },
                     onAppUninstallSelected = { app ->
                         if (appLauncher.requestUninstall(app)) {
+                            externalSurfaceLaunched = true
                             controller.closeDrawer()
                         }
                     },
@@ -129,8 +137,16 @@ class MainActivity : ComponentActivity() {
                     onLocationPermissionRequested = {
                         locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
-                    onCalendarEventSelected = controller::openCalendarEvent,
-                    onContinuityAction = controller::performContinuityAction,
+                    onCalendarEventSelected = { eventId ->
+                        externalSurfaceLaunched = true
+                        controller.openCalendarEvent(eventId)
+                    },
+                    onContinuityAction = { itemId, action, position ->
+                        if (action == dev.vicent.veil.launcher.model.ContinuityAction.OPEN) {
+                            externalSurfaceLaunched = true
+                        }
+                        controller.performContinuityAction(itemId, action, position)
+                    },
                     onFocusStartRequested = ::startFocusWithPermissions,
                     onFocusPause = controller::pauseFocus,
                     onFocusResume = controller::resumeFocus,
@@ -148,7 +164,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        isLauncherForeground = true
+        isLauncherResumed = true
+        externalSurfaceLaunched = false
         controller.setContinuityAccessGranted(hasContinuityAccess())
         controller.setCalendarAccessGranted(hasPermission(Manifest.permission.READ_CALENDAR), lifecycleScope)
         controller.setLocationAccessGranted(hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION), lifecycleScope)
@@ -160,21 +177,28 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
-            if (isLauncherForeground) {
+            val wasJustResumed = launcherPausedAtElapsedRealtime != Long.MIN_VALUE &&
+                SystemClock.elapsedRealtime() - launcherPausedAtElapsedRealtime < 2_000L
+            if (!externalSurfaceLaunched &&
+                (isLauncherResumed || hasLauncherWindowFocus || wasJustResumed)
+            ) {
                 controller.handleHomePressed()
             } else {
                 controller.closeDrawer()
             }
+            externalSurfaceLaunched = false
         }
     }
 
     override fun onPause() {
-        isLauncherForeground = false
+        isLauncherResumed = false
+        launcherPausedAtElapsedRealtime = SystemClock.elapsedRealtime()
         super.onPause()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        hasLauncherWindowFocus = hasFocus
         if (hasFocus) hideStatusBar()
     }
 
@@ -190,6 +214,7 @@ class MainActivity : ComponentActivity() {
         NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
 
     private fun openContinuityAccessSettings() {
+        externalSurfaceLaunched = true
         runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
             .recoverCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }
     }
@@ -230,14 +255,20 @@ class MainActivity : ComponentActivity() {
             HomeButtonActionSpec.Everything -> controller.openDrawer()
             is HomeButtonActionSpec.App -> {
                 val app = state.installedApps.firstOrNull { it.packageName == action.packageName }
-                if (app == null || !appLauncher.launch(app)) {
+                if (app != null && appLauncher.launch(app)) {
+                    externalSurfaceLaunched = true
+                } else {
                     app?.let { controller.removeUnavailableApp(it.packageName) }
                     controller.openDrawer()
                 }
             }
             is HomeButtonActionSpec.Setting -> {
                 val shortcut = settingsLauncher.shortcuts.firstOrNull { it.id == action.id }
-                if (shortcut == null || !settingsLauncher.launch(shortcut)) controller.openDrawer()
+                if (shortcut != null && settingsLauncher.launch(shortcut)) {
+                    externalSurfaceLaunched = true
+                } else {
+                    controller.openDrawer()
+                }
             }
         }
     }
