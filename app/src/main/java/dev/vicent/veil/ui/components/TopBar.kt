@@ -3,6 +3,7 @@ package dev.vicent.veil.ui.components
 import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,7 @@ fun TopBar(
     activeContextIndex: Int,
     onContextSelected: (Int) -> Unit,
     systemStatus: SystemStatus,
+    onClockOpenRequested: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
@@ -84,8 +87,15 @@ fun TopBar(
                     fontSize = 11.sp,
                     letterSpacing = 0.6.sp,
                 ),
+                modifier = Modifier
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Abrir Reloj",
+                        onClick = onClockOpenRequested,
+                    )
+                    .padding(horizontal = 4.dp, vertical = 10.dp),
             )
-            Spacer(Modifier.width(9.dp))
+            Spacer(Modifier.width(5.dp))
             RailDivider()
             Spacer(Modifier.width(8.dp))
             ConnectionGlyph(

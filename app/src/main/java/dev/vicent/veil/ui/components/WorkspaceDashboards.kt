@@ -50,6 +50,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
@@ -57,8 +58,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
@@ -111,6 +112,7 @@ fun WorkspaceDashboard(
     settingsShortcuts: List<SettingsShortcut>,
     onCalendarPermissionRequested: () -> Unit,
     onLocationPermissionRequested: () -> Unit,
+    onClockOpenRequested: () -> Unit,
     onContinuityAccessRequested: () -> Unit,
     onCalendarEventSelected: (Long) -> Unit,
     onCalendarEventCreateRequested: () -> Unit,
@@ -145,6 +147,8 @@ fun WorkspaceDashboard(
                 onAppSelected = onAppSelected,
                 onAppLongPressed = onAppLongPressed,
                 onLocationPermissionRequested = onLocationPermissionRequested,
+                onClockOpenRequested = onClockOpenRequested,
+                onCalendarOpenRequested = onCalendarOpenRequested,
                 onContinuityAction = onContinuityAction,
                 onMediaDismissed = onHomeMediaDismissed,
                 onQuickButtonTap = onHomeButtonTap,
@@ -176,6 +180,7 @@ fun WorkspaceDashboard(
                 onAudioVisualizerPermissionRequested,
                 onAudioVolumeChanged,
                 onSettingsSelected = { id -> settingsShortcuts.find { it.id == id }?.let(onSettingsSelected) },
+                onAppSelected = onAppSelected,
             )
             LauncherContextKind.SOCIAL -> SocialWorkspace(compact)
             LauncherContextKind.TOOLS -> ToolsWorkspace(
@@ -487,15 +492,20 @@ private fun MediaWorkspace(
     onAudioVisualizerPermissionRequested: () -> Unit,
     onAudioVolumeChanged: (AudioChannel, Float) -> Unit,
     onSettingsSelected: (String) -> Unit,
+    onAppSelected: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         val media = state.mediaContinuity
         if (media != null) {
             MediaPlayerTile(media, onContinuityAction)
         } else {
+            val youtubeMusic = YouTubeMusicPackages.firstNotNullOfOrNull { packageName ->
+                state.installedApps.firstOrNull { app -> app.packageName == packageName }
+            }
             EmptyMediaTile(
                 continuityEnabled = state.continuityAccessGranted,
                 onContinuityAccessRequested = onContinuityAccessRequested,
+                onOpenYouTubeMusic = youtubeMusic?.let { app -> { onAppSelected(app) } },
             )
         }
         AudioMixerTile(
@@ -1155,24 +1165,90 @@ private fun RofiChecklistEditorRow(
 private fun EmptyMediaTile(
     continuityEnabled: Boolean,
     onContinuityAccessRequested: () -> Unit,
+    onOpenYouTubeMusic: (() -> Unit)?,
 ) {
-    val palette = LocalVeilPalette.current
     CozyTile(
         label = "Media",
         prominent = true,
+        onClick = onOpenYouTubeMusic,
         modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
     ) {
-        TileTitle("Nada reproduciéndose", prominent = true)
-        BasicText(
-            text = "▂  ▅  ▃  ▇  ▄  ▆  ▂  ▅  ▃  ▇",
-            style = workspaceMonoStyle(palette.accentActive, 18),
-            modifier = Modifier.padding(top = 18.dp),
-        )
-        TileBody("Elige una fuente en la barra inferior para empezar.")
+        EmptyMediaArtwork(canOpenYouTubeMusic = onOpenYouTubeMusic != null)
         if (!continuityEnabled) {
             TileAction("Activar continuidad", onContinuityAccessRequested)
-        } else {
-            TileBody("Cuando una sesión esté activa, esta superficie se convertirá en el reproductor.")
+        }
+    }
+}
+
+@Composable
+private fun EmptyMediaArtwork(canOpenYouTubeMusic: Boolean) {
+    val palette = LocalVeilPalette.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = if (canOpenYouTubeMusic) {
+                    "Abrir YouTube Music"
+                } else {
+                    "Sin reproducción activa"
+                }
+            },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().height(88.dp),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(palette.fieldBackground.copy(alpha = .82f))
+                    .border(1.dp, palette.divider, RoundedCornerShape(7.dp)),
+            ) {
+                ActivityGlyph(ActivityGlyphKind.MEDIA, size = 32.dp, isActive = false)
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(.78f)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(palette.contentSecondary.copy(alpha = .22f)),
+                )
+                Box(
+                    Modifier
+                        .padding(top = 8.dp)
+                        .fillMaxWidth(.54f)
+                        .height(11.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(palette.contentMuted.copy(alpha = .24f)),
+                )
+            }
+        }
+        SeekLine(
+            progress = 0f,
+            onSeek = {},
+            enabled = false,
+            showPosition = false,
+        )
+        BasicText(
+            text = "--:--  /  --:--",
+            style = workspaceMonoStyle(palette.contentMuted, 9),
+            modifier = Modifier.padding(top = 5.dp),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            modifier = Modifier.padding(top = 6.dp),
+        ) {
+            listOf("ANTERIOR", "REPRODUCIR", "SIGUIENTE").forEach { label ->
+                BasicText(
+                    text = label,
+                    style = workspaceMonoStyle(palette.contentMuted, 10),
+                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 2.dp),
+                )
+            }
         }
     }
 }
@@ -1491,6 +1567,10 @@ private fun estimatedMediaPosition(media: ContinuityItem.Media, durationMillis: 
 }
 
 private const val MEDIA_PROGRESS_TICK_MILLIS = 1_000L
+private val YouTubeMusicPackages = listOf(
+    "com.google.android.apps.youtube.music",
+    "app.revanced.android.apps.youtube.music",
+)
 
 @Composable
 private fun CalendarTile(
@@ -1517,7 +1597,6 @@ private fun CalendarTile(
 @Composable
 private fun WeatherTile(state: LauncherUiState, onPermissionRequested: () -> Unit) {
     val weather = state.weather
-    val uriHandler = LocalUriHandler.current
     CozyTile(
         label = "Tiempo",
         modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
@@ -1527,13 +1606,21 @@ private fun WeatherTile(state: LauncherUiState, onPermissionRequested: () -> Uni
             WeatherAvailability.LOADING -> TileBody("Actualizando…")
             WeatherAvailability.UNAVAILABLE -> TileBody("Tiempo no disponible")
             WeatherAvailability.AVAILABLE -> {
-                TileTitle("${weather.temperatureCelsius?.roundToInt() ?: "—"}° · ${weatherDescription(weather.weatherCode)}")
-                TileBody(
-                    "Sensación ${weather.apparentTemperatureCelsius?.roundToInt() ?: "—"}°  ·  " +
-                        "${weather.minimumCelsius?.roundToInt() ?: "—"}° / ${weather.maximumCelsius?.roundToInt() ?: "—"}°" +
-                        if (weather.isStale) " · desactualizado" else "",
-                )
-                TileAction("Open‑Meteo") { uriHandler.openUri("https://open-meteo.com/") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    WeatherGlyph(weather.weatherCode, Modifier.size(58.dp))
+                    Column(modifier = Modifier.padding(start = 12.dp)) {
+                        TileTitle(
+                            "${weather.temperatureCelsius?.roundToInt() ?: "—"}° · " +
+                                weatherDescription(weather.weatherCode),
+                        )
+                        TileBody(
+                            "Sensación ${weather.apparentTemperatureCelsius?.roundToInt() ?: "—"}°  ·  " +
+                                "${weather.minimumCelsius?.roundToInt() ?: "—"}° / " +
+                                "${weather.maximumCelsius?.roundToInt() ?: "—"}°" +
+                                if (weather.isStale) " · desactualizado" else "",
+                        )
+                    }
+                }
             }
         }
     }
@@ -1884,7 +1971,7 @@ private fun weatherDescription(code: Int?): String = when (code) {
     45, 48 -> "Niebla"
     in 51..57 -> "Llovizna"
     in 61..67 -> "Lluvia"
-    in 71..77 -> "Nieve"
+    in 71..77, 85, 86 -> "Nieve"
     in 80..82 -> "Chubascos"
     in 95..99 -> "Tormenta"
     else -> "Variable"

@@ -38,6 +38,7 @@ import dev.vicent.veil.launcher.repository.QuickNotesRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
 import dev.vicent.veil.launcher.system.AndroidAppLauncher
+import dev.vicent.veil.launcher.system.AndroidClockLauncher
 import dev.vicent.veil.launcher.system.AndroidSettingsLauncher
 import dev.vicent.veil.ui.LauncherScreen
 import dev.vicent.veil.ui.theme.VeilTheme
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val appLauncher by lazy { AndroidAppLauncher(applicationContext) }
+    private val clockLauncher by lazy { AndroidClockLauncher(applicationContext) }
     private val settingsLauncher by lazy { AndroidSettingsLauncher(applicationContext) }
     private var requestExactAlarmAfterNotification = false
     private var externalSurfaceLaunched = false
@@ -157,6 +159,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onLocationPermissionRequested = {
                         locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    },
+                    onClockOpenRequested = {
+                        externalSurfaceLaunched = clockLauncher.openClock()
                     },
                     onCalendarEventSelected = { eventId ->
                         externalSurfaceLaunched = true

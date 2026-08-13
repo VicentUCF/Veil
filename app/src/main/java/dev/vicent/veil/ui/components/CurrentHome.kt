@@ -47,7 +47,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -66,7 +65,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -77,6 +78,8 @@ fun CurrentHome(
     onAppSelected: (LauncherApp) -> Unit,
     onAppLongPressed: (LauncherApp) -> Unit,
     onLocationPermissionRequested: () -> Unit,
+    onClockOpenRequested: () -> Unit,
+    onCalendarOpenRequested: () -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
     onMediaDismissed: (String) -> Unit,
     onQuickButtonTap: () -> Unit,
@@ -104,6 +107,8 @@ fun CurrentHome(
             HomeClockAndWeather(
                 state = state,
                 onLocationPermissionRequested = onLocationPermissionRequested,
+                onClockOpenRequested = onClockOpenRequested,
+                onCalendarOpenRequested = onCalendarOpenRequested,
             )
 
             if (playingMedia != null && dismissedMediaId != playingMedia.id) {
@@ -146,13 +151,14 @@ fun CurrentHome(
 private fun HomeClockAndWeather(
     state: LauncherUiState,
     onLocationPermissionRequested: () -> Unit,
+    onClockOpenRequested: () -> Unit,
+    onCalendarOpenRequested: () -> Unit,
 ) {
     val palette = LocalVeilPalette.current
     val context = LocalContext.current
     val locale = Locale.forLanguageTag(LocalLocale.current.toLanguageTag())
     val now by rememberCurrentTime()
     val weather = state.weather
-    val uriHandler = LocalUriHandler.current
 
     BasicText(
         text = DateFormat.getTimeFormat(context).format(now),
@@ -163,18 +169,29 @@ private fun HomeClockAndWeather(
             fontSize = 59.sp,
             letterSpacing = 1.5.sp,
         ),
+        modifier = Modifier.clickable(
+            role = Role.Button,
+            onClickLabel = "Abrir Reloj",
+            onClick = onClockOpenRequested,
+        ),
     )
     BasicText(
-        text = SimpleDateFormat("EEEE, d MMMM", locale).format(now),
+        text = SimpleDateFormat("EEEE, d MMMM yyyy", locale).format(now),
         style = TextStyle(
             color = palette.contentSecondary,
             fontFamily = FontFamily.SansSerif,
             fontSize = 12.sp,
             letterSpacing = 0.7.sp,
         ),
-        modifier = Modifier.padding(top = 1.dp),
+        modifier = Modifier
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Abrir Calendario",
+                onClick = onCalendarOpenRequested,
+            )
+            .padding(top = 1.dp, bottom = 4.dp),
     )
-    Canvas(Modifier.padding(top = 13.dp).width(210.dp).height(1.dp)) {
+    Canvas(Modifier.padding(top = 4.dp).width(210.dp).height(1.dp)) {
         drawLine(
             palette.contentSecondary,
             start = Offset(0f, size.height / 2f),
@@ -185,11 +202,11 @@ private fun HomeClockAndWeather(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 12.dp).height(42.dp),
+        modifier = Modifier.height(44.dp),
     ) {
         WeatherGlyph(
             weatherCode = weather.weatherCode,
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier.offset(x = (-8).dp).size(40.dp),
         )
         Column(modifier = Modifier.padding(start = 11.dp)) {
             when (weather.availability) {
@@ -203,18 +220,7 @@ private fun HomeClockAndWeather(
                             fontWeight = FontWeight.Light,
                         ),
                     )
-                    BasicText(
-                        text = (if (weather.isStale) "DESACTUALIZADO · " else "") + "OPEN-METEO",
-                        style = TextStyle(
-                            color = palette.contentMuted,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 8.sp,
-                            letterSpacing = 0.8.sp,
-                        ),
-                        modifier = Modifier
-                            .clickable { uriHandler.openUri("https://open-meteo.com/") }
-                            .padding(top = 3.dp, bottom = 3.dp),
-                    )
+                    if (weather.isStale) HomeWeatherLabel("DESACTUALIZADO")
                 }
                 WeatherAvailability.NEEDS_PERMISSION -> HomeWeatherAction(
                     label = "ACTIVAR TIEMPO",
@@ -244,17 +250,131 @@ private fun HomeWeatherLabel(label: String) {
 }
 
 @Composable
-private fun WeatherGlyph(weatherCode: Int?, modifier: Modifier = Modifier) {
-    val color = LocalVeilPalette.current.contentPrimary
+internal fun WeatherGlyph(weatherCode: Int?, modifier: Modifier = Modifier) {
+    val palette = LocalVeilPalette.current
     Canvas(modifier) {
-        val stroke = Stroke(1.1.dp.toPx())
-        val rainy = weatherCode in 51..99
-        drawCircle(color, radius = size.minDimension * .18f, center = center.copy(x = size.width * .38f), style = stroke)
-        drawCircle(color, radius = size.minDimension * .23f, center = center.copy(x = size.width * .57f, y = size.height * .55f), style = stroke)
-        drawLine(color, start = center.copy(x = size.width * .22f, y = size.height * .72f), end = center.copy(x = size.width * .78f, y = size.height * .72f), strokeWidth = stroke.width)
-        if (rainy) {
-            drawLine(color, start = center.copy(x = size.width * .40f, y = size.height * .81f), end = center.copy(x = size.width * .34f, y = size.height * .93f), strokeWidth = stroke.width)
-            drawLine(color, start = center.copy(x = size.width * .62f, y = size.height * .81f), end = center.copy(x = size.width * .56f, y = size.height * .93f), strokeWidth = stroke.width)
+        val unit = size.minDimension
+        val strokeWidth = (unit * .027f).coerceAtLeast(1.dp.toPx())
+        val stroke = Stroke(strokeWidth, cap = StrokeCap.Round)
+        val glyphColor = palette.contentPrimary
+
+        fun sun(at: Offset, radius: Float) {
+            drawCircle(palette.accentActive, radius, at, style = stroke)
+            repeat(8) { index ->
+                val angle = Math.toRadians((index * 45 - 90).toDouble())
+                drawLine(
+                    color = palette.accentActive,
+                    start = Offset(
+                        at.x + cos(angle).toFloat() * radius * 1.38f,
+                        at.y + sin(angle).toFloat() * radius * 1.38f,
+                    ),
+                    end = Offset(
+                        at.x + cos(angle).toFloat() * radius * 1.82f,
+                        at.y + sin(angle).toFloat() * radius * 1.82f,
+                    ),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round,
+                )
+            }
+        }
+
+        fun cloud(yOffset: Float = 0f) {
+            val path = Path().apply {
+                moveTo(unit * .25f, unit * (.60f + yOffset))
+                cubicTo(
+                    unit * .20f, unit * (.48f + yOffset),
+                    unit * .29f, unit * (.40f + yOffset),
+                    unit * .39f, unit * (.43f + yOffset),
+                )
+                cubicTo(
+                    unit * .45f, unit * (.28f + yOffset),
+                    unit * .68f, unit * (.32f + yOffset),
+                    unit * .69f, unit * (.48f + yOffset),
+                )
+                cubicTo(
+                    unit * .82f, unit * (.48f + yOffset),
+                    unit * .84f, unit * (.66f + yOffset),
+                    unit * .70f, unit * (.67f + yOffset),
+                )
+                lineTo(unit * .34f, unit * (.67f + yOffset))
+                cubicTo(
+                    unit * .27f, unit * (.67f + yOffset),
+                    unit * .23f, unit * (.64f + yOffset),
+                    unit * .25f, unit * (.60f + yOffset),
+                )
+            }
+            drawPath(path, glyphColor, style = stroke)
+        }
+
+        fun rain(snow: Boolean = false, drizzle: Boolean = false) {
+            val drops = listOf(.36f, .52f, .68f)
+            drops.forEachIndexed { index, x ->
+                if (snow) {
+                    val at = Offset(unit * x, unit * (.77f + if (index == 1) .04f else 0f))
+                    drawLine(
+                        glyphColor,
+                        at.copy(x = at.x - unit * .035f),
+                        at.copy(x = at.x + unit * .035f),
+                        strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                    drawLine(
+                        glyphColor,
+                        at.copy(y = at.y - unit * .035f),
+                        at.copy(y = at.y + unit * .035f),
+                        strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                } else {
+                    val length = if (drizzle) .055f else .09f
+                    drawLine(
+                        color = palette.accentActive,
+                        start = Offset(unit * (x + .025f), unit * .73f),
+                        end = Offset(unit * (x - .025f), unit * (.73f + length)),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                }
+            }
+        }
+
+        when (weatherCode) {
+            0 -> sun(center, unit * .16f)
+            1, 2 -> {
+                sun(Offset(unit * .38f, unit * .39f), unit * .09f)
+                cloud(.02f)
+            }
+            3 -> cloud()
+            45, 48 -> {
+                cloud(-.05f)
+                drawLine(glyphColor, Offset(unit * .30f, unit * .72f), Offset(unit * .70f, unit * .72f), strokeWidth, cap = StrokeCap.Round)
+                drawLine(glyphColor, Offset(unit * .36f, unit * .79f), Offset(unit * .64f, unit * .79f), strokeWidth, cap = StrokeCap.Round)
+            }
+            in 51..57 -> {
+                cloud(-.04f)
+                rain(drizzle = true)
+            }
+            in 61..67, in 80..82 -> {
+                cloud(-.04f)
+                rain()
+            }
+            in 71..77, 85, 86 -> {
+                cloud(-.04f)
+                rain(snow = true)
+            }
+            in 95..99 -> {
+                cloud(-.06f)
+                val bolt = Path().apply {
+                    moveTo(unit * .55f, unit * .69f)
+                    lineTo(unit * .45f, unit * .82f)
+                    lineTo(unit * .54f, unit * .81f)
+                    lineTo(unit * .47f, unit * .91f)
+                }
+                drawPath(bolt, palette.accentActive, style = Stroke(strokeWidth * 1.25f, cap = StrokeCap.Round))
+            }
+            else -> {
+                drawLine(glyphColor, Offset(unit * .34f, center.y), Offset(unit * .66f, center.y), strokeWidth, cap = StrokeCap.Round)
+            }
         }
     }
 }
@@ -546,7 +666,7 @@ private fun homeWeatherDescription(code: Int?): String = when (code) {
     45, 48 -> "Niebla"
     in 51..57 -> "Llovizna"
     in 61..67 -> "Lluvia"
-    in 71..77 -> "Nieve"
+    in 71..77, 85, 86 -> "Nieve"
     in 80..82 -> "Chubascos"
     in 95..99 -> "Tormenta"
     else -> "Variable"

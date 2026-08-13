@@ -68,6 +68,7 @@ fun LauncherScreen(
     onContinuityAccessRequested: () -> Unit,
     onCalendarPermissionRequested: () -> Unit,
     onLocationPermissionRequested: () -> Unit,
+    onClockOpenRequested: () -> Unit,
     onCalendarEventSelected: (Long) -> Unit,
     onCalendarEventCreateRequested: () -> Unit,
     onCalendarOpenRequested: () -> Unit,
@@ -195,6 +196,7 @@ fun LauncherScreen(
                             settingsShortcuts = settingsShortcuts,
                             onCalendarPermissionRequested = onCalendarPermissionRequested,
                             onLocationPermissionRequested = { showLocationDisclosure = true },
+                            onClockOpenRequested = onClockOpenRequested,
                             onContinuityAccessRequested = onContinuityAccessRequested,
                             onCalendarEventSelected = onCalendarEventSelected,
                             onCalendarEventCreateRequested = onCalendarEventCreateRequested,
@@ -291,6 +293,7 @@ fun LauncherScreen(
                 }
             },
             systemStatus = state.systemStatus,
+            onClockOpenRequested = onClockOpenRequested,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 

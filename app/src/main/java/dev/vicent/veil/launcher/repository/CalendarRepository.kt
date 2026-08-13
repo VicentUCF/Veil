@@ -3,6 +3,7 @@ package dev.vicent.veil.launcher.repository
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
@@ -59,7 +60,18 @@ class CalendarRepository(private val context: Context) {
             CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build(),
             System.currentTimeMillis(),
         )
-        return start(Intent(Intent.ACTION_VIEW, uri))
+        val viewCalendar = Intent(Intent.ACTION_VIEW, uri)
+        val defaultPackage = context.packageManager
+            .resolveActivity(viewCalendar, PackageManager.MATCH_DEFAULT_ONLY)
+            ?.activityInfo
+            ?.packageName
+            ?.takeUnless { it == "android" || it == AndroidResolverPackage }
+
+        if (defaultPackage != null && start(Intent(viewCalendar).setPackage(defaultPackage))) {
+            return true
+        }
+        if (start(Intent(viewCalendar).setPackage(GoogleCalendarPackage))) return true
+        return start(viewCalendar)
     }
 
     fun configureGoogleCalendar(): Boolean {
@@ -143,6 +155,7 @@ class CalendarRepository(private val context: Context) {
     }
 
     private companion object {
+        const val AndroidResolverPackage = "com.android.intentresolver"
         const val GoogleCalendarPackage = "com.google.android.calendar"
     }
 }

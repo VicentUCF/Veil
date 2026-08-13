@@ -95,7 +95,7 @@ fun AppDrawer(
             }
         }
     }
-    val firstResult = visibleSettings.firstOrNull() ?: visibleApps.firstOrNull()
+    val firstResult = visibleApps.firstOrNull() ?: visibleSettings.firstOrNull()
 
     Column(
         modifier = modifier
@@ -118,24 +118,6 @@ fun AppDrawer(
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item(key = "system-header") {
-                DrawerSectionLabel(text = "SISTEMA")
-            }
-            item(key = "continuity-access") {
-                ContinuityAccessRow(
-                    accessGranted = continuityAccessGranted,
-                    onClick = onContinuityAccessSelected,
-                )
-            }
-            if (visibleSettings.isNotEmpty()) {
-                items(visibleSettings, key = { "settings-${it.id}" }) { shortcut ->
-                    SettingsRow(
-                        shortcut = shortcut,
-                        onClick = { onSettingsSelected(shortcut) },
-                    )
-                }
-            }
-
             if (visibleApps.isNotEmpty()) {
                 item(key = "apps-header") {
                     DrawerSectionLabel(
@@ -157,6 +139,24 @@ fun AppDrawer(
                             keyboardController?.hide()
                             onAppLongPressed(app)
                         },
+                    )
+                }
+            }
+
+            item(key = "system-header") {
+                DrawerSectionLabel(text = "SISTEMA")
+            }
+            item(key = "continuity-access") {
+                ContinuityAccessRow(
+                    accessGranted = continuityAccessGranted,
+                    onClick = onContinuityAccessSelected,
+                )
+            }
+            if (visibleSettings.isNotEmpty()) {
+                items(visibleSettings, key = { "settings-${it.id}" }) { shortcut ->
+                    SettingsRow(
+                        shortcut = shortcut,
+                        onClick = { onSettingsSelected(shortcut) },
                     )
                 }
             }
