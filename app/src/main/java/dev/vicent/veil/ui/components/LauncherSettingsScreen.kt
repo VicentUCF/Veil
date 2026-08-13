@@ -50,6 +50,8 @@ import dev.vicent.veil.launcher.model.AppCategory
 import dev.vicent.veil.launcher.model.LauncherAccessState
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherPreferences
+import dev.vicent.veil.launcher.model.HomeTextTone
+import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.SettingsAppTarget
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import java.text.Normalizer
@@ -61,9 +63,14 @@ fun LauncherSettingsScreen(
     access: LauncherAccessState,
     installedApps: List<LauncherApp>,
     appTarget: SettingsAppTarget?,
+    showFontSettings: Boolean,
     systemAccent: Color?,
     onBack: () -> Unit,
+    onOpenFontSettings: () -> Unit,
     onAccentSelected: (AccentMode) -> Unit,
+    onHomeTextToneSelected: (HomeTextTone) -> Unit,
+    onHomeTextWeightSelected: (HomeTextWeight) -> Unit,
+    onWallpaperScrimEnabledChanged: (Boolean) -> Unit,
     onOpenMusicProviderPicker: () -> Unit,
     onSettingsAppSelected: (String) -> Unit,
     onMusicProviderCleared: () -> Unit,
@@ -93,6 +100,18 @@ fun LauncherSettingsScreen(
             installedApps = installedApps,
             onBack = onBack,
             onSelected = onSettingsAppSelected,
+            modifier = modifier,
+        )
+        return
+    }
+
+    if (showFontSettings) {
+        CurrentHomeFontSettings(
+            preferences = preferences,
+            onBack = onBack,
+            onHomeTextToneSelected = onHomeTextToneSelected,
+            onHomeTextWeightSelected = onHomeTextWeightSelected,
+            onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
             modifier = modifier,
         )
         return
@@ -145,6 +164,15 @@ fun LauncherSettingsScreen(
                     detail = "Gestionado por Android; Veil no guarda la imagen",
                     status = "CAMBIAR",
                     onClick = { launch(onWallpaperSelected) },
+                )
+            }
+            item(key = "home-font") {
+                SettingsActionRow(
+                    title = "Fuente de CURRENT",
+                    detail = "Texto e iconos ${preferences.homeTextTone.label().lowercase()}s · " +
+                        preferences.homeTextWeight.label(),
+                    status = "ABRIR",
+                    onClick = onOpenFontSettings,
                 )
             }
 
@@ -251,7 +279,7 @@ fun LauncherSettingsScreen(
             item(key = "reset") {
                 SettingsActionRow(
                     title = "Restaurar apariencia de Veil",
-                    detail = "Restablece únicamente el acento coral",
+                    detail = "Restaura acento y legibilidad de CURRENT",
                     status = "RESTAURAR",
                     danger = true,
                     onClick = { showResetConfirmation = true },
@@ -278,7 +306,8 @@ fun LauncherSettingsScreen(
             },
         ) {
             RofiBody(
-                "El acento volverá al coral de Veil. El fondo de pantalla y los accesos de Android no cambiarán.",
+                "El acento volverá al coral; el texto y los iconos de CURRENT, a claros y finos. " +
+                    "El filtro suave se activará. El wallpaper y los accesos de Android no cambiarán.",
             )
         }
     }
@@ -290,6 +319,93 @@ fun LauncherSettingsScreen(
             actions = { RofiAction("cerrar", { showExternalError = false }) },
         ) {
             RofiBody("Android no ofrece una pantalla compatible para este ajuste en el dispositivo.")
+        }
+    }
+}
+
+@Composable
+private fun CurrentHomeFontSettings(
+    preferences: LauncherPreferences,
+    onBack: () -> Unit,
+    onHomeTextToneSelected: (HomeTextTone) -> Unit,
+    onHomeTextWeightSelected: (HomeTextWeight) -> Unit,
+    onWallpaperScrimEnabledChanged: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val palette = LocalVeilPalette.current
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(palette.drawerBackground)
+            .windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
+        SettingsHeader(title = "fuente_current", onBack = onBack)
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item(key = "font-intro") {
+                SettingsDescription(
+                    "Ajusta el texto y los iconos que CURRENT dibuja sobre el wallpaper. " +
+                        "El filtro suave asociado se aplica a todas las vistas. " +
+                        "Los cambios se guardan al tocarlos.",
+                )
+            }
+            item(key = "font-color-label") { SettingsSectionLabel("COLOR") }
+            item(key = "home-text-tone-light") {
+                AppearanceChoiceRow(
+                    label = "Claro",
+                    detail = "Texto marfil · filtro negro suave",
+                    selected = preferences.homeTextTone == HomeTextTone.LIGHT,
+                    previewColor = Color(0xFFE8E9E7),
+                    previewBackground = Color(0xFF20262A),
+                    previewWeight = FontWeight.Normal,
+                    onClick = { onHomeTextToneSelected(HomeTextTone.LIGHT) },
+                )
+            }
+            item(key = "home-text-tone-dark") {
+                AppearanceChoiceRow(
+                    label = "Oscuro",
+                    detail = "Texto carbón · filtro blanco suave",
+                    selected = preferences.homeTextTone == HomeTextTone.DARK,
+                    previewColor = Color(0xFF171A1C),
+                    previewBackground = Color(0xFFE9E6DF),
+                    previewWeight = FontWeight.Normal,
+                    onClick = { onHomeTextToneSelected(HomeTextTone.DARK) },
+                )
+            }
+            item(key = "font-weight-label") { SettingsSectionLabel("GROSOR") }
+            items(
+                items = listOf(
+                    Triple(HomeTextWeight.LIGHT, "Fino", FontWeight.Light),
+                    Triple(HomeTextWeight.REGULAR, "Normal", FontWeight.Normal),
+                    Triple(HomeTextWeight.SEMIBOLD, "Seminegrita", FontWeight.SemiBold),
+                ),
+                key = { "home-weight-${it.first.persistedValue}" },
+            ) { (mode, label, weight) ->
+                AppearanceChoiceRow(
+                    label = label,
+                    detail = null,
+                    selected = preferences.homeTextWeight == mode,
+                    previewColor = Color(0xFFE8E9E7),
+                    previewBackground = Color(0xFF20262A),
+                    previewWeight = weight,
+                    onClick = { onHomeTextWeightSelected(mode) },
+                )
+            }
+            item(key = "filter-label") { SettingsSectionLabel("FILTRO DEL WALLPAPER") }
+            item(key = "wallpaper-filter") {
+                SettingsActionRow(
+                    title = "Filtro suave",
+                    detail = if (preferences.wallpaperScrimEnabled) {
+                        "Activo en todas las vistas; el tono sigue el color elegido"
+                    } else {
+                        "El wallpaper se muestra sin velo adicional"
+                    },
+                    status = if (preferences.wallpaperScrimEnabled) "ACTIVO" else "INACTIVO",
+                    onClick = {
+                        onWallpaperScrimEnabledChanged(!preferences.wallpaperScrimEnabled)
+                    },
+                )
+            }
+            item(key = "bottom-space") { Spacer(modifier = Modifier.height(28.dp)) }
         }
     }
 }
@@ -387,7 +503,7 @@ private fun SettingsAppPicker(
                             overflow = TextOverflow.Ellipsis,
                             style = TextStyle(
                                 color = palette.contentPrimary,
-                                fontFamily = FontFamily.SansSerif,
+                                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
                             ),
@@ -456,7 +572,7 @@ private fun ConfiguredAppRow(
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     color = palette.contentPrimary,
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 ),
@@ -526,7 +642,7 @@ private fun SettingsSectionLabel(text: String) {
         text = text,
         style = TextStyle(
             color = palette.contentMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 1.5.sp,
@@ -583,7 +699,73 @@ private fun AccentChoiceRow(
                 text = label,
                 style = TextStyle(
                     color = if (enabled) palette.contentPrimary else palette.contentMuted,
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+            detail?.let {
+                BasicText(it, style = workspaceMonoStyle(palette.contentMuted, 8))
+            }
+        }
+        if (selected) {
+            BasicText("✓", style = workspaceMonoStyle(palette.accentActive, 13))
+        }
+    }
+}
+
+@Composable
+private fun AppearanceChoiceRow(
+    label: String,
+    detail: String?,
+    selected: Boolean,
+    previewColor: Color,
+    previewBackground: Color,
+    previewWeight: FontWeight,
+    onClick: () -> Unit,
+) {
+    val palette = LocalVeilPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (detail == null) 52.dp else 60.dp)
+            .semantics { this.selected = selected }
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                onClick = onClick,
+            )
+            .padding(horizontal = 20.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(32.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(7.dp))
+                .background(previewBackground)
+                .border(
+                    width = 1.dp,
+                    color = if (selected) palette.accentActive else palette.divider,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
+                ),
+        ) {
+            BasicText(
+                text = "Aa",
+                style = TextStyle(
+                    color = previewColor,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
+                    fontSize = 12.sp,
+                    fontWeight = previewWeight,
+                ),
+            )
+        }
+        Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
+            BasicText(
+                text = label,
+                style = TextStyle(
+                    color = palette.contentPrimary,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 ),
@@ -622,7 +804,7 @@ private fun SettingsActionRow(
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     color = if (danger) palette.error else palette.contentPrimary,
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 ),
@@ -642,3 +824,14 @@ private fun SettingsActionRow(
 }
 
 private fun Boolean.statusLabel(): String = if (this) "REVISAR" else "ACTIVAR"
+
+private fun HomeTextTone.label(): String = when (this) {
+    HomeTextTone.LIGHT -> "Claro"
+    HomeTextTone.DARK -> "Oscuro"
+}
+
+private fun HomeTextWeight.label(): String = when (this) {
+    HomeTextWeight.LIGHT -> "Fino"
+    HomeTextWeight.REGULAR -> "Normal"
+    HomeTextWeight.SEMIBOLD -> "Seminegrita"
+}

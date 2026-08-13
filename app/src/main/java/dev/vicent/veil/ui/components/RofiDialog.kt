@@ -60,7 +60,7 @@ fun RofiDialog(
                     .widthIn(max = 520.dp)
                     .heightIn(max = 720.dp)
                     .clip(shape)
-                    .background(Color(0xFA111518))
+                    .background(palette.dialogBackground.copy(alpha = 0.98f))
                     .border(1.dp, palette.divider, shape),
             ) {
                 Row(

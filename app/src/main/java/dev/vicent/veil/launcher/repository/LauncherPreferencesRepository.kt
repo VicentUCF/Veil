@@ -6,6 +6,8 @@ import dev.vicent.veil.launcher.model.LauncherPreferences
 import dev.vicent.veil.launcher.model.LauncherPreferencesPolicy
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.ContextAppPreferencesPolicy
+import dev.vicent.veil.launcher.model.HomeTextTone
+import dev.vicent.veil.launcher.model.HomeTextWeight
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,9 +29,34 @@ class LauncherPreferencesRepository(context: Context) {
         mutableState.value = next
     }
 
-    fun resetAppearance() = setAccentMode(
-        LauncherPreferencesPolicy.resetAppearance(mutableState.value).accentMode,
-    )
+    fun resetAppearance() {
+        val next = LauncherPreferencesPolicy.resetAppearance(mutableState.value)
+        preferences.edit()
+            .putString(KEY_ACCENT_MODE, next.accentMode.persistedValue)
+            .putString(KEY_HOME_TEXT_TONE, next.homeTextTone.persistedValue)
+            .putString(KEY_HOME_TEXT_WEIGHT, next.homeTextWeight.persistedValue)
+            .putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, next.wallpaperScrimEnabled)
+            .apply()
+        mutableState.value = next
+    }
+
+    fun setHomeTextTone(mode: HomeTextTone) {
+        val next = mutableState.value.copy(homeTextTone = mode)
+        preferences.edit().putString(KEY_HOME_TEXT_TONE, mode.persistedValue).apply()
+        mutableState.value = next
+    }
+
+    fun setHomeTextWeight(mode: HomeTextWeight) {
+        val next = mutableState.value.copy(homeTextWeight = mode)
+        preferences.edit().putString(KEY_HOME_TEXT_WEIGHT, mode.persistedValue).apply()
+        mutableState.value = next
+    }
+
+    fun setWallpaperScrimEnabled(enabled: Boolean) {
+        val next = mutableState.value.copy(wallpaperScrimEnabled = enabled)
+        preferences.edit().putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, enabled).apply()
+        mutableState.value = next
+    }
 
     fun setMusicProvider(packageName: String?) {
         val next = mutableState.value.copy(musicProviderPackage = packageName)
@@ -81,8 +108,14 @@ class LauncherPreferencesRepository(context: Context) {
     }
 
     private fun readPreferences(): LauncherPreferences {
-        val base = LauncherPreferencesPolicy.decodeAccent(
-            preferences.getString(KEY_ACCENT_MODE, null),
+        val base = LauncherPreferencesPolicy.decodeAppearance(
+            accent = preferences.getString(KEY_ACCENT_MODE, null),
+            homeTextTone = preferences.getString(KEY_HOME_TEXT_TONE, null),
+            homeTextWeight = preferences.getString(KEY_HOME_TEXT_WEIGHT, null),
+            wallpaperScrimEnabled = preferences.getBoolean(
+                KEY_WALLPAPER_SCRIM_ENABLED,
+                true,
+            ),
         )
         val overrides = LauncherContextKind.entries.mapNotNull { kind ->
             if (!preferences.getBoolean(contextConfiguredKey(kind), false)) return@mapNotNull null
@@ -106,6 +139,9 @@ class LauncherPreferencesRepository(context: Context) {
         const val PREFERENCES_NAME = "veil_launcher_preferences"
         const val CONTEXT_SLOT_COUNT = 5
         private const val KEY_ACCENT_MODE = "accent_mode"
+        private const val KEY_HOME_TEXT_TONE = "home_text_tone"
+        private const val KEY_HOME_TEXT_WEIGHT = "home_text_weight"
+        private const val KEY_WALLPAPER_SCRIM_ENABLED = "wallpaper_scrim_enabled"
         private const val KEY_MUSIC_PROVIDER = "music_provider_package"
     }
 }

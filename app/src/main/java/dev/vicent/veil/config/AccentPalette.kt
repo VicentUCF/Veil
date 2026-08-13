@@ -19,7 +19,10 @@ object AccentPalette {
         AccentPreset(AccentMode.LILAC, "Lila", Color(0xFFBAA5E5)),
     )
 
-    fun resolveColor(mode: AccentMode, systemAccent: Color?): Color = when (mode) {
+    fun resolveColor(
+        mode: AccentMode,
+        systemAccent: Color?,
+    ): Color = when (mode) {
         AccentMode.SYSTEM -> systemAccent ?: presets.first().color
         else -> presets.first { it.mode == mode }.color
     }

@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -41,6 +42,8 @@ import dev.vicent.veil.R
 import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.WorkspaceDataPolicy
 import dev.vicent.veil.launcher.model.AccentMode
+import dev.vicent.veil.launcher.model.HomeTextTone
+import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.LauncherApp
@@ -105,6 +108,9 @@ fun LauncherScreen(
     onHomeButtonTap: () -> Unit,
     onHomeButtonLongPress: () -> Unit,
     onAccentSelected: (AccentMode) -> Unit,
+    onHomeTextToneSelected: (HomeTextTone) -> Unit,
+    onHomeTextWeightSelected: (HomeTextWeight) -> Unit,
+    onWallpaperScrimEnabledChanged: (Boolean) -> Unit,
     onWallpaperSelected: () -> Boolean,
     onAppPermissionSettingsRequested: () -> Boolean,
     onFocusNotificationsSelected: () -> Boolean,
@@ -121,9 +127,17 @@ fun LauncherScreen(
     var showLocationDisclosure by remember { mutableStateOf(false) }
     var showAudioVisualizerDisclosure by remember { mutableStateOf(false) }
     var showContinuityDisclosure by remember { mutableStateOf(false) }
+    var showFontSettings by remember { mutableStateOf(false) }
+
+    val handleSettingsBack = {
+        if (showFontSettings) showFontSettings = false else onCloseSettings()
+    }
 
     LaunchedEffect(state.isDrawerOpen) {
         if (state.isDrawerOpen) appWithOpenActions = null
+    }
+    LaunchedEffect(state.isSettingsOpen) {
+        if (!state.isSettingsOpen) showFontSettings = false
     }
 
     val contextCount = state.contexts.size
@@ -197,6 +211,18 @@ fun LauncherScreen(
     } else Modifier
 
     Box(modifier = modifier.fillMaxSize().then(homeGestureModifier)) {
+        if (state.preferences.wallpaperScrimEnabled) {
+            val wallpaperScrim = when (state.preferences.homeTextTone) {
+                HomeTextTone.LIGHT -> Color.Black.copy(alpha = 0.12f)
+                HomeTextTone.DARK -> Color.White.copy(alpha = 0.10f)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(wallpaperScrim),
+            )
+        }
+
         if (pagerState != null) {
             val flingBehavior = PagerDefaults.flingBehavior(
                 state = pagerState,
@@ -426,9 +452,14 @@ fun LauncherScreen(
                 access = state.access,
                 installedApps = state.installedApps,
                 appTarget = state.settingsAppTarget,
+                showFontSettings = showFontSettings,
                 systemAccent = systemAccent,
-                onBack = onCloseSettings,
+                onBack = handleSettingsBack,
+                onOpenFontSettings = { showFontSettings = true },
                 onAccentSelected = onAccentSelected,
+                onHomeTextToneSelected = onHomeTextToneSelected,
+                onHomeTextWeightSelected = onHomeTextWeightSelected,
+                onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
                 onOpenMusicProviderPicker = onOpenMusicProviderPicker,
                 onSettingsAppSelected = onSettingsAppSelected,
                 onMusicProviderCleared = onMusicProviderCleared,
@@ -476,7 +507,7 @@ fun LauncherScreen(
     }
 
     BackHandler(enabled = state.isDrawerOpen, onBack = onCloseDrawer)
-    BackHandler(enabled = state.isSettingsOpen, onBack = onCloseSettings)
+    BackHandler(enabled = state.isSettingsOpen, onBack = handleSettingsBack)
 
     val showAutomaticContinuityDisclosure =
         !state.continuityAccessGranted && !state.isContinuityOnboardingDismissed

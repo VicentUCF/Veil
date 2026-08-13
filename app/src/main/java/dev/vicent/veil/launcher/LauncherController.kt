@@ -11,6 +11,8 @@ import dev.vicent.veil.launcher.model.LauncherContext
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.LauncherContextKind
+import dev.vicent.veil.launcher.model.HomeTextTone
+import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.CalendarEventSummary
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.AudioMixerState
@@ -348,6 +350,13 @@ class LauncherController(
     }
 
     fun setAccentMode(mode: AccentMode) = preferencesRepository.setAccentMode(mode)
+
+    fun setHomeTextTone(mode: HomeTextTone) = preferencesRepository.setHomeTextTone(mode)
+
+    fun setHomeTextWeight(mode: HomeTextWeight) = preferencesRepository.setHomeTextWeight(mode)
+
+    fun setWallpaperScrimEnabled(enabled: Boolean) =
+        preferencesRepository.setWallpaperScrimEnabled(enabled)
 
     fun resetAppearance() = preferencesRepository.resetAppearance()
 

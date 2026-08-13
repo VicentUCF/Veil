@@ -46,7 +46,7 @@ Everything preserves the full alphabetical app list, search, settings shortcuts 
 
 ## Essential launcher settings
 
-Veil provides a deliberately bounded internal settings screen, reachable from Everything and TOOLS. It controls the Veil accent, delegates wallpaper selection to Android, reports and links to the permissions and special accesses already used by the launcher, reports the active HOME role and chooses the preferred app opened by MEDIA's empty state. Context apps are edited in place: holding an occupied app offers replace/remove actions and tapping an empty `+` slot opens the app picker. Changes apply immediately. The screen does not expose layout geometry, icon, font, folder, widget or gesture customization.
+Veil provides a deliberately bounded internal settings screen, reachable from Everything and TOOLS. It controls the Veil accent and the readability of CURRENT's wallpaper-level foreground (light/dark text and line icons plus three fixed text weights). The chosen foreground tone selects a very soft black/white wallpaper scrim behind every Veil surface, and the user may disable or re-enable that scrim independently. Settings delegates wallpaper selection to Android, reports and links to the permissions and special accesses already used by the launcher, reports the active HOME role and chooses the preferred app opened by MEDIA's empty state. Context apps are edited in place: holding an occupied app offers replace/remove actions and tapping an empty `+` slot opens the app picker. Changes apply immediately. The screen does not expose layout geometry, app-icon theming, font-family, folder, widget or gesture customization.
 
 The accent may use the Veil coral, a short accessible preset palette or Android's wallpaper-derived dynamic color on Android 12 and later. Veil never reads or stores wallpaper imagery; Android owns wallpaper selection and rendering.
 
@@ -89,7 +89,7 @@ No data is transmitted except the disclosed Open-Meteo weather request. There ar
 - Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
 - A single `app` module and no dependency-injection or state-management framework.
 - Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
-- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the bounded launcher preferences: accent, preferred music provider and five nullable app-package slots per context. Do not add Room or broader configuration persistence.
+- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the bounded launcher preferences: accent, CURRENT text tone/weight, wallpaper-scrim state, preferred music provider and five nullable app-package slots per context. Do not add Room or broader configuration persistence.
 - Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
 - Prefer platform APIs. No runtime third-party dependency is currently required.
 
@@ -122,7 +122,7 @@ Do not introduce a generic widget engine or speculative plugin architecture. Eac
 
 ## Explicit non-goals
 
-Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, custom fonts, editable grid geometry, theme export, manual launcher backups, smart-home controls, a gesture editor or a general user-customization system. The bounded accent/wallpaper/access/app-slot screen above is the only customization exception. The sole badge-like surface is the binary, content-free active-notification dot defined above.
+Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, custom font families, editable grid geometry, theme export, manual launcher backups, smart-home controls, a gesture editor or a general user-customization system. The bounded accent/CURRENT-readability/wallpaper/access/app screen above is the only customization exception. The sole badge-like surface is the binary, content-free active-notification dot defined above.
 
 Do not promise access to third-party internal state such as a Kindle chapter unless that application publishes a compatible Android session or notification. Veil cannot embed or transform another application's task as if it were a desktop window.
 

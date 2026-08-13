@@ -92,7 +92,7 @@ fun TopBar(
                 text = time,
                 style = TextStyle(
                     color = palette.contentPrimary,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                     fontSize = 11.sp,
                     letterSpacing = 0.6.sp,
                 ),
@@ -122,7 +122,7 @@ fun TopBar(
                 text = systemStatus.batteryPercent?.let { "$it%" } ?: "—",
                 style = TextStyle(
                     color = if (systemStatus.isCharging) palette.accentActive else palette.contentSecondary,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                     fontSize = 9.sp,
                 ),
                 modifier = Modifier.padding(start = 4.dp),

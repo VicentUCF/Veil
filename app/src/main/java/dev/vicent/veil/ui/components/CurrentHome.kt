@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -35,6 +37,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -62,6 +65,8 @@ import dev.vicent.veil.launcher.ResolvedQuickAction
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.LauncherApp
+import dev.vicent.veil.launcher.model.HomeTextTone
+import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import java.text.SimpleDateFormat
@@ -73,6 +78,67 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+
+@Immutable
+private data class CurrentHomeAppearance(
+    val primary: Color,
+    val secondary: Color,
+    val muted: Color,
+    val contentWeight: FontWeight,
+    val clockWeight: FontWeight,
+    val quickButtonBackground: Color,
+)
+
+private val LocalCurrentHomeAppearance = staticCompositionLocalOf {
+    CurrentHomeAppearance(
+        primary = Color(0xFFE8E9E7),
+        secondary = Color(0xFFBEC2C3),
+        muted = Color(0xFF747C81),
+        contentWeight = FontWeight.Light,
+        clockWeight = FontWeight.ExtraLight,
+        quickButtonBackground = Color(0xFF0C1013),
+    )
+}
+
+private fun resolveCurrentHomeAppearance(
+    tone: HomeTextTone,
+    weight: HomeTextWeight,
+): CurrentHomeAppearance {
+    val colors = when (tone) {
+        HomeTextTone.LIGHT -> Triple(
+            Color(0xFFE8E9E7),
+            Color(0xFFBEC2C3),
+            Color(0xFF747C81),
+        )
+        HomeTextTone.DARK -> Triple(
+            Color(0xFF171A1C),
+            Color(0xFF30373A),
+            Color(0xFF596166),
+        )
+    }
+    val contentWeight = when (weight) {
+        HomeTextWeight.LIGHT -> FontWeight.Light
+        HomeTextWeight.REGULAR -> FontWeight.Normal
+        HomeTextWeight.SEMIBOLD -> FontWeight.SemiBold
+    }
+    val clockWeight = when (weight) {
+        HomeTextWeight.LIGHT -> FontWeight.ExtraLight
+        HomeTextWeight.REGULAR -> FontWeight.Normal
+        HomeTextWeight.SEMIBOLD -> FontWeight.SemiBold
+    }
+    return CurrentHomeAppearance(
+        primary = colors.first,
+        secondary = colors.second,
+        muted = colors.third,
+        contentWeight = contentWeight,
+        clockWeight = clockWeight,
+        quickButtonBackground = if (tone == HomeTextTone.LIGHT) {
+            Color(0xFF0C1013)
+        } else {
+            Color(0xFFF1EEE8)
+        },
+    )
+}
 
 @Composable
 fun CurrentHome(
@@ -100,7 +166,12 @@ fun CurrentHome(
         }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    val homeAppearance = resolveCurrentHomeAppearance(
+        tone = state.preferences.homeTextTone,
+        weight = state.preferences.homeTextWeight,
+    )
+    CompositionLocalProvider(LocalCurrentHomeAppearance provides homeAppearance) {
+        BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val upperBreathingRoom = (maxHeight * 0.32f).coerceIn(130.dp, 280.dp)
         Column(
             modifier = Modifier
@@ -149,17 +220,18 @@ fun CurrentHome(
             }
         }
 
-        HomeQuickButton(
-            onClick = onQuickButtonTap,
-            onLongClick = onQuickButtonLongPress,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 2.dp, bottom = 12.dp),
-        )
+            HomeQuickButton(
+                onClick = onQuickButtonTap,
+                onLongClick = onQuickButtonLongPress,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 2.dp, bottom = 12.dp),
+            )
+        }
     }
 }
 
 @Composable
 private fun EmptyHomeAppRow(onClick: () -> Unit) {
-    val palette = LocalVeilPalette.current
+    val homeAppearance = LocalCurrentHomeAppearance.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -172,14 +244,14 @@ private fun EmptyHomeAppRow(onClick: () -> Unit) {
             ),
     ) {
         Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.width(39.dp)) {
-            BasicText("+", style = homeSmallMonoStyle(palette.contentMuted))
+            BasicText("+", style = homeSmallMonoStyle(homeAppearance.muted))
         }
         BasicText(
             text = "ELEGIR APP",
             style = TextStyle(
-                color = palette.contentMuted,
-                fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.Light,
+                color = homeAppearance.muted,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
+                fontWeight = homeAppearance.contentWeight,
                 fontSize = 12.sp,
                 letterSpacing = 3.4.sp,
             ),
@@ -195,7 +267,7 @@ private fun HomeClockAndWeather(
     onClockOpenRequested: () -> Unit,
     onCalendarOpenRequested: () -> Unit,
 ) {
-    val palette = LocalVeilPalette.current
+    val homeAppearance = LocalCurrentHomeAppearance.current
     val context = LocalContext.current
     val locale = Locale.forLanguageTag(LocalLocale.current.toLanguageTag())
     val now by rememberCurrentTime()
@@ -204,9 +276,9 @@ private fun HomeClockAndWeather(
     BasicText(
         text = DateFormat.getTimeFormat(context).format(now),
         style = TextStyle(
-            color = palette.contentPrimary,
-            fontFamily = FontFamily.SansSerif,
-            fontWeight = FontWeight.ExtraLight,
+            color = homeAppearance.primary,
+            fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
+            fontWeight = homeAppearance.clockWeight,
             fontSize = 59.sp,
             letterSpacing = 1.5.sp,
         ),
@@ -219,9 +291,10 @@ private fun HomeClockAndWeather(
     BasicText(
         text = SimpleDateFormat("EEEE, d MMMM yyyy", locale).format(now),
         style = TextStyle(
-            color = palette.contentSecondary,
-            fontFamily = FontFamily.SansSerif,
+            color = homeAppearance.secondary,
+            fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
             fontSize = 12.sp,
+            fontWeight = homeAppearance.contentWeight,
             letterSpacing = 0.7.sp,
         ),
         modifier = Modifier
@@ -234,7 +307,7 @@ private fun HomeClockAndWeather(
     )
     Canvas(Modifier.padding(top = 4.dp).width(210.dp).height(1.dp)) {
         drawLine(
-            palette.contentSecondary,
+            homeAppearance.secondary,
             start = Offset(0f, size.height / 2f),
             end = Offset(size.width, size.height / 2f),
             strokeWidth = 1.dp.toPx(),
@@ -255,10 +328,10 @@ private fun HomeClockAndWeather(
                     BasicText(
                         text = "${weather.temperatureCelsius?.roundToInt() ?: "—"}° ${homeWeatherDescription(weather.weatherCode)}",
                         style = TextStyle(
-                            color = palette.contentPrimary,
-                            fontFamily = FontFamily.SansSerif,
+                            color = homeAppearance.primary,
+                            fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Light,
+                            fontWeight = homeAppearance.contentWeight,
                         ),
                     )
                     if (weather.isStale) HomeWeatherLabel("DESACTUALIZADO")
@@ -278,7 +351,7 @@ private fun HomeClockAndWeather(
 private fun HomeWeatherAction(label: String, onClick: () -> Unit) {
     BasicText(
         text = label,
-        style = homeSmallMonoStyle(LocalVeilPalette.current.contentPrimary),
+        style = homeSmallMonoStyle(LocalCurrentHomeAppearance.current.primary),
         modifier = Modifier
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 10.dp),
@@ -287,17 +360,18 @@ private fun HomeWeatherAction(label: String, onClick: () -> Unit) {
 
 @Composable
 private fun HomeWeatherLabel(label: String) {
-    BasicText(text = label, style = homeSmallMonoStyle(LocalVeilPalette.current.contentSecondary))
+    BasicText(text = label, style = homeSmallMonoStyle(LocalCurrentHomeAppearance.current.secondary))
 }
 
 @Composable
 internal fun WeatherGlyph(weatherCode: Int?, modifier: Modifier = Modifier) {
     val palette = LocalVeilPalette.current
+    val homeAppearance = LocalCurrentHomeAppearance.current
     Canvas(modifier) {
         val unit = size.minDimension
         val strokeWidth = (unit * .027f).coerceAtLeast(1.dp.toPx())
         val stroke = Stroke(strokeWidth, cap = StrokeCap.Round)
-        val glyphColor = palette.contentPrimary
+        val glyphColor = homeAppearance.primary
 
         fun sun(at: Offset, radius: Float) {
             drawCircle(palette.accentActive, radius, at, style = stroke)
@@ -481,7 +555,7 @@ private fun CompactMediaPlayer(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(7.dp))
-                        .background(Color.White.copy(alpha = .055f)),
+                        .background(palette.subtleFill),
                 ) {
                     ActivityGlyph(ActivityGlyphKind.MEDIA, size = 22.dp, isActive = true)
                 }
@@ -493,7 +567,7 @@ private fun CompactMediaPlayer(
                     overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
                         color = palette.contentPrimary,
-                        fontFamily = FontFamily.SansSerif,
+                        fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                     ),
@@ -504,7 +578,7 @@ private fun CompactMediaPlayer(
                     overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
                         color = palette.contentMuted,
-                        fontFamily = FontFamily.SansSerif,
+                        fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                         fontSize = 9.sp,
                     ),
                     modifier = Modifier.padding(top = 3.dp),
@@ -622,7 +696,7 @@ private fun HomeAppRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
-    val palette = LocalVeilPalette.current
+    val homeAppearance = LocalCurrentHomeAppearance.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -647,7 +721,11 @@ private fun HomeAppRow(
     ) {
         Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.width(39.dp)) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(31.dp)) {
-                ActivityGlyph(kind = app.activityGlyph(), size = 27.dp)
+                ActivityGlyph(
+                    kind = app.activityGlyph(),
+                    size = 27.dp,
+                    color = homeAppearance.secondary,
+                )
                 AppNotificationIndicator(
                     visible = hasNotification,
                     modifier = Modifier.align(Alignment.TopEnd),
@@ -659,9 +737,9 @@ private fun HomeAppRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = TextStyle(
-                color = palette.contentPrimary,
-                fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.Light,
+                color = homeAppearance.primary,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
+                fontWeight = homeAppearance.contentWeight,
                 fontSize = 13.sp,
                 letterSpacing = 4.2.sp,
             ),
@@ -677,13 +755,14 @@ private fun HomeQuickButton(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
+    val homeAppearance = LocalCurrentHomeAppearance.current
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(Color(0xFF0C1013).copy(alpha = .78f))
-            .border(1.dp, palette.contentSecondary, CircleShape)
+            .background(homeAppearance.quickButtonBackground.copy(alpha = .88f))
+            .border(1.dp, homeAppearance.secondary, CircleShape)
             .combinedClickable(
                 role = Role.Button,
                 onClickLabel = "Acción rápida",
@@ -708,10 +787,12 @@ private fun rememberCurrentTime(): androidx.compose.runtime.State<Date> =
         }
     }
 
+@Composable
 private fun homeSmallMonoStyle(color: Color) = TextStyle(
     color = color,
-    fontFamily = FontFamily.Monospace,
+    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
     fontSize = 10.sp,
+    fontWeight = LocalCurrentHomeAppearance.current.contentWeight,
     letterSpacing = 1.sp,
 )
 

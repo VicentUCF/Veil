@@ -224,7 +224,7 @@ private fun ContinuityAccessRow(
             text = label,
             style = TextStyle(
                 color = palette.contentPrimary,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
             ),
@@ -260,7 +260,7 @@ private fun VeilSettingsRow(onClick: () -> Unit) {
             text = "Ajustes de Veil",
             style = TextStyle(
                 color = palette.contentPrimary,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
             ),
@@ -287,7 +287,7 @@ private fun DrawerHeader(
             text = "VEIL / APPS",
             style = TextStyle(
                 color = palette.contentSecondary,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                 fontSize = 12.sp,
                 letterSpacing = 1.8.sp,
             ),
@@ -296,7 +296,7 @@ private fun DrawerHeader(
             text = "CERRAR  ×",
             style = TextStyle(
                 color = palette.contentSecondary,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                 fontSize = 12.sp,
                 letterSpacing = 1.2.sp,
             ),
@@ -344,7 +344,7 @@ private fun SearchField(
             text = ">",
             style = TextStyle(
                 color = palette.accentActive,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                 fontSize = 18.sp,
             ),
         )
@@ -354,7 +354,7 @@ private fun SearchField(
             singleLine = true,
             textStyle = TextStyle(
                 color = palette.contentPrimary,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                 fontSize = 17.sp,
                 letterSpacing = 0.4.sp,
             ),
@@ -368,7 +368,7 @@ private fun SearchField(
                             text = "Buscar apps y ajustes",
                             style = TextStyle(
                                 color = palette.contentMuted,
-                                fontFamily = FontFamily.SansSerif,
+                                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                                 fontSize = 17.sp,
                             ),
                         )
@@ -386,7 +386,7 @@ private fun SearchField(
                 text = "×",
                 style = TextStyle(
                     color = palette.contentSecondary,
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                     fontSize = 22.sp,
                 ),
                 modifier = Modifier
@@ -406,7 +406,7 @@ private fun DrawerSectionLabel(text: String) {
         text = text,
         style = TextStyle(
             color = palette.contentMuted,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
             fontSize = 11.sp,
             letterSpacing = 1.6.sp,
         ),
@@ -443,7 +443,7 @@ private fun DrawerAppRow(
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     color = palette.contentPrimary,
-                    fontFamily = FontFamily.SansSerif,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                     fontSize = 16.sp,
                 ),
             )
@@ -453,7 +453,7 @@ private fun DrawerAppRow(
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     color = palette.contentMuted,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                     fontSize = 10.sp,
                 ),
             )
@@ -493,7 +493,7 @@ private fun SettingsRow(
             overflow = TextOverflow.Ellipsis,
             style = TextStyle(
                 color = palette.contentPrimary,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
             ),
@@ -510,7 +510,7 @@ private fun EmptyResult(query: String) {
             text = "SIN RESULTADOS",
             style = TextStyle(
                 color = palette.contentSecondary,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                 fontSize = 12.sp,
                 letterSpacing = 1.6.sp,
             ),
@@ -519,7 +519,7 @@ private fun EmptyResult(query: String) {
             text = "No hay apps ni ajustes que coincidan con “$query”.",
             style = TextStyle(
                 color = palette.contentMuted,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                 fontSize = 14.sp,
             ),
             modifier = Modifier.padding(top = 10.dp),

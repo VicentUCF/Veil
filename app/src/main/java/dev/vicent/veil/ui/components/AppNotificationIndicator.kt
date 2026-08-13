@@ -32,7 +32,7 @@ fun AppNotificationIndicator(
             modifier = Modifier
                 .size(6.dp)
                 .background(palette.accentActive, CircleShape)
-                .border(1.dp, Color(0xFF101418), CircleShape),
+                .border(1.dp, palette.indicatorOutline, CircleShape),
         )
     }
 }

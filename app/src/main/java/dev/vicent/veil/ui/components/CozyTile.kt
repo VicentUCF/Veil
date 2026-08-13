@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.vicent.veil.ui.theme.LocalVeilPalette
+import dev.vicent.veil.ui.theme.LocalVeilTypography
 
 @Composable
 fun CozyTile(
@@ -42,7 +43,7 @@ fun CozyTile(
     Column(
         modifier = modifier
             .clip(shape)
-            .background(Color(0xFF101418).copy(alpha = alpha))
+            .background(palette.tileBackground.copy(alpha = alpha))
             .border(BorderStroke(1.dp, palette.divider), shape)
             .then(clickModifier)
             .padding(16.dp),
@@ -51,7 +52,7 @@ fun CozyTile(
             text = label.uppercase(),
             style = TextStyle(
                 color = if (prominent) palette.accentActive else palette.contentMuted,
-                fontFamily = FontFamily.Monospace,
+            fontFamily = LocalVeilTypography.current.system,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.4.sp,
@@ -63,24 +64,27 @@ fun CozyTile(
     }
 }
 
+@Composable
 internal fun workspaceTitleStyle(color: Color, prominent: Boolean = false) = TextStyle(
     color = color,
-    fontFamily = FontFamily.SansSerif,
+    fontFamily = LocalVeilTypography.current.content,
     fontSize = if (prominent) 22.sp else 16.sp,
     fontWeight = FontWeight.Medium,
     lineHeight = if (prominent) 27.sp else 21.sp,
 )
 
+@Composable
 internal fun workspaceBodyStyle(color: Color) = TextStyle(
     color = color,
-    fontFamily = FontFamily.SansSerif,
+    fontFamily = LocalVeilTypography.current.content,
     fontSize = 12.sp,
     lineHeight = 17.sp,
 )
 
+@Composable
 internal fun workspaceMonoStyle(color: Color, size: Int = 11) = TextStyle(
     color = color,
-    fontFamily = FontFamily.Monospace,
+    fontFamily = LocalVeilTypography.current.system,
     fontSize = size.sp,
     letterSpacing = 0.6.sp,
 )

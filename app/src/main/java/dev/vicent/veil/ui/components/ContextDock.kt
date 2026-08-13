@@ -49,7 +49,7 @@ fun ContextDock(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF101418).copy(alpha = 0.84f))
+            .background(palette.tileBackground.copy(alpha = 0.84f))
             .border(1.dp, palette.divider, RoundedCornerShape(16.dp))
             .padding(horizontal = 7.dp, vertical = 8.dp),
     ) {
@@ -92,7 +92,7 @@ fun ContextDock(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.055f)),
+                        .background(palette.subtleFill),
                 ) {
                     if (app != null) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(39.dp)) {
@@ -107,7 +107,7 @@ fun ContextDock(
                             text = "+",
                             style = TextStyle(
                                 color = palette.contentMuted,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                                 fontSize = 22.sp,
                             ),
                         )
@@ -119,7 +119,7 @@ fun ContextDock(
                     overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
                         color = palette.contentSecondary,
-                        fontFamily = FontFamily.SansSerif,
+                        fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
                         fontSize = 9.sp,
                     ),
                     modifier = Modifier.padding(top = 3.dp),

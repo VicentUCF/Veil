@@ -85,7 +85,7 @@ private fun AppSheetHeader(app: LauncherApp) {
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     color = palette.contentPrimary,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                 ),
@@ -96,7 +96,7 @@ private fun AppSheetHeader(app: LauncherApp) {
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     color = palette.contentMuted,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                     fontSize = 11.sp,
                 ),
                 modifier = Modifier.padding(top = 3.dp),
@@ -129,7 +129,7 @@ private fun AppSheetAction(
             text = marker,
             style = TextStyle(
                 color = if (labelColor == palette.error) palette.error else palette.accentActive,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
             ),
@@ -139,7 +139,7 @@ private fun AppSheetAction(
             text = label,
             style = TextStyle(
                 color = labelColor,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
                 fontSize = 12.sp,
             ),
             modifier = Modifier.padding(start = 18.dp),

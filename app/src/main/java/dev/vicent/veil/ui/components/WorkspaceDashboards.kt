@@ -1331,7 +1331,7 @@ private fun SettingsCell(
         style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 9),
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(LocalVeilPalette.current.subtleFill)
             .clickable(role = Role.Button, onClickLabel = "Abrir $label") { onSelected(id) }
             .padding(horizontal = 10.dp, vertical = 12.dp),
     )

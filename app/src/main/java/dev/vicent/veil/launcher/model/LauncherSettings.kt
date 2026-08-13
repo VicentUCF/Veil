@@ -14,21 +14,59 @@ enum class AccentMode(val persistedValue: String) {
     }
 }
 
+enum class HomeTextTone(val persistedValue: String) {
+    LIGHT("light"),
+    DARK("dark");
+
+    companion object {
+        fun fromPersistedValue(value: String?): HomeTextTone =
+            entries.firstOrNull { it.persistedValue == value } ?: LIGHT
+    }
+}
+
+enum class HomeTextWeight(val persistedValue: String) {
+    LIGHT("light"),
+    REGULAR("regular"),
+    SEMIBOLD("semibold");
+
+    companion object {
+        fun fromPersistedValue(value: String?): HomeTextWeight =
+            entries.firstOrNull { it.persistedValue == value } ?: LIGHT
+    }
+}
+
 data class LauncherPreferences(
     val accentMode: AccentMode = AccentMode.VEIL,
+    val homeTextTone: HomeTextTone = HomeTextTone.LIGHT,
+    val homeTextWeight: HomeTextWeight = HomeTextWeight.LIGHT,
+    val wallpaperScrimEnabled: Boolean = true,
     val musicProviderPackage: String? = null,
     val contextAppOverrides: Map<LauncherContextKind, List<String?>> = emptyMap(),
 )
 
 object LauncherPreferencesPolicy {
-    fun decodeAccent(value: String?): LauncherPreferences =
-        LauncherPreferences(accentMode = AccentMode.fromPersistedValue(value))
+    fun decodeAppearance(
+        accent: String?,
+        homeTextTone: String? = null,
+        homeTextWeight: String? = null,
+        wallpaperScrimEnabled: Boolean = true,
+    ): LauncherPreferences = LauncherPreferences(
+        accentMode = AccentMode.fromPersistedValue(accent),
+        homeTextTone = HomeTextTone.fromPersistedValue(homeTextTone),
+        homeTextWeight = HomeTextWeight.fromPersistedValue(homeTextWeight),
+        wallpaperScrimEnabled = wallpaperScrimEnabled,
+    )
 
     fun encodeAccent(preferences: LauncherPreferences): String =
         preferences.accentMode.persistedValue
 
     fun resetAppearance(current: LauncherPreferences): LauncherPreferences =
-        current.copy(accentMode = AccentMode.VEIL)
+        current.copy(
+            accentMode = AccentMode.VEIL,
+            homeTextTone = HomeTextTone.LIGHT,
+            homeTextWeight = HomeTextWeight.LIGHT,
+            wallpaperScrimEnabled = true,
+        )
 }
 
 object ContextAppPreferencesPolicy {

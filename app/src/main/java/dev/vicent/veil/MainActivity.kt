@@ -249,6 +249,9 @@ class MainActivity : ComponentActivity() {
                         performHomeButtonAction(LauncherConfig.homeButton.onLongPress, state)
                     },
                     onAccentSelected = controller::setAccentMode,
+                    onHomeTextToneSelected = controller::setHomeTextTone,
+                    onHomeTextWeightSelected = controller::setHomeTextWeight,
+                    onWallpaperScrimEnabledChanged = controller::setWallpaperScrimEnabled,
                     onWallpaperSelected = {
                         launchExternal(settingsLauncher::openWallpaperChooser)
                     },
