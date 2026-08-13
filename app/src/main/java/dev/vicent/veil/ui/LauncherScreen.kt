@@ -2,10 +2,13 @@ package dev.vicent.veil.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -23,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,13 +40,13 @@ import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.WorkspaceDataPolicy
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.LauncherApp
-import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.ui.components.AppActionsBottomSheet
 import dev.vicent.veil.ui.components.AppDrawer
 import dev.vicent.veil.ui.components.ContextDock
 import dev.vicent.veil.ui.components.TopBar
 import dev.vicent.veil.ui.components.WorkspaceDashboard
+import dev.vicent.veil.ui.theme.VeilMotion
 import kotlin.math.abs
 
 @Composable
@@ -74,6 +78,18 @@ fun LauncherScreen(
     var appWithOpenActions by remember { mutableStateOf<LauncherApp?>(null) }
     var pendingFocusMinutes by remember { mutableIntStateOf(0) }
     var showLocationDisclosure by remember { mutableStateOf(false) }
+    val showsContextDock = activeContext?.definition?.kind
+        ?.let(WorkspaceDataPolicy::showsContextDock) == true
+    var lastDockContextIndex by remember { mutableIntStateOf(state.activeContextIndex) }
+    val displayedDockContextIndex = if (showsContextDock) {
+        state.activeContextIndex
+    } else {
+        lastDockContextIndex
+    }
+
+    SideEffect {
+        if (showsContextDock) lastDockContextIndex = state.activeContextIndex
+    }
 
     LaunchedEffect(state.isDrawerOpen) {
         if (state.isDrawerOpen) appWithOpenActions = null
@@ -112,23 +128,36 @@ fun LauncherScreen(
                 targetState = state.activeContextIndex,
                 transitionSpec = {
                     val direction = if (targetState >= initialState) 1 else -1
-                    (fadeIn(tween(180)) + slideInHorizontally(tween(180)) { it * direction / 14 })
-                        .togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(140)) { -it * direction / 18 })
+                    (
+                        fadeIn(
+                            tween(
+                                VeilMotion.StandardDurationMillis,
+                                easing = VeilMotion.enterEasing,
+                            ),
+                        ) + slideInHorizontally(
+                            tween(
+                                VeilMotion.StandardDurationMillis,
+                                easing = VeilMotion.standardEasing,
+                            ),
+                        ) { it * direction / 14 }
+                    ).togetherWith(
+                        fadeOut(
+                            tween(
+                                VeilMotion.QuickDurationMillis,
+                                easing = VeilMotion.exitEasing,
+                            ),
+                        ) + slideOutHorizontally(
+                            tween(
+                                VeilMotion.StandardDurationMillis,
+                                easing = VeilMotion.standardEasing,
+                            ),
+                        ) { -it * direction / 18 },
+                    )
                 },
                 label = "workspace",
                 modifier = Modifier
                     .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-                    .padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 48.dp,
-                        bottom = if (activeContext.definition.kind == LauncherContextKind.CURRENT) {
-                            16.dp
-                        } else {
-                            88.dp
-                        },
-                    ),
+                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
             ) { index ->
                 state.contexts.getOrNull(index)?.let { renderedContext ->
                     WorkspaceDashboard(
@@ -149,7 +178,20 @@ fun LauncherScreen(
                         onAppLongPressed = { appWithOpenActions = it },
                         onHomeButtonTap = onHomeButtonTap,
                         onHomeButtonLongPress = onHomeButtonLongPress,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 48.dp,
+                                bottom = if (
+                                    WorkspaceDataPolicy.showsContextDock(renderedContext.definition.kind)
+                                ) {
+                                    88.dp
+                                } else {
+                                    16.dp
+                                },
+                            ),
                     )
                 }
             }
@@ -163,22 +205,103 @@ fun LauncherScreen(
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
-        if (activeContext?.definition?.kind?.let(WorkspaceDataPolicy::showsContextDock) == true) {
-            ContextDock(
-                actions = activeContext.quickActions,
-                settingsShortcuts = settingsShortcuts,
-                onAppSelected = onAppSelected,
-                onAppLongPressed = { appWithOpenActions = it },
-                onSettingSelected = onSettingsSelected,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            )
+        AnimatedVisibility(
+            visible = showsContextDock,
+            enter = fadeIn(
+                tween(
+                    VeilMotion.StandardDurationMillis,
+                    delayMillis = 20,
+                    easing = VeilMotion.enterEasing,
+                ),
+            ) + slideInVertically(
+                tween(
+                    VeilMotion.EmphasizedDurationMillis,
+                    easing = VeilMotion.standardEasing,
+                ),
+                initialOffsetY = { it },
+            ),
+            exit = fadeOut(
+                tween(
+                    VeilMotion.QuickDurationMillis,
+                    easing = VeilMotion.exitEasing,
+                ),
+            ) + slideOutVertically(
+                tween(
+                    VeilMotion.StandardDurationMillis,
+                    easing = VeilMotion.exitEasing,
+                ),
+                targetOffsetY = { it },
+            ),
+            label = "context dock visibility",
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            AnimatedContent(
+                targetState = displayedDockContextIndex,
+                transitionSpec = {
+                    fadeIn(
+                        tween(
+                            VeilMotion.StandardDurationMillis,
+                            easing = VeilMotion.enterEasing,
+                        ),
+                    ).togetherWith(
+                        fadeOut(
+                            tween(
+                                VeilMotion.QuickDurationMillis,
+                                easing = VeilMotion.exitEasing,
+                            ),
+                        ),
+                    )
+                },
+                contentKey = { it },
+                label = "context dock content",
+                modifier = Modifier.fillMaxWidth(),
+            ) { contextIndex ->
+                state.contexts.getOrNull(contextIndex)?.let { dockContext ->
+                    ContextDock(
+                        actions = dockContext.quickActions,
+                        settingsShortcuts = settingsShortcuts,
+                        onAppSelected = onAppSelected,
+                        onAppLongPressed = { appWithOpenActions = it },
+                        onSettingSelected = onSettingsSelected,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
         }
 
-        if (state.isDrawerOpen) {
+        AnimatedVisibility(
+            visible = state.isDrawerOpen,
+            enter = fadeIn(
+                animationSpec = tween(
+                    VeilMotion.StandardDurationMillis,
+                    easing = VeilMotion.enterEasing,
+                ),
+                initialAlpha = 0.72f,
+            ) + slideInVertically(
+                animationSpec = tween(
+                    VeilMotion.EmphasizedDurationMillis,
+                    easing = VeilMotion.standardEasing,
+                ),
+                initialOffsetY = { it / 6 },
+            ),
+            exit = fadeOut(
+                animationSpec = tween(
+                    VeilMotion.QuickDurationMillis,
+                    easing = VeilMotion.exitEasing,
+                ),
+            ) + slideOutVertically(
+                animationSpec = tween(
+                    VeilMotion.StandardDurationMillis,
+                    easing = VeilMotion.exitEasing,
+                ),
+                targetOffsetY = { it / 8 },
+            ),
+            label = "app drawer",
+        ) {
             AppDrawer(
                 installedApps = state.installedApps,
                 settingsShortcuts = settingsShortcuts,
