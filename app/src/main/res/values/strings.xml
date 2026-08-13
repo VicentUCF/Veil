@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Veil</string>
+    <string name="continuity_continue_watching">Seguir viendo</string>
+    <string name="continuity_now_playing">Ahora suena</string>
+    <string name="continuity_continue_listening">Seguir escuchando</string>
+    <string name="continuity_navigation">Navegación activa</string>
+    <string name="continuity_finished">Completado</string>
+    <string name="continuity_in_progress">En progreso</string>
+    <string name="continuity_pause">Pausa</string>
+    <string name="continuity_play">Reproducir</string>
+    <string name="continuity_resume">Retomar</string>
+    <string name="continuity_onboarding_title">Mantén el contexto</string>
+    <string name="continuity_onboarding_body">Veil puede mostrar navegación, reproducción y progreso. Nunca muestra conversaciones.</string>
+    <string name="continuity_enable">Activar</string>
+    <string name="continuity_not_now">Ahora no</string>
+    <string name="continuity_access_enabled">Continuidad activada</string>
+    <string name="continuity_access_review">Activar continuidad</string>
+    <string name="continuity_service_name">Continuidad ambiental de Veil</string>
 </resources>

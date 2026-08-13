@@ -3,6 +3,7 @@ package dev.vicent.veil
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -10,12 +11,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import dev.vicent.veil.config.LauncherConfig
 import dev.vicent.veil.launcher.LauncherController
+import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.system.AndroidAppLauncher
 import dev.vicent.veil.launcher.system.AndroidSettingsLauncher
@@ -26,6 +29,7 @@ class MainActivity : ComponentActivity() {
     private val controller by lazy {
         LauncherController(
             appRepository = AppRepository(applicationContext),
+            continuityRepository = AmbientContinuityRepository(applicationContext),
             contexts = LauncherConfig.contexts,
             automaticHomeAppCount = LauncherConfig.automaticHomeAppCount,
         )
@@ -45,6 +49,7 @@ class MainActivity : ComponentActivity() {
         hideStatusBar()
 
         controller.load(lifecycleScope)
+        controller.setContinuityAccessGranted(hasContinuityAccess())
 
         setContent {
             val state by controller.state.collectAsState()
@@ -79,9 +84,17 @@ class MainActivity : ComponentActivity() {
                             controller.closeDrawer()
                         }
                     },
+                    onContinuityAccessRequested = ::openContinuityAccessSettings,
+                    onContinuityOnboardingDismissed = controller::dismissContinuityOnboarding,
+                    onContinuityAction = controller::performContinuityAction,
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        controller.setContinuityAccessGranted(hasContinuityAccess())
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -103,5 +116,13 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+    }
+
+    private fun hasContinuityAccess(): Boolean =
+        NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+
+    private fun openContinuityAccessSettings() {
+        runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+            .recoverCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }
     }
 }

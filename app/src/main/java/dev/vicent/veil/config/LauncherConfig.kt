@@ -2,6 +2,7 @@ package dev.vicent.veil.config
 
 import androidx.compose.ui.graphics.Color
 import dev.vicent.veil.launcher.model.LauncherContext
+import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.ui.theme.VeilPalette
 
 object LauncherConfig {
@@ -21,10 +22,10 @@ object LauncherConfig {
     const val automaticHomeAppCount = 5
 
     val contexts = listOf(
-        LauncherContext(id = "home", label = "HOME"),
-        LauncherContext(id = "work", label = "WORK"),
-        LauncherContext(id = "media", label = "MEDIA"),
-        LauncherContext(id = "social", label = "SOCIAL"),
-        LauncherContext(id = "tools", label = "TOOLS"),
+        LauncherContext(id = "home", label = "CURRENT", kind = LauncherContextKind.CURRENT),
+        LauncherContext(id = "work", label = "WORK", kind = LauncherContextKind.WORK),
+        LauncherContext(id = "media", label = "MEDIA", kind = LauncherContextKind.MEDIA),
+        LauncherContext(id = "social", label = "SOCIAL", kind = LauncherContextKind.SOCIAL),
+        LauncherContext(id = "tools", label = "TOOLS", kind = LauncherContextKind.TOOLS),
     )
 }

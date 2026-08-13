@@ -4,8 +4,13 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.provider.MediaStore
+import android.os.Build
 import androidx.core.net.toUri
 import dev.vicent.veil.launcher.model.LauncherApp
+import dev.vicent.veil.launcher.model.AppCategory
+import dev.vicent.veil.launcher.model.LauncherContextKind
+import dev.vicent.veil.launcher.AppCandidate
+import dev.vicent.veil.launcher.ContextAppSelector
 import java.text.Collator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,6 +32,29 @@ class AppRepository(context: Context) {
         return packageNames.mapNotNull(appsByPackage::get).distinctBy(LauncherApp::packageName)
     }
 
+    suspend fun selectContextApps(
+        kind: LauncherContextKind,
+        configuredApps: List<LauncherApp>,
+        installedApps: List<LauncherApp>,
+        count: Int,
+    ): List<LauncherApp> = withContext(Dispatchers.IO) {
+        val installedPackages = installedApps.mapTo(mutableSetOf(), LauncherApp::packageName)
+        val preferredPackage = when (kind) {
+            LauncherContextKind.MEDIA -> resolvePreferredPackage(musicIntent(), installedPackages)
+            LauncherContextKind.SOCIAL -> resolvePreferredPackage(messagesIntent(), installedPackages)
+            else -> null
+        }
+        val selectedPackages = ContextAppSelector.selectPackageNames(
+            kind = kind,
+            configuredPackageNames = configuredApps.map(LauncherApp::packageName) +
+                listOfNotNull(preferredPackage),
+            installedApps = installedApps.map { AppCandidate(it.packageName, it.category) },
+            count = count,
+        )
+        val appsByPackage = installedApps.associateBy(LauncherApp::packageName)
+        selectedPackages.mapNotNull(appsByPackage::get)
+    }
+
     suspend fun selectAutomaticHomeApps(
         installedApps: List<LauncherApp>,
         count: Int,
@@ -41,12 +69,7 @@ class AppRepository(context: Context) {
             resolvePreferredPackage(cameraIntent(), installedPackages),
         ).distinct()
 
-        val preferredApps = preferredPackages.mapNotNull(appsByPackage::get)
-        val remainingApps = installedApps.filterNot { app ->
-            preferredApps.any { preferred -> preferred.packageName == app.packageName }
-        }
-
-        (preferredApps + remainingApps).take(count)
+        preferredPackages.mapNotNull(appsByPackage::get).take(count)
     }
 
     private fun resolvePreferredPackage(
@@ -92,6 +115,11 @@ class AppRepository(context: Context) {
                         .ifBlank { packageName },
                     componentName = ComponentName(packageName, activityInfo.name),
                     icon = runCatching { resolveInfo.loadIcon(packageManager) }.getOrNull(),
+                    category = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        activityInfo.applicationInfo.category.toAppCategory()
+                    } else {
+                        AppCategory.GENERAL
+                    },
                 )
             }
             .distinctBy(LauncherApp::packageName)
@@ -110,4 +138,14 @@ class AppRepository(context: Context) {
         Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)
 
     private fun cameraIntent() = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+
+    private fun Int.toAppCategory(): AppCategory = when (this) {
+        android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> AppCategory.WORK
+        android.content.pm.ApplicationInfo.CATEGORY_AUDIO,
+        android.content.pm.ApplicationInfo.CATEGORY_VIDEO,
+        android.content.pm.ApplicationInfo.CATEGORY_IMAGE,
+        -> AppCategory.MEDIA
+        android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> AppCategory.SOCIAL
+        else -> AppCategory.GENERAL
+    }
 }

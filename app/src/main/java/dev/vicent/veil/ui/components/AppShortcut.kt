@@ -1,9 +1,7 @@
 package dev.vicent.veil.ui.components
 
 import android.graphics.Canvas
-import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
-import android.os.Build
 import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
@@ -24,9 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
@@ -114,7 +110,7 @@ private fun AppShortcut(
             .semantics { stateDescription = app.label }
             .padding(horizontal = 12.dp),
     ) {
-        LauncherAppIcon(app = app, size = 21.dp)
+        ActivityGlyph(kind = app.activityGlyph(), size = 21.dp)
 
         BasicText(
             text = app.label.uppercase(locale),
@@ -140,14 +136,6 @@ fun LauncherAppIcon(
             bitmap = icon.bitmap,
             contentDescription = null,
             contentScale = ContentScale.Fit,
-            colorFilter = if (icon.shouldTint) {
-                ColorFilter.tint(
-                    color = palette.contentPrimary,
-                    blendMode = BlendMode.SrcIn,
-                )
-            } else {
-                null
-            },
             modifier = modifier.size(size),
         )
     } else {
@@ -179,23 +167,13 @@ private fun appLabelStyle(color: Color) = TextStyle(
 
 private data class RenderedAppIcon(
     val bitmap: ImageBitmap,
-    val shouldTint: Boolean,
 )
 
 private fun Drawable.toRenderedIcon(): RenderedAppIcon {
-    val source = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && this is AdaptiveIconDrawable) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            monochrome ?: foreground
-        } else {
-            foreground
-        }
-    } else {
-        this
-    }
     val targetSize = 72
     val bitmap = createBitmap(targetSize, targetSize)
     val canvas = Canvas(bitmap)
-    val drawable = source.mutate()
+    val drawable = mutate()
     val intrinsicWidth = drawable.intrinsicWidth.coerceAtLeast(1)
     val intrinsicHeight = drawable.intrinsicHeight.coerceAtLeast(1)
     val scale = min(targetSize.toFloat() / intrinsicWidth, targetSize.toFloat() / intrinsicHeight)
@@ -208,6 +186,5 @@ private fun Drawable.toRenderedIcon(): RenderedAppIcon {
     drawable.draw(canvas)
     return RenderedAppIcon(
         bitmap = bitmap.asImageBitmap(),
-        shouldTint = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && this is AdaptiveIconDrawable,
     )
 }

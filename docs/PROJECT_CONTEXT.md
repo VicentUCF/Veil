@@ -6,6 +6,8 @@
 
 Veil is a native Android launcher inspired by Arch Linux and Qtile. It must feel like a quiet operating-system layer in which the wallpaper is the primary visual content and interface elements appear only when useful.
 
+Veil's defining interaction philosophy is **Ambient Continuity**: Home is the current context, not a dashboard. When Android exposes a trustworthy ongoing activity, Veil answers with one relevant thing that helps the user continue it. Nothing starts on Home; everything continues.
+
 The v0.1 rule is:
 
 > Wallpaper first. Five useful actions. One tap. Nothing else unless it earns its place.
@@ -30,8 +32,8 @@ Do not overarchitect. The working priority is real behavior, then UX, design, ar
 
 - Wallpaper is content, not merely a background; keep roughly 70–90% of the screen visually free.
 - Use a quiet interface with no attention-seeking decoration, permanent badges, or unnecessary motion.
-- Reveal layers progressively: Home, Context, Drawer, Search.
-- Model activities as contexts such as HOME, WORK, MEDIA, SOCIAL, and TOOLS, not traditional pages of icons.
+- Reveal layers progressively: Current, Context, Everything, Search.
+- Model activities as purposeful context lenses—CURRENT, WORK, MEDIA, SOCIAL, and TOOLS—not traditional pages of icons.
 - Keep 5–8 frequent actions on Home and make them available with one tap.
 - Search is a future power tool, not the primary interaction model.
 - Use an editorial, deliberately asymmetric layout with strong alignment and negative space.
@@ -40,7 +42,7 @@ Do not overarchitect. The working priority is real behavior, then UX, design, ar
 - Motion must be short, discreet, and functional. Do not add decorative animation in v0.1.
 - Configuration should remain declarative through ordinary Kotlin structures. Do not create a DSL in v0.1.
 - Touch is primary; keyboard interaction is optional.
-- Future dynamic modules are called Panels. Only one may have visual priority at a time, but Panels are out of scope for v0.1.
+- Only one continuity surface may have visual priority at a time. If no trustworthy activity exists, the context falls back to its useful actions.
 
 Veil is not a literal Qtile clone, a terminal-themed UI, a Niagara clone, a conventional Material launcher, a widget dashboard, or a desktop layout transplanted to mobile.
 
@@ -66,12 +68,25 @@ Veil is not a literal Qtile clone, a terminal-themed UI, a Niagara clone, a conv
 - Extremely thin transparent top bar.
 - Context indicators on the left and restrained system status on the right.
 - An active context.
-- Five to eight configured applications.
+- One relevant continuity surface when Android publishes an ongoing activity.
+- Five configured or automatically classified actions as the quiet fallback.
 - A lower-left editorial application cluster rather than a centered grid.
 - Small monochromatic icons, typographic labels, a vertical accent line, and comfortable touch targets.
 - Tap-to-launch.
 
-Do not use cards, Material surfaces, a conventional app grid, a traditional bottom dock, widgets, decorative gradients, or large Android-style icons.
+The five context lenses have fixed purposes:
+
+- CURRENT ranks the most relevant activity across the system, then falls back to frequent actions.
+- WORK falls back to productivity applications.
+- MEDIA shows the active or recently paused media session, then falls back to media applications.
+- SOCIAL exposes communication applications without reading or displaying conversations.
+- TOOLS exposes direct Android settings actions.
+
+Ambient Continuity v0.1 supports public Android signals only: active media sessions, navigation notifications, and ongoing or completed progress notifications. Navigation outranks playing media, which outranks active progress, paused media, and recently completed progress. Media paused for more than 30 minutes and completed progress older than 10 minutes expire.
+
+Notification-listener access is explicit and optional. Veil explains the benefit before opening Android settings, remains a complete launcher when access is declined, and never persists or transmits notification content. Calls, conversations, email, alarms, social notifications, and unrelated notifications are excluded.
+
+Do not use cards, Material surfaces, a conventional app grid, a traditional bottom dock, widgets, decorative gradients, or large Android-style icons. Home uses coherent activity glyphs; Everything preserves recognizable full-color application icons.
 
 ### Drawer and search
 
@@ -86,7 +101,9 @@ Do not use cards, Material surfaces, a conventional app grid, a traditional bott
 
 ## Explicit non-goals for v0.1
 
-Do not implement Android widgets, Panels, weather, music controls, calendar, smart-home features, notification badges, NotificationListener, UsageStats, AI, wallpaper analysis, app prediction, cloud sync, accounts, backend services, databases, Room, analytics, plugins, icon packs, a replacement settings UI, a custom DSL, advanced animation systems, arbitrary overlays, folders, app hiding, or a gesture editor.
+Do not implement Android widgets, weather, calendar access, smart-home features, notification badges, conversation reading, UsageStats, Accessibility-based inference, AI, wallpaper analysis, app prediction, cloud sync, accounts, backend services, databases, Room, analytics, plugins, icon packs, a replacement settings UI, a custom DSL, advanced cross-task animation systems, arbitrary overlays, folders, app hiding, or a gesture editor.
+
+Do not promise continuity for internal app state such as a Kindle chapter unless that application publishes a compatible public Android session or notification. A third-party launcher cannot own or transform another application's cross-task transition.
 
 Future possibilities must not be blocked, but do not build speculative abstractions for them.
 
@@ -145,7 +162,7 @@ Composables must not query `PackageManager` directly.
 
 ## Initial data direction
 
-A launchable app needs a package name, label, and optional drawable icon. A launcher context needs an ID, label, and a list of application package names. Configuration should use normal Kotlin objects and lists.
+A launchable app needs a package name, label, Android application category, and optional drawable icon. A launcher context needs an ID, label, fixed purpose, and a list of preferred application package names. Configuration should use normal Kotlin objects and lists.
 
 Do not invent package names for configured apps. Resolve applications actually available on the device, tolerate missing configuration, and never crash because an application is absent or removed.
 
@@ -157,13 +174,13 @@ The Home composition is explainable as:
 
 ```text
 Wallpaper
-+ thin system/context bar
-+ 5–8 frequent actions
++ thin transparent context rail
++ one continuity surface OR five fallback actions
 ```
 
 The wallpaper uses crop behavior and dominates the screen. A bundled development asset is acceptable initially; integration with the real system wallpaper comes later.
 
-The top bar targets roughly 24–32dp, remains transparent, may have an extremely subtle divider, and must not resemble a Material `TopAppBar`. It has no app title, hamburger menu, conventional toolbar, or oversized clock.
+The top rail targets 32dp, remains transparent, has no full-width divider, and must not resemble a Material `TopAppBar`. It has no app title, hamburger menu, conventional toolbar, or oversized clock.
 
 Context indicators use small restrained geometries. Active state uses the accent token and inactive states use low contrast. Color alone must not be the only accessibility signal.
 
@@ -187,11 +204,9 @@ Performance is critical because Home opens constantly: no package queries during
 1. Validate the project: sync, build with `./gradlew assembleDebug`, run on a physical device, and remove template UI.
 2. Make it a real launcher: manifest Home intent, default-launcher selection, and Home-button verification.
 3. Add app discovery: models, repository, real launchable apps, configured resolution, and missing-app handling.
-4. Build v0.1 Home: wallpaper, top bar, contexts, status, lower-left app cluster, accent, labels, icons, and tap-to-launch.
-5. Scaffold contexts: HOME, WORK, MEDIA, SOCIAL, and TOOLS; add horizontal context swiping only if it remains simple.
-6. Add the explicitly requested application drawer: upward gesture, Home reentry, complete app list, search, and Android settings shortcuts.
-
-Do not implement Panels or expand app management beyond the explicitly requested contextual actions unless the scope is changed again.
+4. Build the wallpaper-first Home with its thin context rail, activity glyphs, lower-left fallback cluster, and context navigation.
+5. Add Ambient Continuity for media, navigation, and progress with one relevant surface and optional notification access.
+6. Add the application drawer: upward gesture, Home reentry, complete app list, search, Android settings shortcuts, and continuity-access entry.
 
 ## Definition of done for v0.1
 
@@ -208,8 +223,10 @@ Do not implement Panels or expand app management beyond the explicitly requested
 - Long-pressing an application opens actions for launch, system app details, and uninstall request.
 - Missing configured apps never crash the launcher.
 - Wallpaper remains visually dominant.
-- The top bar is minimal and the apps use the lower-left editorial composition.
-- There are no cards, conventional grids, widgets, Panels, or backend.
+- The top rail is transparent and minimal, Home uses activity glyphs, and full application icons render correctly in Everything.
+- CURRENT and MEDIA show at most one relevant continuity surface; WORK, SOCIAL, and TOOLS retain distinct purposes.
+- Access can be accepted, declined, or revoked without breaking the launcher, and private notification categories never enter launcher state.
+- There are no cards, conventional grids, widgets, UsageStats, persistence, or backend.
 - The architecture remains small and easy to change.
 
 ## Code guardrails
@@ -221,4 +238,4 @@ Do not implement Panels or expand app management beyond the explicitly requested
 - Use explicit names and deterministic behavior.
 - Prefer real Android APIs and real app metadata.
 - Test on a physical device as soon as a phase permits it.
-- Preserve conceptual space for contexts and future Panels without implementing them early.
+- Keep Android handles such as `PendingIntent` and `MediaController` outside Compose state.

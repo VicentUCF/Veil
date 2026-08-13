@@ -38,6 +38,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.SettingsShortcut
+import dev.vicent.veil.R
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import java.text.Normalizer
 import java.util.Locale
@@ -60,6 +62,8 @@ fun AppDrawer(
     onAppSelected: (LauncherApp) -> Unit,
     onAppLongPressed: (LauncherApp) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
+    continuityAccessGranted: Boolean,
+    onContinuityAccessSelected: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -114,10 +118,16 @@ fun AppDrawer(
         )
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item(key = "system-header") {
+                DrawerSectionLabel(text = "SISTEMA")
+            }
+            item(key = "continuity-access") {
+                ContinuityAccessRow(
+                    accessGranted = continuityAccessGranted,
+                    onClick = onContinuityAccessSelected,
+                )
+            }
             if (visibleSettings.isNotEmpty()) {
-                item(key = "system-header") {
-                    DrawerSectionLabel(text = "SISTEMA")
-                }
                 items(visibleSettings, key = { "settings-${it.id}" }) { shortcut ->
                     SettingsRow(
                         shortcut = shortcut,
@@ -165,6 +175,43 @@ fun AppDrawer(
 
             item(key = "bottom-space") { Spacer(modifier = Modifier.height(24.dp)) }
         }
+    }
+}
+
+@Composable
+private fun ContinuityAccessRow(
+    accessGranted: Boolean,
+    onClick: () -> Unit,
+) {
+    val palette = LocalVeilPalette.current
+    val label = if (accessGranted) {
+        stringResource(R.string.continuity_access_enabled)
+    } else {
+        stringResource(R.string.continuity_access_review)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ActivityGlyph(
+            kind = if (accessGranted) ActivityGlyphKind.CURRENT else ActivityGlyphKind.PROGRESS,
+            size = 28.dp,
+            isActive = accessGranted,
+        )
+        BasicText(
+            text = label,
+            style = TextStyle(
+                color = palette.contentPrimary,
+                fontFamily = FontFamily.SansSerif,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+            modifier = Modifier.padding(start = 20.dp),
+        )
     }
 }
 

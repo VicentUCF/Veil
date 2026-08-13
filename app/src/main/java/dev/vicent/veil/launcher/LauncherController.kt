@@ -2,6 +2,10 @@ package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherContext
+import dev.vicent.veil.launcher.model.ContinuityAction
+import dev.vicent.veil.launcher.model.ContinuityItem
+import dev.vicent.veil.launcher.model.LauncherContextKind
+import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,10 +25,15 @@ data class LauncherUiState(
     val activeContextIndex: Int = 0,
     val isLoading: Boolean = true,
     val isDrawerOpen: Boolean = false,
+    val continuityAccessGranted: Boolean = false,
+    val currentContinuity: ContinuityItem? = null,
+    val mediaContinuity: ContinuityItem.Media? = null,
+    val isContinuityOnboardingDismissed: Boolean = continuityOnboardingDismissed,
 )
 
 class LauncherController(
     private val appRepository: AppRepository,
+    private val continuityRepository: AmbientContinuityRepository,
     contexts: List<LauncherContext>,
     private val automaticHomeAppCount: Int,
 ) {
@@ -41,6 +50,19 @@ class LauncherController(
         if (hasLoaded) return
         hasLoaded = true
 
+        continuityRepository.start(scope)
+        scope.launch {
+            continuityRepository.items.collect { items ->
+                val now = System.currentTimeMillis()
+                mutableState.update { currentState ->
+                    currentState.copy(
+                        currentContinuity = ContinuityRanker.selectCurrent(items, now),
+                        mediaContinuity = ContinuityRanker.selectMedia(items, now),
+                    )
+                }
+            }
+        }
+
         scope.launch {
             val installedApps = appRepository.loadLaunchableApps()
             val resolvedContexts = initialContexts.map { context ->
@@ -48,15 +70,26 @@ class LauncherController(
                     packageNames = context.definition.apps,
                     installedApps = installedApps,
                 )
-                val apps = if (
-                    context.definition.id == "home" && configuredApps.isEmpty()
-                ) {
-                    appRepository.selectAutomaticHomeApps(
+                val apps = when (context.definition.kind) {
+                    LauncherContextKind.CURRENT -> {
+                        val automaticApps = appRepository.selectAutomaticHomeApps(
+                            installedApps = installedApps,
+                            count = automaticHomeAppCount,
+                        )
+                        (configuredApps + automaticApps)
+                            .distinctBy(LauncherApp::packageName)
+                            .take(automaticHomeAppCount)
+                    }
+                    LauncherContextKind.WORK,
+                    LauncherContextKind.MEDIA,
+                    LauncherContextKind.SOCIAL,
+                    -> appRepository.selectContextApps(
+                        kind = context.definition.kind,
+                        configuredApps = configuredApps,
                         installedApps = installedApps,
                         count = automaticHomeAppCount,
                     )
-                } else {
-                    configuredApps
+                    LauncherContextKind.TOOLS -> emptyList()
                 }
                 context.copy(apps = apps)
             }
@@ -69,6 +102,20 @@ class LauncherController(
                 )
             }
         }
+    }
+
+    fun setContinuityAccessGranted(granted: Boolean) {
+        continuityRepository.setAccessEnabled(granted)
+        mutableState.update { it.copy(continuityAccessGranted = granted) }
+    }
+
+    fun dismissContinuityOnboarding() {
+        continuityOnboardingDismissed = true
+        mutableState.update { it.copy(isContinuityOnboardingDismissed = true) }
+    }
+
+    fun performContinuityAction(itemId: String, action: ContinuityAction) {
+        continuityRepository.perform(itemId, action)
     }
 
     fun openDrawer() {
@@ -114,3 +161,5 @@ class LauncherController(
 }
 
 private fun Int.floorMod(modulus: Int): Int = ((this % modulus) + modulus) % modulus
+
+private var continuityOnboardingDismissed = false

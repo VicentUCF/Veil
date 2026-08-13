@@ -8,4 +8,12 @@ data class LauncherApp(
     val label: String,
     val componentName: ComponentName,
     val icon: Drawable? = null,
+    val category: AppCategory = AppCategory.GENERAL,
 )
+
+enum class AppCategory {
+    WORK,
+    MEDIA,
+    SOCIAL,
+    GENERAL,
+}

@@ -1,7 +1,6 @@
 package dev.vicent.veil.ui.components
 
 import android.text.format.DateFormat
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,8 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -44,29 +41,20 @@ fun TopBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(palette.barBackground)
-            .drawBehind {
-                drawLine(
-                    color = palette.divider,
-                    start = Offset(0f, size.height),
-                    end = Offset(size.width, size.height),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            }
             .windowInsetsPadding(
                 WindowInsets.displayCutout.only(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                 ),
             )
-            .height(40.dp)
-            .padding(horizontal = 8.dp),
+            .height(32.dp)
+            .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             contexts.forEachIndexed { index, context ->
                 ContextIndicator(
-                    index = index,
+                    kind = context.kind,
                     label = context.label,
                     isActive = index == activeContextIndex,
                     onClick = { onContextSelected(index) },
@@ -79,10 +67,9 @@ fun TopBar(
             style = TextStyle(
                 color = palette.contentPrimary,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 13.sp,
-                letterSpacing = 0.7.sp,
+                fontSize = 12.sp,
+                letterSpacing = 0.5.sp,
             ),
-            modifier = Modifier.padding(end = 6.dp),
         )
     }
 }
