@@ -8,7 +8,9 @@ The repository contains a functional launcher with Android Home integration, rea
 
 CURRENT shows one relevant ongoing activity when Android exposes it: navigation, active or recently paused media, or progress. MEDIA specializes in the current media session. WORK, SOCIAL, and TOOLS remain focused lenses with automatically classified fallbacks.
 
-Veil asks for Android notification-listener access contextually. This access is optional, content remains in memory, and Veil deliberately ignores calls, conversations, email, alarms, social notifications, and unrelated notifications. Without access, every launcher and drawer feature continues to work normally.
+Veil asks for Android notification-listener access contextually. This access is optional, content remains in memory, and Ambient Continuity deliberately ignores calls, conversations, email, alarms, social notifications, and unrelated notifications. Without access, every launcher and drawer feature continues to work normally.
+
+The same optional access powers a separate privacy-preserving signal on CURRENT app rows and contextual docks. A small dot means Android currently exposes at least one relevant, badge-eligible notification for that app. It never shows content or a count, does not claim to measure unread messages, and disappears only when Android removes the last relevant notification.
 
 ## Bootstrap verification
 
@@ -39,5 +41,6 @@ Veil displays the real system wallpaper through the Android window. The visual c
 - Search by application label or package name; accents do not affect matching.
 - Search also exposes direct links to common Android settings such as Wi-Fi, Bluetooth, display, sound, battery, security, and accessibility.
 - The SYSTEM section always includes an action to activate or review Ambient Continuity access.
+- That action also explains and manages the content-free application notification signals.
 - Press the keyboard search action to open the first result, or use Back / `CERRAR` to return Home.
 - Long-press an application on Home or in the drawer to open its action sheet: Open, App info, or Android's uninstall confirmation.

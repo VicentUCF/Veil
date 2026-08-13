@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.graphics.Bitmap
+import androidx.core.content.edit
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.system.ActiveNotification
@@ -31,6 +32,10 @@ class AmbientContinuityRepository(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
     private val mutableItems = MutableStateFlow<List<ContinuityItem>>(emptyList())
     val items: StateFlow<List<ContinuityItem>> = mutableItems.asStateFlow()
+    private val mutableNotificationIndicatorPackages = MutableStateFlow<Set<String>>(emptySet())
+    val notificationIndicatorPackages: StateFlow<Set<String>> =
+        mutableNotificationIndicatorPackages.asStateFlow()
+    private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     private var scope: CoroutineScope? = null
     private var accessEnabled = false
@@ -62,6 +67,15 @@ class AmbientContinuityRepository(private val context: Context) {
             }
         }
         scope.launch {
+            ContinuityNotificationService.notificationIndicatorPackages.collectLatest { packages ->
+                mutableNotificationIndicatorPackages.value = if (accessEnabled) {
+                    packages
+                } else {
+                    emptySet()
+                }
+            }
+        }
+        scope.launch {
             while (isActive) {
                 delay(EXPIRY_TICK_MILLIS)
                 publish()
@@ -89,6 +103,8 @@ class AmbientContinuityRepository(private val context: Context) {
             }
             refreshMediaSessions()
             notificationItems = ContinuityNotificationService.notifications.value.map(::toContinuityItem)
+            mutableNotificationIndicatorPackages.value =
+                ContinuityNotificationService.notificationIndicatorPackages.value
         } else {
             runCatching { mediaSessionManager.removeOnActiveSessionsChangedListener(sessionListener) }
             clearMediaCallbacks()
@@ -97,8 +113,16 @@ class AmbientContinuityRepository(private val context: Context) {
             mediaActions.clear()
             pendingTrackChanges.clear()
             notificationItems = emptyList()
+            mutableNotificationIndicatorPackages.value = emptySet()
         }
         publish()
+    }
+
+    fun isNotificationOnboardingSeen(): Boolean =
+        preferences.getBoolean(KEY_NOTIFICATION_ONBOARDING_SEEN, false)
+
+    fun markNotificationOnboardingSeen() {
+        preferences.edit { putBoolean(KEY_NOTIFICATION_ONBOARDING_SEEN, true) }
     }
 
     fun perform(itemId: String, action: ContinuityAction, positionMillis: Long? = null): Boolean {
@@ -413,6 +437,8 @@ class AmbientContinuityRepository(private val context: Context) {
     )
 
     private companion object {
+        const val PREFERENCES_NAME = "veil_notification_access"
+        const val KEY_NOTIFICATION_ONBOARDING_SEEN = "onboarding_seen_v1"
         const val MAX_TEXT_LENGTH = 120
         const val PAUSED_MEDIA_LIFETIME_MILLIS = 30 * 60 * 1000L
         const val COMPLETED_PROGRESS_LIFETIME_MILLIS = 10 * 60 * 1000L

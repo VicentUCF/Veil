@@ -84,7 +84,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.service.notification.default_filter_types"
-                android:value="ongoing|silent|alerting" />
+                android:value="conversations|ongoing|silent|alerting" />
         </service>
         <receiver
             android:name=".launcher.system.FocusAlarmReceiver"

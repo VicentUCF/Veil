@@ -29,7 +29,7 @@ All workspaces use a responsive two-column grid with 16 dp outer padding and 10 
 - **CURRENT**: the highest-ranked ongoing activity is primary. The next calendar event and current weather support it. Without continuity, time/date and a quiet state become primary.
 - **WORK**: today's agenda (up to three events) is primary and may include one compact, published work-progress state. Up to three local quick notes and a compact Pomodoro support it. It never repeats the dock applications.
 - **MEDIA**: the active/recent media session is primary, including artwork, timeline and only supported transport controls. With no session, the same stable geometry becomes a library surface. Sound/output and collection context are secondary; applications remain in the dock.
-- **SOCIAL**: the composition frames direct communication, communities, visual content and calls without duplicating application launchers. Veil never reads or renders conversation content, people, badges or unread counts, and the UI does not fill empty space with privacy notices.
+- **SOCIAL**: the composition frames direct communication, communities, visual content and calls without duplicating application launchers. Veil never reads or renders conversation content, people or unread counts. A configured app may show the same binary active-notification indicator used by the other docks; the workspace itself does not render notification content or fill empty space with privacy notices.
 - **TOOLS**: a device dashboard is primary, showing only public Android data: manufacturer/model, Android version and security patch, storage and memory. Battery and connectivity are secondary, followed by a full-width control centre with direct entries for display, sound, applications, security and all settings. Restricted controls open the relevant Android Settings surface rather than being simulated. Focus remains available from WORK.
 
 Wallpaper remains perceptible around and through every tile. Dense does not mean equal: only one tile per workspace uses the accent and prominent type.
@@ -40,6 +40,8 @@ Each context owns five declarative, stable quick-action slots. WORK, MEDIA, SOCI
 
 Applications shown in the dock must not be repeated as portal rows inside the same workspace. Workspace tiles add context—status, continuity, library, Focus or system controls—while the dock owns launching.
 
+CURRENT app rows and the four contextual docks may show one restrained binary dot when Android exposes at least one active, badge-eligible notification for that package. The dot never contains a count or content, does not claim to represent unread state and remains synchronized with Android rather than being cleared locally when the app opens. Everything, workspace tiles and the top rail do not show these indicators.
+
 Everything preserves the full alphabetical app list, search, settings shortcuts and app actions. App discovery remains cached and outside Compose.
 
 ## Real data and privacy boundaries
@@ -48,7 +50,9 @@ Everything preserves the full alphabetical app list, search, settings shortcuts 
 
 Notification-listener access is explicit and optional. Supported public signals are media sessions, navigation notifications and ongoing/completed progress notifications. Navigation outranks playing media, active progress, paused media and recently completed progress.
 
-Media may expose title, artist, artwork, position, duration and supported transport controls through `MediaSession`. Navigation and progress use only their public ongoing notifications. Private notification categories—calls, messages, email, alarms and social—remain excluded.
+Media may expose title, artist, artwork, position, duration and supported transport controls through `MediaSession`. Navigation and progress use only their public ongoing notifications. Private notification categories—calls, messages, email, alarms and social—remain excluded from Ambient Continuity.
+
+Notification indicators use a separate content-free projection of notification-listener events. Veil retains only notification keys and package names in memory, respects Android's channel badge setting where available and excludes its own notifications, ongoing/foreground services, media, navigation and progress. This signal is optional, is cleared when access is revoked or the listener disconnects, and never enters Ambient Continuity.
 
 ### Calendar
 
@@ -77,7 +81,7 @@ No data is transmitted except the disclosed Open-Meteo weather request. There ar
 - Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
 - A single `app` module and no dependency-injection or state-management framework.
 - Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
-- SharedPreferences is allowed only for Focus state, weather cache and the bounded WORK quick-note list. Do not add Room or general configuration persistence.
+- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list and the one-bit notification-access onboarding acknowledgement. Do not add Room or general configuration persistence.
 - Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
 - Prefer platform APIs. No runtime third-party dependency is currently required.
 
@@ -110,7 +114,7 @@ Do not introduce a generic widget engine or speculative plugin architecture. Eac
 
 ## Explicit non-goals
 
-Do not add Android widgets, conversation reading, notification badges, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, smart-home controls, a gesture editor or a general user-customization system.
+Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, smart-home controls, a gesture editor or a general user-customization system. The sole badge-like surface is the binary, content-free active-notification dot defined above.
 
 Do not promise access to third-party internal state such as a Kindle chapter unless that application publishes a compatible Android session or notification. Veil cannot embed or transform another application's task as if it were a desktop window.
 

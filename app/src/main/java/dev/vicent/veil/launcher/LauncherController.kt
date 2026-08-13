@@ -48,6 +48,7 @@ data class LauncherUiState(
     val isLoading: Boolean = true,
     val isDrawerOpen: Boolean = false,
     val continuityAccessGranted: Boolean = false,
+    val notificationIndicatorPackages: Set<String> = emptySet(),
     val currentContinuity: ContinuityItem? = null,
     val mediaContinuity: ContinuityItem.Media? = null,
     val workProgress: ContinuityItem.Progress? = null,
@@ -59,7 +60,7 @@ data class LauncherUiState(
     val quickNotes: List<QuickNote> = emptyList(),
     val systemStatus: SystemStatus = SystemStatus(),
     val audioMixer: AudioMixerState = AudioMixerState(),
-    val isContinuityOnboardingDismissed: Boolean = continuityOnboardingDismissed,
+    val isContinuityOnboardingDismissed: Boolean = false,
 )
 
 class LauncherController(
@@ -78,7 +79,13 @@ class LauncherController(
         ResolvedLauncherContext(definition = context, apps = emptyList())
     }
 
-    private val mutableState = MutableStateFlow(LauncherUiState(contexts = initialContexts))
+    private val mutableState = MutableStateFlow(
+        LauncherUiState(
+            contexts = initialContexts,
+            isContinuityOnboardingDismissed =
+                continuityRepository.isNotificationOnboardingSeen(),
+        ),
+    )
     val state: StateFlow<LauncherUiState> = mutableState.asStateFlow()
 
     private var hasLoaded = false
@@ -111,6 +118,11 @@ class LauncherController(
                         ),
                     )
                 }
+            }
+        }
+        scope.launch {
+            continuityRepository.notificationIndicatorPackages.collect { packages ->
+                mutableState.update { it.copy(notificationIndicatorPackages = packages) }
             }
         }
 
@@ -156,11 +168,23 @@ class LauncherController(
 
     fun setContinuityAccessGranted(granted: Boolean) {
         continuityRepository.setAccessEnabled(granted)
-        mutableState.update { it.copy(continuityAccessGranted = granted) }
+        if (granted) continuityRepository.markNotificationOnboardingSeen()
+        mutableState.update {
+            it.copy(
+                continuityAccessGranted = granted,
+                notificationIndicatorPackages = if (granted) {
+                    it.notificationIndicatorPackages
+                } else {
+                    emptySet()
+                },
+                isContinuityOnboardingDismissed =
+                    it.isContinuityOnboardingDismissed || granted,
+            )
+        }
     }
 
     fun dismissContinuityOnboarding() {
-        continuityOnboardingDismissed = true
+        continuityRepository.markNotificationOnboardingSeen()
         mutableState.update { it.copy(isContinuityOnboardingDismissed = true) }
     }
 
@@ -324,5 +348,3 @@ class LauncherController(
         }
     }
 }
-
-private var continuityOnboardingDismissed = false

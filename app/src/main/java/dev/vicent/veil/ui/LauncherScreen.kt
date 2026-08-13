@@ -34,7 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.WorkspaceDataPolicy
 import dev.vicent.veil.launcher.model.ContinuityAction
@@ -66,6 +68,7 @@ fun LauncherScreen(
     onAppInfoSelected: (LauncherApp) -> Unit,
     onAppUninstallSelected: (LauncherApp) -> Unit,
     onContinuityAccessRequested: () -> Unit,
+    onContinuityOnboardingDismissed: () -> Unit,
     onCalendarPermissionRequested: () -> Unit,
     onLocationPermissionRequested: () -> Unit,
     onClockOpenRequested: () -> Unit,
@@ -91,6 +94,7 @@ fun LauncherScreen(
     var appWithOpenActions by remember { mutableStateOf<LauncherApp?>(null) }
     var showLocationDisclosure by remember { mutableStateOf(false) }
     var showAudioVisualizerDisclosure by remember { mutableStateOf(false) }
+    var showContinuityDisclosure by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isDrawerOpen) {
         if (state.isDrawerOpen) appWithOpenActions = null
@@ -241,6 +245,7 @@ fun LauncherScreen(
                         if (WorkspaceDataPolicy.showsContextDock(renderedContext.definition.kind)) {
                             ContextDock(
                                 actions = renderedContext.quickActions,
+                                notificationIndicatorPackages = state.notificationIndicatorPackages,
                                 settingsShortcuts = settingsShortcuts,
                                 onAppSelected = onAppSelected,
                                 onAppLongPressed = { appWithOpenActions = it },
@@ -334,7 +339,7 @@ fun LauncherScreen(
                 onAppLongPressed = { appWithOpenActions = it },
                 onSettingsSelected = onSettingsSelected,
                 continuityAccessGranted = state.continuityAccessGranted,
-                onContinuityAccessSelected = onContinuityAccessRequested,
+                onContinuityAccessSelected = { showContinuityDisclosure = true },
                 onClose = onCloseDrawer,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -342,6 +347,28 @@ fun LauncherScreen(
     }
 
     BackHandler(enabled = state.isDrawerOpen, onBack = onCloseDrawer)
+
+    val showAutomaticContinuityDisclosure =
+        !state.continuityAccessGranted && !state.isContinuityOnboardingDismissed
+    if (showContinuityDisclosure || showAutomaticContinuityDisclosure) {
+        fun closeContinuityDisclosure() {
+            showContinuityDisclosure = false
+            if (showAutomaticContinuityDisclosure) onContinuityOnboardingDismissed()
+        }
+        RofiDialog(
+            title = stringResource(R.string.continuity_onboarding_title),
+            onDismiss = ::closeContinuityDisclosure,
+            actions = {
+                RofiAction("ahora no", ::closeContinuityDisclosure)
+                RofiAction("revisar ajustes", {
+                    closeContinuityDisclosure()
+                    onContinuityAccessRequested()
+                })
+            },
+        ) {
+            RofiBody(stringResource(R.string.continuity_onboarding_body))
+        }
+    }
 
     if (showLocationDisclosure) {
         RofiDialog(

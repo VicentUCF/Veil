@@ -48,6 +48,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -132,6 +134,7 @@ fun CurrentHome(
                 apps.take(5).forEach { app ->
                     HomeAppRow(
                         app = app,
+                        hasNotification = app.packageName in state.notificationIndicatorPackages,
                         onClick = { onAppSelected(app) },
                         onLongClick = { onAppLongPressed(app) },
                     )
@@ -577,6 +580,7 @@ private fun CompactMediaControl(
 @Composable
 private fun HomeAppRow(
     app: LauncherApp,
+    hasNotification: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -592,10 +596,25 @@ private fun HomeAppRow(
                 onLongClickLabel = "Opciones de ${app.label}",
                 onClick = onClick,
                 onLongClick = onLongClick,
+            )
+            .then(
+                if (hasNotification) {
+                    Modifier.semantics {
+                        stateDescription = "Con notificaciones"
+                    }
+                } else {
+                    Modifier
+                },
             ),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.width(47.dp)) {
-            ActivityGlyph(kind = app.activityGlyph(), size = 27.dp)
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(31.dp)) {
+                ActivityGlyph(kind = app.activityGlyph(), size = 27.dp)
+                AppNotificationIndicator(
+                    visible = hasNotification,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                )
+            }
         }
         BasicText(
             text = app.label.uppercase(),

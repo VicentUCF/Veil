@@ -6,6 +6,9 @@ import android.content.ComponentName
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import dev.vicent.veil.launcher.AppNotificationIndicatorCandidate
+import dev.vicent.veil.launcher.AppNotificationIndicatorPolicy
+import dev.vicent.veil.launcher.AppNotificationIndicatorTracker
 import dev.vicent.veil.launcher.NotificationContinuityKind
 import dev.vicent.veil.launcher.NotificationContinuityPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,11 +32,14 @@ internal data class ActiveNotification(
 
 class ContinuityNotificationService : NotificationListenerService() {
     override fun onListenerConnected() {
-        publish(activeNotifications.orEmpty().mapNotNull(::toActiveNotification))
+        val active = runCatching { activeNotifications.orEmpty().toList() }.getOrDefault(emptyList())
+        publish(active.mapNotNull(::toActiveNotification))
+        replaceNotificationIndicators(active, currentRanking)
     }
 
     override fun onListenerDisconnected() {
         publish(emptyList())
+        clearNotificationIndicators()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             requestRebind(ComponentName(this, ContinuityNotificationService::class.java))
         }
@@ -41,24 +47,89 @@ class ContinuityNotificationService : NotificationListenerService() {
 
     override fun onDestroy() {
         publish(emptyList())
+        clearNotificationIndicators()
         super.onDestroy()
     }
 
-    override fun onNotificationPosted(statusBarNotification: StatusBarNotification) {
+    override fun onNotificationPosted(
+        statusBarNotification: StatusBarNotification,
+        rankingMap: RankingMap,
+    ) {
         val item = toActiveNotification(statusBarNotification)
         val next = currentNotifications.value
             .filterNot { it.id == statusBarNotification.key }
             .toMutableList()
         if (item != null) next += item
         publish(next)
+        updateNotificationIndicator(statusBarNotification, rankingMap)
     }
 
     override fun onNotificationRemoved(statusBarNotification: StatusBarNotification) {
         publish(currentNotifications.value.filterNot { it.id == statusBarNotification.key })
+        indicatorTracker.remove(statusBarNotification.key)
+        publishNotificationIndicatorPackages()
+    }
+
+    override fun onNotificationRankingUpdate(rankingMap: RankingMap) {
+        val active = runCatching { activeNotifications.orEmpty().toList() }.getOrDefault(emptyList())
+        replaceNotificationIndicators(active, rankingMap)
     }
 
     private fun publish(items: List<ActiveNotification>) {
         currentNotifications.value = items.sortedByDescending(ActiveNotification::postedAtMillis)
+    }
+
+    private fun replaceNotificationIndicators(
+        notifications: List<StatusBarNotification>,
+        rankingMap: RankingMap,
+    ) {
+        indicatorTracker.replace(
+            notifications.mapNotNull { notification ->
+                notification.toIndicatorPackage(rankingMap)?.let { packageName ->
+                    notification.key to packageName
+                }
+            },
+        )
+        publishNotificationIndicatorPackages()
+    }
+
+    private fun updateNotificationIndicator(
+        notification: StatusBarNotification,
+        rankingMap: RankingMap,
+    ) {
+        indicatorTracker.update(notification.key, notification.toIndicatorPackage(rankingMap))
+        publishNotificationIndicatorPackages()
+    }
+
+    private fun StatusBarNotification.toIndicatorPackage(rankingMap: RankingMap): String? {
+        val notification = notification
+        val ranking = Ranking()
+        val hasRanking = rankingMap.getRanking(key, ranking)
+        val canShowBadge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (hasRanking) ranking.canShowBadge() else false
+        } else {
+            null
+        }
+        val candidate = AppNotificationIndicatorCandidate(
+            packageName = packageName,
+            ownPackageName = this@ContinuityNotificationService.packageName,
+            category = notification.category,
+            progressMax = notification.extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0),
+            isClearable = isClearable,
+            isOngoing = notification.flags and Notification.FLAG_ONGOING_EVENT != 0,
+            isForegroundService = notification.flags and Notification.FLAG_FOREGROUND_SERVICE != 0,
+            canShowBadge = canShowBadge,
+        )
+        return packageName.takeIf { AppNotificationIndicatorPolicy.shouldShow(candidate) }
+    }
+
+    private fun clearNotificationIndicators() {
+        indicatorTracker.clear()
+        publishNotificationIndicatorPackages()
+    }
+
+    private fun publishNotificationIndicatorPackages() {
+        currentNotificationIndicatorPackages.value = indicatorTracker.packages()
     }
 
     private fun toActiveNotification(sbn: StatusBarNotification): ActiveNotification? {
@@ -112,9 +183,13 @@ class ContinuityNotificationService : NotificationListenerService() {
 
     companion object {
         private const val MAX_TEXT_LENGTH = 120
+        private val indicatorTracker = AppNotificationIndicatorTracker()
         private val currentNotifications = MutableStateFlow<List<ActiveNotification>>(emptyList())
+        private val currentNotificationIndicatorPackages = MutableStateFlow<Set<String>>(emptySet())
         internal val notifications: StateFlow<List<ActiveNotification>> =
             currentNotifications.asStateFlow()
+        internal val notificationIndicatorPackages: StateFlow<Set<String>> =
+            currentNotificationIndicatorPackages.asStateFlow()
 
         internal fun open(id: String): Boolean {
             val intent = currentNotifications.value.firstOrNull { it.id == id }?.contentIntent

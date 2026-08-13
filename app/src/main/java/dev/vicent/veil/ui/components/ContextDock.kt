@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,6 +34,7 @@ import dev.vicent.veil.ui.theme.LocalVeilPalette
 @Composable
 fun ContextDock(
     actions: List<ResolvedQuickAction>,
+    notificationIndicatorPackages: Set<String>,
     settingsShortcuts: List<SettingsShortcut>,
     onAppSelected: (LauncherApp) -> Unit,
     onAppLongPressed: (LauncherApp) -> Unit,
@@ -55,6 +58,7 @@ fun ContextDock(
                 settingsShortcuts.firstOrNull { it.id == resolved.id }
             }
             val label = app?.label ?: setting?.label ?: return@forEach
+            val hasNotification = app != null && app.packageName in notificationIndicatorPackages
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -69,6 +73,15 @@ fun ContextDock(
                         },
                         onLongClick = app?.let { selected -> { onAppLongPressed(selected) } },
                     )
+                    .then(
+                        if (hasNotification) {
+                            Modifier.semantics {
+                                stateDescription = "Con notificaciones"
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
                     .padding(vertical = 2.dp),
             ) {
                 Box(
@@ -79,7 +92,13 @@ fun ContextDock(
                         .background(Color.White.copy(alpha = 0.055f)),
                 ) {
                     if (app != null) {
-                        LauncherAppIcon(app = app, size = 35.dp)
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(39.dp)) {
+                            LauncherAppIcon(app = app, size = 35.dp)
+                            AppNotificationIndicator(
+                                visible = hasNotification,
+                                modifier = Modifier.align(Alignment.TopEnd),
+                            )
+                        }
                     } else {
                         ActivityGlyph(ActivityGlyphKind.TOOLS, size = 24.dp)
                     }

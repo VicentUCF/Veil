@@ -154,6 +154,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onContinuityAccessRequested = ::openContinuityAccessSettings,
+                    onContinuityOnboardingDismissed = controller::dismissContinuityOnboarding,
                     onCalendarPermissionRequested = {
                         calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
                     },
