@@ -209,13 +209,13 @@ private fun HomeClockAndWeather(
     ) {
         WeatherGlyph(
             weatherCode = weather.weatherCode,
-            modifier = Modifier.offset(x = (-8).dp).size(40.dp),
+            modifier = Modifier.size(36.dp),
         )
-        Column(modifier = Modifier.padding(start = 11.dp)) {
+        Column(modifier = Modifier.padding(start = 2.dp)) {
             when (weather.availability) {
                 WeatherAvailability.AVAILABLE -> {
                     BasicText(
-                        text = "${weather.temperatureCelsius?.roundToInt() ?: "—"}°  ${homeWeatherDescription(weather.weatherCode)}",
+                        text = "${weather.temperatureCelsius?.roundToInt() ?: "—"}° ${homeWeatherDescription(weather.weatherCode)}",
                         style = TextStyle(
                             color = palette.contentPrimary,
                             fontFamily = FontFamily.SansSerif,
@@ -607,7 +607,7 @@ private fun HomeAppRow(
                 },
             ),
     ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.width(47.dp)) {
+        Box(contentAlignment = Alignment.CenterStart, modifier = Modifier.width(39.dp)) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(31.dp)) {
                 ActivityGlyph(kind = app.activityGlyph(), size = 27.dp)
                 AppNotificationIndicator(
@@ -627,7 +627,7 @@ private fun HomeAppRow(
                 fontSize = 13.sp,
                 letterSpacing = 4.2.sp,
             ),
-            modifier = Modifier.padding(start = 9.dp),
+            modifier = Modifier.padding(start = 5.dp),
         )
     }
 }

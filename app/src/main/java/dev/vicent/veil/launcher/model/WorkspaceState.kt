@@ -53,12 +53,16 @@ data class SystemStatus(
     val storageTotalBytes: Long = 0,
     val memoryAvailableBytes: Long = 0,
     val memoryTotalBytes: Long = 0,
+    val connectionType: ConnectionType = ConnectionType.NONE,
+    val connectionSignalLevel: Int? = null,
     val connectionLabel: String = "Sin conexión",
     val deviceManufacturer: String? = null,
     val deviceModel: String? = null,
     val androidVersion: String? = null,
     val securityPatch: String? = null,
 )
+
+enum class ConnectionType { NONE, WIFI, CELLULAR, ETHERNET, OTHER }
 
 enum class AudioChannel { MEDIA, RING, ALARM }
 

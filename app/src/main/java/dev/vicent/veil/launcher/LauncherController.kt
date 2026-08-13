@@ -96,6 +96,7 @@ class LauncherController(
 
         continuityRepository.start(scope)
         audioMixerRepository.start(scope)
+        systemStatusRepository.start(scope)
         calendarRepository.startObserving(scope) { mutableState.value.calendarAccessGranted }
         focusTimerRepository.startObserving(scope)
         scope.launch {
@@ -163,7 +164,6 @@ class LauncherController(
                 mutableState.update { it.copy(audioMixer = audioMixer) }
             }
         }
-        systemStatusRepository.refresh()
     }
 
     fun setContinuityAccessGranted(granted: Boolean) {
