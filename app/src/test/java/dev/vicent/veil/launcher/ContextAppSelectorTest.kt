@@ -26,6 +26,25 @@ class ContextAppSelectorTest {
     }
 
     @Test
+    fun `quick slots replace an app that becomes unavailable without moving stable neighbors`() {
+        val remaining = listOf(
+            AppCandidate("fixed.one", AppCategory.GENERAL),
+            AppCandidate("fixed.three", AppCategory.GENERAL),
+            AppCandidate("a.work", AppCategory.WORK),
+            AppCandidate("z.work", AppCategory.WORK),
+        )
+
+        val result = ContextAppSelector.selectQuickSlots(
+            kind = LauncherContextKind.WORK,
+            configuredPackageNames = listOf("fixed.one", "removed.work", "fixed.three"),
+            installedApps = remaining,
+            count = 3,
+        )
+
+        assertEquals(listOf("fixed.one", "a.work", "fixed.three"), result)
+    }
+
+    @Test
     fun `configured apps lead and automatic category apps fill remaining slots`() {
         val installed = listOf(
             AppCandidate("work.auto", AppCategory.WORK),

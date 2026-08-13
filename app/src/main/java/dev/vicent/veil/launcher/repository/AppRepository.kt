@@ -13,15 +13,26 @@ import dev.vicent.veil.launcher.AppCandidate
 import dev.vicent.veil.launcher.ContextAppSelector
 import java.text.Collator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class AppRepository(context: Context) {
     private val packageManager = context.packageManager
     private val ownPackageName = context.packageName
+    private val cacheMutex = Mutex()
     private var cachedApps: List<LauncherApp>? = null
 
     suspend fun loadLaunchableApps(): List<LauncherApp> = withContext(Dispatchers.IO) {
-        cachedApps ?: queryLaunchableApps().also { cachedApps = it }
+        cacheMutex.withLock {
+            cachedApps ?: queryLaunchableApps().also { cachedApps = it }
+        }
+    }
+
+    suspend fun refreshLaunchableApps(): List<LauncherApp> = withContext(Dispatchers.IO) {
+        cacheMutex.withLock {
+            queryLaunchableApps().also { cachedApps = it }
+        }
     }
 
     fun resolveConfiguredApps(
@@ -53,22 +64,6 @@ class AppRepository(context: Context) {
         )
         val appsByPackage = installedApps.associateBy(LauncherApp::packageName)
         selectedPackages.mapNotNull(appsByPackage::get)
-    }
-
-    suspend fun selectQuickApps(
-        kind: LauncherContextKind,
-        configuredPackageNames: List<String>,
-        installedApps: List<LauncherApp>,
-        count: Int,
-    ): List<LauncherApp> = withContext(Dispatchers.Default) {
-        val selected = ContextAppSelector.selectQuickSlots(
-            kind = kind,
-            configuredPackageNames = configuredPackageNames,
-            installedApps = installedApps.map { AppCandidate(it.packageName, it.category) },
-            count = count,
-        )
-        val byPackage = installedApps.associateBy(LauncherApp::packageName)
-        selected.mapNotNull(byPackage::get)
     }
 
     suspend fun selectAutomaticHomeApps(

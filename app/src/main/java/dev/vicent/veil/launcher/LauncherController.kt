@@ -116,45 +116,8 @@ class LauncherController(
 
         scope.launch {
             val installedApps = appRepository.loadLaunchableApps()
-            val resolvedContexts = initialContexts.map { context ->
-                val configuredPackages = context.definition.quickActions
-                    .filterIsInstance<QuickActionSpec.App>()
-                    .map(QuickActionSpec.App::packageName)
-                val apps = appRepository.selectQuickApps(
-                    kind = context.definition.kind,
-                    configuredPackageNames = configuredPackages,
-                    installedApps = installedApps,
-                    count = quickActionCount,
-                )
-                val appIterator = apps.iterator()
-                val quickActions = context.definition.quickActions.mapNotNull { spec ->
-                    when (spec) {
-                        is QuickActionSpec.App -> if (appIterator.hasNext()) {
-                            ResolvedQuickAction.App(appIterator.next())
-                        } else null
-                        is QuickActionSpec.Setting -> ResolvedQuickAction.Setting(spec.id)
-                    }
-                }.take(quickActionCount)
-                context.copy(apps = apps, quickActions = quickActions)
-            }
-
             mutableState.update { currentState ->
-                val now = System.currentTimeMillis()
-                val workPackages = resolvedContexts
-                    .firstOrNull { it.definition.kind == LauncherContextKind.WORK }
-                    ?.apps
-                    ?.mapTo(mutableSetOf(), LauncherApp::packageName)
-                    .orEmpty()
-                currentState.copy(
-                    contexts = resolvedContexts,
-                    installedApps = installedApps,
-                    isLoading = false,
-                    workProgress = ContinuityRanker.selectWorkProgress(
-                        continuityRepository.items.value,
-                        workPackages,
-                        now,
-                    ),
-                )
+                currentState.withInstalledApps(installedApps).copy(isLoading = false)
             }
         }
 
@@ -297,14 +260,67 @@ class LauncherController(
 
     fun removeUnavailableApp(packageName: String) {
         mutableState.update { currentState ->
-            currentState.copy(
-                installedApps = currentState.installedApps.filterNot {
-                    it.packageName == packageName
-                },
-                contexts = currentState.contexts.map { context ->
-                    context.copy(apps = context.apps.filterNot { it.packageName == packageName })
-                },
-            )
+            val availableApps = currentState.installedApps.filterNot {
+                it.packageName == packageName
+            }
+            currentState.withInstalledApps(availableApps)
+        }
+    }
+
+    fun refreshApps(scope: CoroutineScope) {
+        scope.launch {
+            val installedApps = appRepository.refreshLaunchableApps()
+            mutableState.update { currentState ->
+                currentState.withInstalledApps(installedApps)
+            }
+        }
+    }
+
+    private fun LauncherUiState.withInstalledApps(
+        installedApps: List<LauncherApp>,
+    ): LauncherUiState {
+        val resolvedContexts = resolveContexts(installedApps)
+        val workPackages = resolvedContexts
+            .firstOrNull { it.definition.kind == LauncherContextKind.WORK }
+            ?.apps
+            ?.mapTo(mutableSetOf(), LauncherApp::packageName)
+            .orEmpty()
+        return copy(
+            installedApps = installedApps,
+            contexts = resolvedContexts,
+            workProgress = ContinuityRanker.selectWorkProgress(
+                continuityRepository.items.value,
+                workPackages,
+                System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    private fun resolveContexts(installedApps: List<LauncherApp>): List<ResolvedLauncherContext> {
+        val appsByPackage = installedApps.associateBy(LauncherApp::packageName)
+        val candidates = installedApps.map { AppCandidate(it.packageName, it.category) }
+
+        return initialContexts.map { context ->
+            val configuredPackages = context.definition.quickActions
+                .filterIsInstance<QuickActionSpec.App>()
+                .map(QuickActionSpec.App::packageName)
+            val apps = ContextAppSelector.selectQuickSlots(
+                kind = context.definition.kind,
+                configuredPackageNames = configuredPackages,
+                installedApps = candidates,
+                count = quickActionCount,
+            ).mapNotNull(appsByPackage::get)
+            val appIterator = apps.iterator()
+            val quickActions = context.definition.quickActions.mapNotNull { spec ->
+                when (spec) {
+                    is QuickActionSpec.App -> if (appIterator.hasNext()) {
+                        ResolvedQuickAction.App(appIterator.next())
+                    } else null
+                    is QuickActionSpec.Setting -> ResolvedQuickAction.Setting(spec.id)
+                }
+            }.take(quickActionCount)
+
+            context.copy(apps = apps, quickActions = quickActions)
         }
     }
 }

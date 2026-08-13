@@ -2,7 +2,10 @@ package dev.vicent.veil
 
 import android.Manifest
 import android.app.AlarmManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
@@ -62,6 +65,18 @@ class MainActivity : ComponentActivity() {
     private var isLauncherResumed = false
     private var hasLauncherWindowFocus = false
     private var launcherPausedAtElapsedRealtime = Long.MIN_VALUE
+    private var isPackageReceiverRegistered = false
+
+    private val packageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_PACKAGE_REMOVED &&
+                intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
+            ) {
+                return
+            }
+            controller.refreshApps(lifecycleScope)
+        }
+    }
 
     private val calendarPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -93,6 +108,7 @@ class MainActivity : ComponentActivity() {
         hideStatusBar()
 
         controller.load(lifecycleScope)
+        registerPackageReceiver()
         controller.setContinuityAccessGranted(hasContinuityAccess())
         controller.setAudioVisualizerPermissionGranted(hasPermission(Manifest.permission.RECORD_AUDIO))
 
@@ -219,6 +235,11 @@ class MainActivity : ComponentActivity() {
         super.onPause()
     }
 
+    override fun onDestroy() {
+        if (isPackageReceiverRegistered) unregisterReceiver(packageReceiver)
+        super.onDestroy()
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         hasLauncherWindowFocus = hasFocus
@@ -231,6 +252,22 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+    }
+
+    private fun registerPackageReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addDataScheme("package")
+        }
+        ContextCompat.registerReceiver(
+            this,
+            packageReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED,
+        )
+        isPackageReceiverRegistered = true
     }
 
     private fun hasContinuityAccess(): Boolean =
