@@ -2,6 +2,13 @@ package dev.vicent.veil.ui.components
 
 import android.os.SystemClock
 import android.text.format.DateFormat
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,14 +28,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -49,11 +59,14 @@ import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.ui.theme.LocalVeilPalette
+import dev.vicent.veil.ui.theme.VeilMotion
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 private val PrimaryTileHeight = 220.dp
 private val SecondaryTileHeight = 154.dp
@@ -69,6 +82,7 @@ fun WorkspaceDashboard(
     onContinuityAccessRequested: () -> Unit,
     onCalendarEventSelected: (Long) -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
+    onHomeMediaDismissed: (String) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
     onFocusStart: (Int) -> Unit,
     onFocusPause: () -> Unit,
@@ -92,6 +106,7 @@ fun WorkspaceDashboard(
                 onAppLongPressed = onAppLongPressed,
                 onLocationPermissionRequested = onLocationPermissionRequested,
                 onContinuityAction = onContinuityAction,
+                onMediaDismissed = onHomeMediaDismissed,
                 onQuickButtonTap = onHomeButtonTap,
                 onQuickButtonLongPress = onHomeButtonLongPress,
                 modifier = Modifier.fillMaxSize(),
@@ -533,50 +548,122 @@ private fun MediaPlayerTile(
     onAction: (String, ContinuityAction, Long?) -> Unit,
 ) {
     val palette = LocalVeilPalette.current
+    var trackTransitionDirection by remember(media.id) { mutableIntStateOf(1) }
+    val trackKey = remember(media.id, media.title, media.subtitle, media.durationMillis) {
+        listOf(media.id, media.title, media.subtitle, media.durationMillis).joinToString("\u0000")
+    }
+    val track = remember(trackKey) {
+        MediaTrackPresentation(
+            key = trackKey,
+            title = media.title,
+            subtitle = media.subtitle,
+            appLabel = media.appLabel,
+            artwork = media.artwork?.asImageBitmap(),
+        )
+    }
+    LaunchedEffect(track.key) {
+        delay(VeilMotion.StandardDurationMillis.toLong())
+        trackTransitionDirection = 1
+    }
     CozyTile(
         label = "Ahora suena",
         prominent = true,
         modifier = Modifier.fillMaxWidth().height(PrimaryTileHeight),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            media.artwork?.let { artwork ->
-                Image(
-                    bitmap = remember(artwork) { artwork.asImageBitmap() },
-                    contentDescription = null,
-                    modifier = Modifier.size(88.dp),
+        AnimatedContent(
+            targetState = track,
+            transitionSpec = {
+                val direction = trackTransitionDirection
+                (
+                    fadeIn(
+                        tween(
+                            VeilMotion.StandardDurationMillis,
+                            easing = VeilMotion.enterEasing,
+                        ),
+                    ) + slideInHorizontally(
+                        tween(
+                            VeilMotion.StandardDurationMillis,
+                            easing = VeilMotion.standardEasing,
+                        ),
+                    ) { width -> width * direction / 5 }
+                    ).togetherWith(
+                    fadeOut(
+                        tween(
+                            VeilMotion.QuickDurationMillis,
+                            easing = VeilMotion.exitEasing,
+                        ),
+                    ) + slideOutHorizontally(
+                        tween(
+                            VeilMotion.StandardDurationMillis,
+                            easing = VeilMotion.exitEasing,
+                        ),
+                    ) { width -> -width * direction / 7 },
                 )
-                Spacer(Modifier.width(14.dp))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                TileTitle(media.title, prominent = true)
-                media.subtitle?.let { subtitle -> TileBody(subtitle) }
-                TileBody(media.appLabel)
+            },
+            label = "media track change",
+            modifier = Modifier.fillMaxWidth().height(88.dp),
+        ) { displayedTrack ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                displayedTrack.artwork?.let { artwork ->
+                    Image(
+                        bitmap = artwork,
+                        contentDescription = null,
+                        modifier = Modifier.size(88.dp),
+                    )
+                    Spacer(Modifier.width(14.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    TileTitle(displayedTrack.title, prominent = true)
+                    displayedTrack.subtitle?.let { subtitle -> TileBody(subtitle) }
+                    TileBody(displayedTrack.appLabel)
+                }
             }
         }
         val duration = media.durationMillis
-        if (duration != null) {
-            val basePosition = media.positionMillis ?: 0L
-            val elapsed = if (media.isPlaying && media.positionUpdatedAtElapsedRealtime != null) {
-                SystemClock.elapsedRealtime() - media.positionUpdatedAtElapsedRealtime
-            } else 0L
-            val position = (basePosition + elapsed).coerceIn(0L, duration)
-            SeekLine(
-                progress = position.toFloat() / duration,
-                onSeek = { ratio -> onAction(media.id, ContinuityAction.SEEK_TO, (duration * ratio).toLong()) },
-                enabled = ContinuityAction.SEEK_TO in media.supportedActions,
-            )
-            BasicText(
-                text = "${formatDuration(position)}  /  ${formatDuration(duration)}",
-                style = workspaceMonoStyle(palette.contentMuted, 9),
-                modifier = Modifier.padding(top = 5.dp),
-            )
+        val position by produceState(
+            initialValue = duration?.let { estimatedMediaPosition(media, it) } ?: 0L,
+            media.id,
+            media.positionMillis,
+            media.positionUpdatedAtElapsedRealtime,
+            media.isPlaying,
+            media.playbackSpeed,
+            duration,
+        ) {
+            if (duration != null) {
+                do {
+                    value = estimatedMediaPosition(media, duration)
+                    if (media.isPlaying) delay(MEDIA_PROGRESS_TICK_MILLIS)
+                } while (media.isPlaying && isActive)
+            }
         }
+        SeekLine(
+            progress = if (duration != null) position.toFloat() / duration else 0f,
+            onSeek = { ratio ->
+                duration?.let {
+                    onAction(media.id, ContinuityAction.SEEK_TO, (it * ratio).toLong())
+                }
+            },
+            enabled = duration != null && ContinuityAction.SEEK_TO in media.supportedActions,
+            showPosition = duration != null,
+        )
+        BasicText(
+            text = if (duration != null) {
+                "${formatDuration(position)}  /  ${formatDuration(duration)}"
+            } else {
+                "--:--  /  --:--"
+            },
+            style = workspaceMonoStyle(palette.contentMuted, 9),
+            modifier = Modifier.padding(top = 5.dp),
+        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             modifier = Modifier.padding(top = 6.dp),
         ) {
             if (ContinuityAction.SKIP_PREVIOUS in media.supportedActions) {
-                TileAction("Anterior") { onAction(media.id, ContinuityAction.SKIP_PREVIOUS, null) }
+                TileAction("Anterior") {
+                    trackTransitionDirection = -1
+                    onAction(media.id, ContinuityAction.SKIP_PREVIOUS, null)
+                }
             }
             if (ContinuityAction.TOGGLE_PLAYBACK in media.supportedActions) {
                 TileAction(if (media.isPlaying) "Pausa" else "Reproducir") {
@@ -584,11 +671,36 @@ private fun MediaPlayerTile(
                 }
             }
             if (ContinuityAction.SKIP_NEXT in media.supportedActions) {
-                TileAction("Siguiente") { onAction(media.id, ContinuityAction.SKIP_NEXT, null) }
+                TileAction("Siguiente") {
+                    trackTransitionDirection = 1
+                    onAction(media.id, ContinuityAction.SKIP_NEXT, null)
+                }
             }
         }
     }
 }
+
+private data class MediaTrackPresentation(
+    val key: String,
+    val title: String,
+    val subtitle: String?,
+    val appLabel: String,
+    val artwork: ImageBitmap?,
+)
+
+private fun estimatedMediaPosition(media: ContinuityItem.Media, durationMillis: Long): Long {
+    val basePosition = media.positionMillis ?: 0L
+    val updatedAt = media.positionUpdatedAtElapsedRealtime
+    val elapsed = if (media.isPlaying && updatedAt != null && media.playbackSpeed > 0f) {
+        (SystemClock.elapsedRealtime() - updatedAt).coerceAtLeast(0L)
+    } else {
+        0L
+    }
+    return (basePosition + (elapsed * media.playbackSpeed).toLong())
+        .coerceIn(0L, durationMillis)
+}
+
+private const val MEDIA_PROGRESS_TICK_MILLIS = 1_000L
 
 @Composable
 private fun CalendarTile(
@@ -741,7 +853,12 @@ private fun SimpleProgress(progress: Float) {
 }
 
 @Composable
-private fun SeekLine(progress: Float, onSeek: (Float) -> Unit, enabled: Boolean) {
+private fun SeekLine(
+    progress: Float,
+    onSeek: (Float) -> Unit,
+    enabled: Boolean,
+    showPosition: Boolean = true,
+) {
     val palette = LocalVeilPalette.current
     Canvas(
         modifier = Modifier
@@ -754,8 +871,10 @@ private fun SeekLine(progress: Float, onSeek: (Float) -> Unit, enabled: Boolean)
     ) {
         val y = size.height / 2f
         drawLine(palette.divider, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 2.dp.toPx())
-        drawLine(palette.accentActive, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width * progress, y), 2.dp.toPx())
-        drawCircle(palette.contentPrimary, 3.dp.toPx(), androidx.compose.ui.geometry.Offset(size.width * progress, y))
+        if (showPosition) {
+            drawLine(palette.accentActive, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width * progress, y), 2.dp.toPx())
+            drawCircle(palette.contentPrimary, 3.dp.toPx(), androidx.compose.ui.geometry.Offset(size.width * progress, y))
+        }
     }
 }
 

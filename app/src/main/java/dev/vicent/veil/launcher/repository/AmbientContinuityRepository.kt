@@ -9,6 +9,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.graphics.Bitmap
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
@@ -39,6 +40,8 @@ class AmbientContinuityRepository(private val context: Context) {
     private var callbacks: Map<MediaController, MediaController.Callback> = emptyMap()
     private val mediaObservedAt = mutableMapOf<String, Long>()
     private val mediaSignatures = mutableMapOf<String, String>()
+    private val mediaActions = mutableMapOf<String, Long>()
+    private val pendingTrackChanges = mutableMapOf<String, PendingTrackChange>()
     private val dismissedIds = mutableSetOf<String>()
 
     private val sessionListener = MediaSessionManager.OnActiveSessionsChangedListener {
@@ -91,6 +94,8 @@ class AmbientContinuityRepository(private val context: Context) {
             clearMediaCallbacks()
             controllers = emptyMap()
             mediaItems = emptyList()
+            mediaActions.clear()
+            pendingTrackChanges.clear()
             notificationItems = emptyList()
         }
         publish()
@@ -100,8 +105,8 @@ class AmbientContinuityRepository(private val context: Context) {
         val successful = when (action) {
             ContinuityAction.OPEN -> open(itemId)
             ContinuityAction.TOGGLE_PLAYBACK -> togglePlayback(itemId)
-            ContinuityAction.SKIP_PREVIOUS -> transport(itemId) { skipToPrevious() }
-            ContinuityAction.SKIP_NEXT -> transport(itemId) { skipToNext() }
+            ContinuityAction.SKIP_PREVIOUS -> skipTrack(itemId) { skipToPrevious() }
+            ContinuityAction.SKIP_NEXT -> skipTrack(itemId) { skipToNext() }
             ContinuityAction.SEEK_TO -> positionMillis?.let { position ->
                 transport(itemId) { seekTo(position) }
             } ?: false
@@ -111,6 +116,19 @@ class AmbientContinuityRepository(private val context: Context) {
             publish()
         }
         return successful
+    }
+
+    fun pauseMedia(itemId: String): Boolean {
+        val controller = controllers[itemId] ?: return false
+        val actions = controller.playbackState?.actions
+            ?.takeIf { it != 0L }
+            ?: mediaActions[itemId]
+            ?: return false
+        if (actions and (PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE) == 0L) {
+            return false
+        }
+        pendingTrackChanges.remove(itemId)
+        return runCatching { controller.transportControls.pause() }.isSuccess
     }
 
     private fun refreshMediaSessions() {
@@ -135,6 +153,9 @@ class AmbientContinuityRepository(private val context: Context) {
             }
             controller.registerCallback(callback, handler)
             nextCallbacks[controller] = callback
+            controller.playbackState?.actions
+                ?.takeIf { it != 0L }
+                ?.let { mediaActions[id] = it }
             val signature = controller.continuitySignature()
             if (mediaSignatures[id] != signature) {
                 mediaSignatures[id] = signature
@@ -144,6 +165,17 @@ class AmbientContinuityRepository(private val context: Context) {
         val activeIds = nextControllers.keys
         mediaObservedAt.keys.retainAll(activeIds)
         mediaSignatures.keys.retainAll(activeIds)
+        mediaActions.keys.retainAll(activeIds)
+        pendingTrackChanges.keys.retainAll(activeIds)
+        activeControllers.forEach { controller ->
+            val id = mediaId(controller)
+            val pending = pendingTrackChanges[id] ?: return@forEach
+            val transitionCompleted = controller.trackSignature() != pending.previousTrackSignature &&
+                controller.playbackState?.state.isPlaybackActive()
+            if (transitionCompleted || SystemClock.elapsedRealtime() >= pending.expiresAtElapsedRealtime) {
+                pendingTrackChanges.remove(id)
+            }
+        }
         controllers = nextControllers
         callbacks = nextCallbacks
         mediaItems = activeControllers.mapNotNull { controller ->
@@ -161,16 +193,25 @@ class AmbientContinuityRepository(private val context: Context) {
         val subtitle = metadata?.getText(MediaMetadata.METADATA_KEY_ARTIST)
             ?: metadata?.getText(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
             ?: metadata?.getText(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
-        val playing = state.state.isPlaybackActive()
+        val pendingTrackChange = pendingTrackChanges[id]
+            ?.takeIf { SystemClock.elapsedRealtime() < it.expiresAtElapsedRealtime }
+        val playing = state.state.isPlaybackActive() || pendingTrackChange?.keepPlaying == true
         val observedAt = mediaObservedAt[id] ?: now
+        val actions = state.actions.takeIf { it != 0L } ?: mediaActions[id] ?: 0L
         val supported = buildSet {
             add(ContinuityAction.OPEN)
-            if (state.actions and (PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE) != 0L) {
+            if (
+                actions and (
+                    PlaybackState.ACTION_PLAY or
+                        PlaybackState.ACTION_PAUSE or
+                        PlaybackState.ACTION_PLAY_PAUSE
+                    ) != 0L
+            ) {
                 add(ContinuityAction.TOGGLE_PLAYBACK)
             }
-            if (state.actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L) add(ContinuityAction.SKIP_PREVIOUS)
-            if (state.actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L) add(ContinuityAction.SKIP_NEXT)
-            if (state.actions and PlaybackState.ACTION_SEEK_TO != 0L) add(ContinuityAction.SEEK_TO)
+            if (actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L) add(ContinuityAction.SKIP_PREVIOUS)
+            if (actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L) add(ContinuityAction.SKIP_NEXT)
+            if (actions and PlaybackState.ACTION_SEEK_TO != 0L) add(ContinuityAction.SEEK_TO)
         }
         return ContinuityItem.Media(
             id = id,
@@ -189,6 +230,7 @@ class AmbientContinuityRepository(private val context: Context) {
                 ?.takeIf { it > 0L },
             positionMillis = state.position.takeIf { it >= 0L },
             positionUpdatedAtElapsedRealtime = state.lastPositionUpdateTime.takeIf { it > 0L },
+            playbackSpeed = state.playbackSpeed,
             artwork = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?.scaledToFit(MAX_ARTWORK_SIZE)
                 ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)?.scaledToFit(MAX_ARTWORK_SIZE),
@@ -254,13 +296,45 @@ class AmbientContinuityRepository(private val context: Context) {
 
     private fun togglePlayback(id: String): Boolean {
         val controller = controllers[id] ?: return false
+        val pendingTrackChange = pendingTrackChanges.remove(id)
         return runCatching {
-            if (controller.playbackState?.state.isPlaybackActive()) {
+            if (
+                controller.playbackState?.state.isPlaybackActive() ||
+                pendingTrackChange?.keepPlaying == true
+            ) {
                 controller.transportControls.pause()
             } else {
                 controller.transportControls.play()
             }
         }.isSuccess
+    }
+
+    private fun skipTrack(
+        id: String,
+        action: MediaController.TransportControls.() -> Unit,
+    ): Boolean {
+        val controller = controllers[id] ?: return false
+        val transition = PendingTrackChange(
+            previousTrackSignature = controller.trackSignature(),
+            keepPlaying = controller.playbackState?.state.isPlaybackActive(),
+            expiresAtElapsedRealtime = SystemClock.elapsedRealtime() + TRACK_CHANGE_GRACE_MILLIS,
+        )
+        pendingTrackChanges[id] = transition
+        val successful = runCatching { controller.transportControls.action() }.isSuccess
+        if (!successful) {
+            pendingTrackChanges.remove(id)
+            return false
+        }
+        handler.postDelayed(
+            {
+                if (pendingTrackChanges[id] === transition) {
+                    pendingTrackChanges.remove(id)
+                    refreshMediaSessions()
+                }
+            },
+            TRACK_CHANGE_GRACE_MILLIS,
+        )
+        return true
     }
 
     private fun transport(
@@ -311,6 +385,19 @@ class AmbientContinuityRepository(private val context: Context) {
         ).joinToString(separator = "|")
     }
 
+    private fun MediaController.trackSignature(): String {
+        val metadata = metadata
+        return listOf(
+            metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_ID),
+            metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_URI),
+            metadata?.getText(MediaMetadata.METADATA_KEY_DISPLAY_TITLE),
+            metadata?.getText(MediaMetadata.METADATA_KEY_TITLE),
+            metadata?.getText(MediaMetadata.METADATA_KEY_ARTIST),
+            metadata?.getText(MediaMetadata.METADATA_KEY_ALBUM),
+            metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION),
+        ).joinToString(separator = "|")
+    }
+
     private fun Int?.isPlaybackActive(): Boolean =
         this == PlaybackState.STATE_PLAYING ||
             this == PlaybackState.STATE_BUFFERING ||
@@ -319,11 +406,18 @@ class AmbientContinuityRepository(private val context: Context) {
     private fun mediaId(controller: MediaController) =
         "media:${controller.packageName}:${controller.sessionToken.hashCode()}"
 
+    private data class PendingTrackChange(
+        val previousTrackSignature: String,
+        val keepPlaying: Boolean,
+        val expiresAtElapsedRealtime: Long,
+    )
+
     private companion object {
         const val MAX_TEXT_LENGTH = 120
         const val PAUSED_MEDIA_LIFETIME_MILLIS = 30 * 60 * 1000L
         const val COMPLETED_PROGRESS_LIFETIME_MILLIS = 10 * 60 * 1000L
         const val EXPIRY_TICK_MILLIS = 30_000L
         const val MAX_ARTWORK_SIZE = 512
+        const val TRACK_CHANGE_GRACE_MILLIS = 1_500L
     }
 }

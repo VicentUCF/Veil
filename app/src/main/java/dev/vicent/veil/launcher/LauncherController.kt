@@ -181,6 +181,10 @@ class LauncherController(
         continuityRepository.perform(itemId, action, positionMillis)
     }
 
+    fun dismissHomeMedia(itemId: String) {
+        continuityRepository.pauseMedia(itemId)
+    }
+
     fun setCalendarAccessGranted(granted: Boolean, scope: CoroutineScope) {
         mutableState.update { it.copy(calendarAccessGranted = granted) }
         scope.launch { calendarRepository.refresh(granted) }

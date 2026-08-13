@@ -147,6 +147,7 @@ class MainActivity : ComponentActivity() {
                         }
                         controller.performContinuityAction(itemId, action, position)
                     },
+                    onHomeMediaDismissed = controller::dismissHomeMedia,
                     onFocusStartRequested = ::startFocusWithPermissions,
                     onFocusPause = controller::pauseFocus,
                     onFocusResume = controller::resumeFocus,

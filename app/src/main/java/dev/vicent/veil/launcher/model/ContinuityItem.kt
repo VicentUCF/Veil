@@ -26,6 +26,7 @@ sealed interface ContinuityItem {
         val durationMillis: Long? = null,
         val positionMillis: Long? = null,
         val positionUpdatedAtElapsedRealtime: Long? = null,
+        val playbackSpeed: Float = 1f,
         val artwork: Bitmap? = null,
     ) : ContinuityItem
 

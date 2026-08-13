@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -39,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -75,6 +78,7 @@ fun CurrentHome(
     onAppLongPressed: (LauncherApp) -> Unit,
     onLocationPermissionRequested: () -> Unit,
     onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
+    onMediaDismissed: (String) -> Unit,
     onQuickButtonTap: () -> Unit,
     onQuickButtonLongPress: () -> Unit,
     modifier: Modifier = Modifier,
@@ -94,7 +98,7 @@ fun CurrentHome(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 22.dp, end = 78.dp),
+                .padding(horizontal = 22.dp),
         ) {
             Spacer(Modifier.height(upperBreathingRoom))
             HomeClockAndWeather(
@@ -106,7 +110,10 @@ fun CurrentHome(
                 CompactMediaPlayer(
                     media = playingMedia,
                     onAction = onContinuityAction,
-                    onDismiss = { dismissedMediaId = playingMedia.id },
+                    onDismiss = {
+                        dismissedMediaId = playingMedia.id
+                        onMediaDismissed(playingMedia.id)
+                    },
                     modifier = Modifier.padding(top = 12.dp),
                 )
             } else {
@@ -286,64 +293,161 @@ private fun CompactMediaPlayer(
                     onDragCancel = { horizontalOffset = 0f },
                 )
             }
-            .clickable(enabled = ContinuityAction.OPEN in media.supportedActions) {
-                onAction(media.id, ContinuityAction.OPEN, null)
-            }
-            .padding(horizontal = 8.dp),
+            .padding(start = 8.dp, end = 4.dp),
     ) {
-        if (media.artwork != null) {
-            Image(
-                bitmap = remember(media.artwork) { media.artwork.asImageBitmap() },
-                contentDescription = null,
-                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(7.dp)),
-            )
-        } else {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(Color.White.copy(alpha = .055f)),
-            ) {
-                ActivityGlyph(ActivityGlyphKind.MEDIA, size = 22.dp, isActive = true)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clickable(
+                    enabled = ContinuityAction.OPEN in media.supportedActions,
+                    role = Role.Button,
+                    onClickLabel = "Abrir ${media.appLabel}",
+                ) {
+                    onAction(media.id, ContinuityAction.OPEN, null)
+                },
+        ) {
+            if (media.artwork != null) {
+                Image(
+                    bitmap = remember(media.artwork) { media.artwork.asImageBitmap() },
+                    contentDescription = null,
+                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(7.dp)),
+                )
+            } else {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Color.White.copy(alpha = .055f)),
+                ) {
+                    ActivityGlyph(ActivityGlyphKind.MEDIA, size = 22.dp, isActive = true)
+                }
+            }
+            Column(modifier = Modifier.weight(1f).padding(start = 9.dp, end = 4.dp)) {
+                BasicText(
+                    text = media.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(
+                        color = palette.contentPrimary,
+                        fontFamily = FontFamily.SansSerif,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                )
+                BasicText(
+                    text = media.subtitle ?: media.appLabel,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(
+                        color = palette.contentMuted,
+                        fontFamily = FontFamily.SansSerif,
+                        fontSize = 9.sp,
+                    ),
+                    modifier = Modifier.padding(top = 3.dp),
+                )
             }
         }
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 10.dp)) {
-            BasicText(
-                text = media.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = TextStyle(
-                    color = palette.contentPrimary,
-                    fontFamily = FontFamily.SansSerif,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                ),
-            )
-            BasicText(
-                text = media.subtitle ?: media.appLabel,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = TextStyle(
-                    color = palette.contentMuted,
-                    fontFamily = FontFamily.SansSerif,
-                    fontSize = 9.sp,
-                ),
-                modifier = Modifier.padding(top = 3.dp),
-            )
-        }
-        if (ContinuityAction.TOGGLE_PLAYBACK in media.supportedActions) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(42.dp)
-                    .clickable(role = Role.Button, onClickLabel = "Pausar") {
-                        onAction(media.id, ContinuityAction.TOGGLE_PLAYBACK, null)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (ContinuityAction.SKIP_PREVIOUS in media.supportedActions) {
+                CompactMediaControl(
+                    kind = CompactMediaControlKind.PREVIOUS,
+                    label = "Canción anterior",
+                    onClick = { onAction(media.id, ContinuityAction.SKIP_PREVIOUS, null) },
+                )
+            }
+            if (ContinuityAction.TOGGLE_PLAYBACK in media.supportedActions) {
+                CompactMediaControl(
+                    kind = if (media.isPlaying) {
+                        CompactMediaControlKind.PAUSE
+                    } else {
+                        CompactMediaControlKind.PLAY
                     },
-            ) {
-                Canvas(Modifier.size(14.dp)) {
-                    drawRect(palette.contentPrimary, topLeft = center.copy(x = size.width * .24f, y = 0f), size = size.copy(width = 2.dp.toPx()))
-                    drawRect(palette.contentPrimary, topLeft = center.copy(x = size.width * .66f, y = 0f), size = size.copy(width = 2.dp.toPx()))
+                    label = if (media.isPlaying) "Pausar" else "Reproducir",
+                    onClick = { onAction(media.id, ContinuityAction.TOGGLE_PLAYBACK, null) },
+                )
+            }
+            if (ContinuityAction.SKIP_NEXT in media.supportedActions) {
+                CompactMediaControl(
+                    kind = CompactMediaControlKind.NEXT,
+                    label = "Canción siguiente",
+                    onClick = { onAction(media.id, ContinuityAction.SKIP_NEXT, null) },
+                )
+            }
+        }
+    }
+}
+
+private enum class CompactMediaControlKind { PREVIOUS, PLAY, PAUSE, NEXT }
+
+@Composable
+private fun CompactMediaControl(
+    kind: CompactMediaControlKind,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val color = LocalVeilPalette.current.contentPrimary
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(38.dp)
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
+    ) {
+        Canvas(Modifier.size(16.dp)) {
+            val strokeWidth = 1.6.dp.toPx()
+            when (kind) {
+                CompactMediaControlKind.PREVIOUS,
+                CompactMediaControlKind.NEXT,
+                -> {
+                    val pointsLeft = kind == CompactMediaControlKind.PREVIOUS
+                    val barX = if (pointsLeft) size.width * .18f else size.width * .82f
+                    drawLine(
+                        color = color,
+                        start = Offset(barX, size.height * .18f),
+                        end = Offset(barX, size.height * .82f),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round,
+                    )
+                    val path = Path().apply {
+                        if (pointsLeft) {
+                            moveTo(size.width * .72f, size.height * .17f)
+                            lineTo(size.width * .28f, size.height * .5f)
+                            lineTo(size.width * .72f, size.height * .83f)
+                        } else {
+                            moveTo(size.width * .28f, size.height * .17f)
+                            lineTo(size.width * .72f, size.height * .5f)
+                            lineTo(size.width * .28f, size.height * .83f)
+                        }
+                        close()
+                    }
+                    drawPath(path, color)
+                }
+
+                CompactMediaControlKind.PLAY -> {
+                    val path = Path().apply {
+                        moveTo(size.width * .28f, size.height * .14f)
+                        lineTo(size.width * .78f, size.height * .5f)
+                        lineTo(size.width * .28f, size.height * .86f)
+                        close()
+                    }
+                    drawPath(path, color)
+                }
+
+                CompactMediaControlKind.PAUSE -> {
+                    drawRoundRect(
+                        color = color,
+                        topLeft = Offset(size.width * .23f, size.height * .15f),
+                        size = androidx.compose.ui.geometry.Size(size.width * .18f, size.height * .7f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(strokeWidth / 2f),
+                    )
+                    drawRoundRect(
+                        color = color,
+                        topLeft = Offset(size.width * .59f, size.height * .15f),
+                        size = androidx.compose.ui.geometry.Size(size.width * .18f, size.height * .7f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(strokeWidth / 2f),
+                    )
                 }
             }
         }
