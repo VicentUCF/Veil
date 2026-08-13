@@ -9,6 +9,7 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
+import android.graphics.Bitmap
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.system.ActiveNotification
@@ -95,10 +96,15 @@ class AmbientContinuityRepository(private val context: Context) {
         publish()
     }
 
-    fun perform(itemId: String, action: ContinuityAction): Boolean {
+    fun perform(itemId: String, action: ContinuityAction, positionMillis: Long? = null): Boolean {
         val successful = when (action) {
             ContinuityAction.OPEN -> open(itemId)
             ContinuityAction.TOGGLE_PLAYBACK -> togglePlayback(itemId)
+            ContinuityAction.SKIP_PREVIOUS -> transport(itemId) { skipToPrevious() }
+            ContinuityAction.SKIP_NEXT -> transport(itemId) { skipToNext() }
+            ContinuityAction.SEEK_TO -> positionMillis?.let { position ->
+                transport(itemId) { seekTo(position) }
+            } ?: false
         }
         if (!successful) {
             dismissedIds += itemId
@@ -162,6 +168,9 @@ class AmbientContinuityRepository(private val context: Context) {
             if (state.actions and (PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE) != 0L) {
                 add(ContinuityAction.TOGGLE_PLAYBACK)
             }
+            if (state.actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L) add(ContinuityAction.SKIP_PREVIOUS)
+            if (state.actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L) add(ContinuityAction.SKIP_NEXT)
+            if (state.actions and PlaybackState.ACTION_SEEK_TO != 0L) add(ContinuityAction.SEEK_TO)
         }
         return ContinuityItem.Media(
             id = id,
@@ -176,6 +185,13 @@ class AmbientContinuityRepository(private val context: Context) {
             isVideo = packageName.contains("youtube", ignoreCase = true) ||
                 packageName.contains("video", ignoreCase = true) ||
                 packageName.contains("netflix", ignoreCase = true),
+            durationMillis = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION)
+                ?.takeIf { it > 0L },
+            positionMillis = state.position.takeIf { it >= 0L },
+            positionUpdatedAtElapsedRealtime = state.lastPositionUpdateTime.takeIf { it > 0L },
+            artwork = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                ?.scaledToFit(MAX_ARTWORK_SIZE)
+                ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)?.scaledToFit(MAX_ARTWORK_SIZE),
         )
     }
 
@@ -247,6 +263,25 @@ class AmbientContinuityRepository(private val context: Context) {
         }.isSuccess
     }
 
+    private fun transport(
+        id: String,
+        action: MediaController.TransportControls.() -> Unit,
+    ): Boolean {
+        val controller = controllers[id] ?: return false
+        return runCatching { controller.transportControls.action() }.isSuccess
+    }
+
+    private fun Bitmap.scaledToFit(maxSize: Int): Bitmap {
+        if (width <= maxSize && height <= maxSize) return this
+        val scale = minOf(maxSize.toFloat() / width, maxSize.toFloat() / height)
+        return Bitmap.createScaledBitmap(
+            this,
+            (width * scale).toInt().coerceAtLeast(1),
+            (height * scale).toInt().coerceAtLeast(1),
+            true,
+        )
+    }
+
     private fun clearMediaCallbacks() {
         callbacks.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
         callbacks = emptyMap()
@@ -289,5 +324,6 @@ class AmbientContinuityRepository(private val context: Context) {
         const val PAUSED_MEDIA_LIFETIME_MILLIS = 30 * 60 * 1000L
         const val COMPLETED_PROGRESS_LIFETIME_MILLIS = 10 * 60 * 1000L
         const val EXPIRY_TICK_MILLIS = 30_000L
+        const val MAX_ARTWORK_SIZE = 512
     }
 }

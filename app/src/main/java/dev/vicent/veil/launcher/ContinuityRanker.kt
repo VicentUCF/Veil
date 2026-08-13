@@ -19,6 +19,18 @@ object ContinuityRanker {
             compareBy<ContinuityItem.Media> { if (it.isPlaying) 0 else 1 },
         )
 
+    fun selectWorkProgress(
+        items: List<ContinuityItem>,
+        workPackages: Set<String>,
+        nowMillis: Long,
+    ): ContinuityItem.Progress? = active(items, nowMillis)
+        .filterIsInstance<ContinuityItem.Progress>()
+        .filter { it.packageName in workPackages }
+        .minWithOrNull(
+            compareBy<ContinuityItem.Progress> { if (it.isComplete) 1 else 0 }
+                .thenByDescending(ContinuityItem.Progress::updatedAtMillis),
+        )
+
     private fun active(items: List<ContinuityItem>, nowMillis: Long) = items.filter { item ->
         val expiresAt = item.expiresAtMillis
         expiresAt == null || expiresAt > nowMillis

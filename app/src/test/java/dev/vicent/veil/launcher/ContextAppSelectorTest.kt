@@ -7,6 +7,25 @@ import kotlin.test.assertEquals
 
 class ContextAppSelectorTest {
     @Test
+    fun `quick slots preserve configured positions and fill missing apps deterministically`() {
+        val installed = listOf(
+            AppCandidate("z.work", AppCategory.WORK),
+            AppCandidate("fixed.one", AppCategory.GENERAL),
+            AppCandidate("a.work", AppCategory.WORK),
+            AppCandidate("fixed.three", AppCategory.GENERAL),
+        )
+
+        val result = ContextAppSelector.selectQuickSlots(
+            kind = LauncherContextKind.WORK,
+            configuredPackageNames = listOf("fixed.one", "missing", "fixed.three"),
+            installedApps = installed,
+            count = 3,
+        )
+
+        assertEquals(listOf("fixed.one", "a.work", "fixed.three"), result)
+    }
+
+    @Test
     fun `configured apps lead and automatic category apps fill remaining slots`() {
         val installed = listOf(
             AppCandidate("work.auto", AppCategory.WORK),

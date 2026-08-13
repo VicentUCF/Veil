@@ -43,11 +43,11 @@ fun TopBar(
             .fillMaxWidth()
             .windowInsetsPadding(
                 WindowInsets.displayCutout.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                    WindowInsetsSides.Horizontal,
                 ),
             )
-            .height(32.dp)
-            .padding(horizontal = 12.dp),
+            .height(30.dp)
+            .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

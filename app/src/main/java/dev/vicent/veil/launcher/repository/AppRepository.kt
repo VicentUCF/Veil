@@ -55,6 +55,22 @@ class AppRepository(context: Context) {
         selectedPackages.mapNotNull(appsByPackage::get)
     }
 
+    suspend fun selectQuickApps(
+        kind: LauncherContextKind,
+        configuredPackageNames: List<String>,
+        installedApps: List<LauncherApp>,
+        count: Int,
+    ): List<LauncherApp> = withContext(Dispatchers.Default) {
+        val selected = ContextAppSelector.selectQuickSlots(
+            kind = kind,
+            configuredPackageNames = configuredPackageNames,
+            installedApps = installedApps.map { AppCandidate(it.packageName, it.category) },
+            count = count,
+        )
+        val byPackage = installedApps.associateBy(LauncherApp::packageName)
+        selected.mapNotNull(byPackage::get)
+    }
+
     suspend fun selectAutomaticHomeApps(
         installedApps: List<LauncherApp>,
         count: Int,

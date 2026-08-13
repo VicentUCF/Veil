@@ -5,8 +5,17 @@ import dev.vicent.veil.launcher.model.LauncherContext
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.LauncherContextKind
+import dev.vicent.veil.launcher.model.CalendarEventSummary
+import dev.vicent.veil.launcher.model.FocusTimerState
+import dev.vicent.veil.launcher.model.QuickActionSpec
+import dev.vicent.veil.launcher.model.SystemStatus
+import dev.vicent.veil.launcher.model.WeatherState
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
 import dev.vicent.veil.launcher.repository.AppRepository
+import dev.vicent.veil.launcher.repository.CalendarRepository
+import dev.vicent.veil.launcher.repository.FocusTimerRepository
+import dev.vicent.veil.launcher.repository.SystemStatusRepository
+import dev.vicent.veil.launcher.repository.WeatherRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +26,13 @@ import kotlinx.coroutines.launch
 data class ResolvedLauncherContext(
     val definition: LauncherContext,
     val apps: List<LauncherApp>,
+    val quickActions: List<ResolvedQuickAction> = emptyList(),
 )
+
+sealed interface ResolvedQuickAction {
+    data class App(val app: LauncherApp) : ResolvedQuickAction
+    data class Setting(val id: String) : ResolvedQuickAction
+}
 
 data class LauncherUiState(
     val contexts: List<ResolvedLauncherContext>,
@@ -28,14 +43,25 @@ data class LauncherUiState(
     val continuityAccessGranted: Boolean = false,
     val currentContinuity: ContinuityItem? = null,
     val mediaContinuity: ContinuityItem.Media? = null,
+    val workProgress: ContinuityItem.Progress? = null,
+    val calendarEvents: List<CalendarEventSummary> = emptyList(),
+    val calendarAccessGranted: Boolean = false,
+    val weather: WeatherState = WeatherState(),
+    val locationAccessGranted: Boolean = false,
+    val focusTimer: FocusTimerState = FocusTimerState(),
+    val systemStatus: SystemStatus = SystemStatus(),
     val isContinuityOnboardingDismissed: Boolean = continuityOnboardingDismissed,
 )
 
 class LauncherController(
     private val appRepository: AppRepository,
     private val continuityRepository: AmbientContinuityRepository,
+    private val calendarRepository: CalendarRepository,
+    private val weatherRepository: WeatherRepository,
+    private val focusTimerRepository: FocusTimerRepository,
+    private val systemStatusRepository: SystemStatusRepository,
     contexts: List<LauncherContext>,
-    private val automaticHomeAppCount: Int,
+    private val quickActionCount: Int,
 ) {
     private val initialContexts = contexts.map { context ->
         ResolvedLauncherContext(definition = context, apps = emptyList())
@@ -51,6 +77,8 @@ class LauncherController(
         hasLoaded = true
 
         continuityRepository.start(scope)
+        calendarRepository.startObserving(scope) { mutableState.value.calendarAccessGranted }
+        focusTimerRepository.startObserving(scope)
         scope.launch {
             continuityRepository.items.collect { items ->
                 val now = System.currentTimeMillis()
@@ -58,6 +86,15 @@ class LauncherController(
                     currentState.copy(
                         currentContinuity = ContinuityRanker.selectCurrent(items, now),
                         mediaContinuity = ContinuityRanker.selectMedia(items, now),
+                        workProgress = ContinuityRanker.selectWorkProgress(
+                            items = items,
+                            workPackages = currentState.contexts
+                                .firstOrNull { it.definition.kind == LauncherContextKind.WORK }
+                                ?.apps
+                                ?.mapTo(mutableSetOf(), LauncherApp::packageName)
+                                .orEmpty(),
+                            nowMillis = now,
+                        ),
                     )
                 }
             }
@@ -66,42 +103,68 @@ class LauncherController(
         scope.launch {
             val installedApps = appRepository.loadLaunchableApps()
             val resolvedContexts = initialContexts.map { context ->
-                val configuredApps = appRepository.resolveConfiguredApps(
-                    packageNames = context.definition.apps,
+                val configuredPackages = context.definition.quickActions
+                    .filterIsInstance<QuickActionSpec.App>()
+                    .map(QuickActionSpec.App::packageName)
+                val apps = appRepository.selectQuickApps(
+                    kind = context.definition.kind,
+                    configuredPackageNames = configuredPackages,
                     installedApps = installedApps,
+                    count = quickActionCount,
                 )
-                val apps = when (context.definition.kind) {
-                    LauncherContextKind.CURRENT -> {
-                        val automaticApps = appRepository.selectAutomaticHomeApps(
-                            installedApps = installedApps,
-                            count = automaticHomeAppCount,
-                        )
-                        (configuredApps + automaticApps)
-                            .distinctBy(LauncherApp::packageName)
-                            .take(automaticHomeAppCount)
+                val appIterator = apps.iterator()
+                val quickActions = context.definition.quickActions.mapNotNull { spec ->
+                    when (spec) {
+                        is QuickActionSpec.App -> if (appIterator.hasNext()) {
+                            ResolvedQuickAction.App(appIterator.next())
+                        } else null
+                        is QuickActionSpec.Setting -> ResolvedQuickAction.Setting(spec.id)
                     }
-                    LauncherContextKind.WORK,
-                    LauncherContextKind.MEDIA,
-                    LauncherContextKind.SOCIAL,
-                    -> appRepository.selectContextApps(
-                        kind = context.definition.kind,
-                        configuredApps = configuredApps,
-                        installedApps = installedApps,
-                        count = automaticHomeAppCount,
-                    )
-                    LauncherContextKind.TOOLS -> emptyList()
-                }
-                context.copy(apps = apps)
+                }.take(quickActionCount)
+                context.copy(apps = apps, quickActions = quickActions)
             }
 
             mutableState.update { currentState ->
+                val now = System.currentTimeMillis()
+                val workPackages = resolvedContexts
+                    .firstOrNull { it.definition.kind == LauncherContextKind.WORK }
+                    ?.apps
+                    ?.mapTo(mutableSetOf(), LauncherApp::packageName)
+                    .orEmpty()
                 currentState.copy(
                     contexts = resolvedContexts,
                     installedApps = installedApps,
                     isLoading = false,
+                    workProgress = ContinuityRanker.selectWorkProgress(
+                        continuityRepository.items.value,
+                        workPackages,
+                        now,
+                    ),
                 )
             }
         }
+
+        scope.launch {
+            calendarRepository.events.collect { events ->
+                mutableState.update { it.copy(calendarEvents = events) }
+            }
+        }
+        scope.launch {
+            weatherRepository.state.collect { weather ->
+                mutableState.update { it.copy(weather = weather) }
+            }
+        }
+        scope.launch {
+            focusTimerRepository.state.collect { focus ->
+                mutableState.update { it.copy(focusTimer = focus) }
+            }
+        }
+        scope.launch {
+            systemStatusRepository.status.collect { systemStatus ->
+                mutableState.update { it.copy(systemStatus = systemStatus) }
+            }
+        }
+        systemStatusRepository.refresh()
     }
 
     fun setContinuityAccessGranted(granted: Boolean) {
@@ -114,9 +177,37 @@ class LauncherController(
         mutableState.update { it.copy(isContinuityOnboardingDismissed = true) }
     }
 
-    fun performContinuityAction(itemId: String, action: ContinuityAction) {
-        continuityRepository.perform(itemId, action)
+    fun performContinuityAction(itemId: String, action: ContinuityAction, positionMillis: Long? = null) {
+        continuityRepository.perform(itemId, action, positionMillis)
     }
+
+    fun setCalendarAccessGranted(granted: Boolean, scope: CoroutineScope) {
+        mutableState.update { it.copy(calendarAccessGranted = granted) }
+        scope.launch { calendarRepository.refresh(granted) }
+    }
+
+    fun setLocationAccessGranted(granted: Boolean, scope: CoroutineScope) {
+        mutableState.update { it.copy(locationAccessGranted = granted) }
+        scope.launch { weatherRepository.refresh(granted) }
+    }
+
+    fun refreshVisibleData(scope: CoroutineScope) {
+        systemStatusRepository.refresh()
+        scope.launch { calendarRepository.refresh(mutableState.value.calendarAccessGranted) }
+        if (mutableState.value.contexts.getOrNull(mutableState.value.activeContextIndex)
+                ?.definition?.kind == LauncherContextKind.CURRENT
+        ) {
+            scope.launch { weatherRepository.refresh(mutableState.value.locationAccessGranted) }
+        }
+    }
+
+    fun openCalendarEvent(eventId: Long) = calendarRepository.open(eventId)
+
+    fun startFocus(minutes: Int) = focusTimerRepository.start(minutes)
+    fun pauseFocus() = focusTimerRepository.pause()
+    fun resumeFocus() = focusTimerRepository.resume()
+    fun finishFocus() = focusTimerRepository.finish()
+    fun restoreFocusAlarm() = focusTimerRepository.restoreScheduledAlarm()
 
     fun openDrawer() {
         mutableState.update { currentState -> currentState.copy(isDrawerOpen = true) }
@@ -132,9 +223,20 @@ class LauncherController(
         }
     }
 
+    fun handleHomePressed() {
+        mutableState.update { currentState ->
+            when {
+                currentState.isDrawerOpen -> currentState.copy(isDrawerOpen = false)
+                else -> currentState.copy(isDrawerOpen = true)
+            }
+        }
+    }
+
     fun selectContext(index: Int) {
         if (index !in mutableState.value.contexts.indices) return
-        mutableState.update { currentState -> currentState.copy(activeContextIndex = index) }
+        mutableState.update { currentState ->
+            currentState.copy(activeContextIndex = index)
+        }
     }
 
     fun stepContext(direction: Int) {

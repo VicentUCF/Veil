@@ -8,6 +8,21 @@ import kotlin.test.assertNull
 
 class ContinuityRankerTest {
     @Test
+    fun `work progress only accepts packages assigned to work`() {
+        val work = progress("work", "com.work", 20L)
+        val personal = progress("personal", "com.personal", 30L)
+
+        assertEquals(
+            work,
+            ContinuityRanker.selectWorkProgress(
+                listOf(personal, work),
+                setOf("com.work"),
+                nowMillis = 40L,
+            ),
+        )
+    }
+
+    @Test
     fun `current prioritizes navigation then playing media then progress`() {
         val items = listOf(
             progress("progress", updatedAt = 300),
@@ -70,10 +85,15 @@ class ContinuityRankerTest {
         supportedActions = setOf(ContinuityAction.OPEN),
     )
 
-    private fun progress(id: String, updatedAt: Long, complete: Boolean = false) =
+    private fun progress(
+        id: String,
+        packageName: String = "download.app",
+        updatedAt: Long,
+        complete: Boolean = false,
+    ) =
         ContinuityItem.Progress(
             id = id,
-            packageName = "download.app",
+            packageName = packageName,
             appLabel = "Downloads",
             title = id,
             subtitle = null,

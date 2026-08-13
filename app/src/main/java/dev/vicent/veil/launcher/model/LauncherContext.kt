@@ -4,8 +4,13 @@ data class LauncherContext(
     val id: String,
     val label: String,
     val kind: LauncherContextKind,
-    val apps: List<String> = emptyList(),
+    val quickActions: List<QuickActionSpec> = emptyList(),
 )
+
+sealed interface QuickActionSpec {
+    data class App(val packageName: String) : QuickActionSpec
+    data class Setting(val id: String) : QuickActionSpec
+}
 
 enum class LauncherContextKind {
     CURRENT,

@@ -1,0 +1,97 @@
+package dev.vicent.veil.launcher
+
+import dev.vicent.veil.launcher.model.CalendarEventSummary
+import dev.vicent.veil.launcher.model.FocusTimerStatus
+import dev.vicent.veil.launcher.model.LauncherContextKind
+import java.util.Calendar
+import org.junit.Test
+import kotlin.test.assertEquals
+
+class WorkspaceDataPolicyTest {
+    @Test
+    fun `dock stays hidden only in current`() {
+        assertEquals(false, WorkspaceDataPolicy.showsContextDock(LauncherContextKind.CURRENT))
+        assertEquals(
+            listOf(true, true, true, true),
+            listOf(
+                LauncherContextKind.WORK,
+                LauncherContextKind.MEDIA,
+                LauncherContextKind.SOCIAL,
+                LauncherContextKind.TOOLS,
+            ).map(WorkspaceDataPolicy::showsContextDock),
+        )
+    }
+
+    @Test
+    fun `work agenda shows at most three events from today`() {
+        val now = at(dayOffset = 0, hour = 9)
+        val events = listOf(
+            event("one", at(0, 10)),
+            event("two", at(0, 11)),
+            event("three", at(0, 12)),
+            event("four", at(0, 13)),
+            event("tomorrow", at(1, 9)),
+        )
+
+        assertEquals(
+            listOf("one", "two", "three"),
+            WorkspaceDataPolicy.workEvents(events, now).map(CalendarEventSummary::title),
+        )
+    }
+
+    @Test
+    fun `work agenda falls back to only the next available event`() {
+        val now = at(dayOffset = 0, hour = 18)
+        val events = listOf(
+            event("next", at(1, 9)),
+            event("later", at(1, 11)),
+        )
+
+        assertEquals(
+            listOf("next"),
+            WorkspaceDataPolicy.workEvents(events, now).map(CalendarEventSummary::title),
+        )
+    }
+
+    @Test
+    fun `running focus derives remaining time from its deadline`() {
+        assertEquals(
+            45_000L,
+            WorkspaceDataPolicy.focusRemainingMillis(
+                status = FocusTimerStatus.RUNNING,
+                endAtMillis = 100_000L,
+                storedRemainingMillis = 70_000L,
+                nowMillis = 55_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun `paused focus keeps its stored remaining time`() {
+        assertEquals(
+            70_000L,
+            WorkspaceDataPolicy.focusRemainingMillis(
+                status = FocusTimerStatus.PAUSED,
+                endAtMillis = 100_000L,
+                storedRemainingMillis = 70_000L,
+                nowMillis = 95_000L,
+            ),
+        )
+    }
+
+    private fun event(title: String, startMillis: Long) = CalendarEventSummary(
+        id = title.hashCode().toLong(),
+        title = title,
+        startMillis = startMillis,
+        endMillis = startMillis + 30 * 60_000L,
+    )
+
+    private fun at(dayOffset: Int, hour: Int): Long = Calendar.getInstance().run {
+        add(Calendar.DAY_OF_YEAR, dayOffset)
+        set(Calendar.HOUR_OF_DAY, hour)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+        timeInMillis
+    }
+}

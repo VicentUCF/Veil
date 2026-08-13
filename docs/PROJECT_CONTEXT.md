@@ -1,241 +1,120 @@
-# Veil — Android launcher bootstrap context
+# Veil — product and implementation context
 
 ## Product statement
 
 > Qtile philosophy translated to touch, not copied to Android.
 
-Veil is a native Android launcher inspired by Arch Linux and Qtile. It must feel like a quiet operating-system layer in which the wallpaper is the primary visual content and interface elements appear only when useful.
+Veil is a native Android launcher that behaves as a quiet operating-system layer. Its defining idea is **Ambient Continuity**: Home remembers public Android activities and helps the user resume them. Nothing starts on Home; everything continues.
 
-Veil's defining interaction philosophy is **Ambient Continuity**: Home is the current context, not a dashboard. When Android exposes a trustworthy ongoing activity, Veil answers with one relevant thing that helps the user continue it. Nothing starts on Home; everything continues.
-
-The v0.1 rule is:
-
-> Wallpaper first. Five useful actions. One tap. Nothing else unless it earns its place.
+Veil uses five stable context lenses—CURRENT, WORK, MEDIA, SOCIAL and TOOLS. Each lens has its own **Cozy Workspace**: an asymmetric arrangement of dark translucent tiles inspired by Qtile windows with picom. A workspace may contain several useful surfaces, but exactly one surface owns visual priority.
 
 ## Decision hierarchy
 
-When two solutions are possible, prioritize:
+Prioritize reliability as an Android Home app, one-tap usability, trustworthy data, wallpaper visibility, clear hierarchy, touch ergonomics, performance, and only then decorative polish. Do not present unavailable or inferred data as real.
 
-1. Reliability as an Android Home app.
-2. One-tap usability.
-3. Wallpaper visibility.
-4. Visual silence.
-5. Clear hierarchy.
-6. Touch ergonomics.
-7. Implementation simplicity.
-8. Extensibility.
-9. Decorative polish.
+## Interaction model
 
-Do not overarchitect. The working priority is real behavior, then UX, design, architecture, and only later future features.
+- The thin transparent top rail is aligned to the physical top edge, selects the five contexts and shows restrained system status.
+- Horizontal swipes move between contexts.
+- WORK, MEDIA, SOCIAL and TOOLS always show a fixed five-slot application dock. CURRENT deliberately hides it so the primary Home remains quiet.
+- An upward swipe on Home opens Everything directly; Search remains part of Everything.
+- Back closes Everything. Home closes Everything first and opens it on the next press.
+- Tile geometry is stable. Missing data becomes an honest empty/permission/portal state instead of rearranging the screen.
+- Motion is functional and remains within roughly 120–200 ms.
 
-## Product and UX principles
+## Cozy Workspaces
 
-- Wallpaper is content, not merely a background; keep roughly 70–90% of the screen visually free.
-- Use a quiet interface with no attention-seeking decoration, permanent badges, or unnecessary motion.
-- Reveal layers progressively: Current, Context, Everything, Search.
-- Model activities as purposeful context lenses—CURRENT, WORK, MEDIA, SOCIAL, and TOOLS—not traditional pages of icons.
-- Keep 5–8 frequent actions on Home and make them available with one tap.
-- Search is a future power tool, not the primary interaction model.
-- Use an editorial, deliberately asymmetric layout with strong alignment and negative space.
-- Typography has more visual importance than icons; do not imitate a terminal or use fake shell decoration.
-- Color communicates state only. Centralize off-white, soft gray, muted blue, error, and success tokens.
-- Motion must be short, discreet, and functional. Do not add decorative animation in v0.1.
-- Configuration should remain declarative through ordinary Kotlin structures. Do not create a DSL in v0.1.
-- Touch is primary; keyboard interaction is optional.
-- Only one continuity surface may have visual priority at a time. If no trustworthy activity exists, the context falls back to its useful actions.
+All workspaces use a responsive two-column grid with 16 dp outer padding and 10 dp gaps. Below 360 dp, paired tiles stack without changing their semantic order. Dominant and secondary tiles use shared height tokens so adjacent pieces keep the same baseline even when their contents differ. Tiles use dark 70–82% opaque fills, one-pixel low-contrast borders and moderate 12 dp corners. There is no runtime blur, decorative gradient, invented third-party data or desktop window chrome.
 
-Veil is not a literal Qtile clone, a terminal-themed UI, a Niagara clone, a conventional Material launcher, a widget dashboard, or a desktop layout transplanted to mobile.
+- **CURRENT**: the highest-ranked ongoing activity is primary. The next calendar event and current weather support it. Without continuity, time/date and a quiet state become primary.
+- **WORK**: today's agenda (up to three events) is primary. A terminal-styled status tile uses only real Veil state—agenda count and published work progress—and Focus supports it. It never repeats the dock applications.
+- **MEDIA**: the active/recent media session is primary, including artwork, timeline and only supported transport controls. With no session, the same stable geometry becomes a library surface. Sound/output and collection context are secondary; applications remain in the dock.
+- **SOCIAL**: the composition frames direct communication, communities, visual content and calls without duplicating application launchers. Veil never reads or renders conversation content, people, badges or unread counts, and the UI does not fill empty space with privacy notices.
+- **TOOLS**: Veil Focus is primary. Battery/storage and connectivity are secondary, followed by a full-width control centre with direct entries for display, sound, applications, security and all settings. Restricted controls open the relevant Android Settings surface rather than being simulated.
 
-## v0.1 scope
+Wallpaper remains perceptible around and through every tile. Dense does not mean equal: only one tile per workspace uses the accent and prominent type.
 
-### Launcher behavior
+## Context dock and applications
 
-- Install as an Android application.
-- Register as a real Home candidate.
-- Allow Android to select it as the default launcher.
-- Return to Veil through the Home action.
-- Discover launchable applications installed on the device.
-- Launch real applications.
-- Open the complete application drawer with an upward gesture from Home.
-- Open the drawer when Home is pressed while Veil is already running.
-- Close the drawer when Home is pressed again while the drawer is open.
-- Search installed applications and useful Android settings shortcuts.
-- Open a contextual bottom sheet when an application is long-pressed.
+Each context owns five declarative, stable quick-action slots. WORK, MEDIA, SOCIAL and TOOLS expose them continuously in a bottom dock; CURRENT keeps its configured set available to the model but does not render a dock. The dock has no floating trigger, expanded state or overlay. It uses recognizable real application icons in uniform 48 dp slots. A missing configured app is replaced deterministically without moving the other available configured apps. There is no usage prediction, position reshuffling or configuration UI in this personal version.
 
-### Home
+Applications shown in the dock must not be repeated as portal rows inside the same workspace. Workspace tiles add context—status, continuity, library, Focus or system controls—while the dock owns launching.
 
-- Fullscreen wallpaper.
-- Extremely thin transparent top bar.
-- Context indicators on the left and restrained system status on the right.
-- An active context.
-- One relevant continuity surface when Android publishes an ongoing activity.
-- Five configured or automatically classified actions as the quiet fallback.
-- A lower-left editorial application cluster rather than a centered grid.
-- Small monochromatic icons, typographic labels, a vertical accent line, and comfortable touch targets.
-- Tap-to-launch.
+Everything preserves the full alphabetical app list, search, settings shortcuts and app actions. App discovery remains cached and outside Compose.
 
-The five context lenses have fixed purposes:
+## Real data and privacy boundaries
 
-- CURRENT ranks the most relevant activity across the system, then falls back to frequent actions.
-- WORK falls back to productivity applications.
-- MEDIA shows the active or recently paused media session, then falls back to media applications.
-- SOCIAL exposes communication applications without reading or displaying conversations.
-- TOOLS exposes direct Android settings actions.
+### Ambient Continuity
 
-Ambient Continuity v0.1 supports public Android signals only: active media sessions, navigation notifications, and ongoing or completed progress notifications. Navigation outranks playing media, which outranks active progress, paused media, and recently completed progress. Media paused for more than 30 minutes and completed progress older than 10 minutes expire.
+Notification-listener access is explicit and optional. Supported public signals are media sessions, navigation notifications and ongoing/completed progress notifications. Navigation outranks playing media, active progress, paused media and recently completed progress.
 
-Notification-listener access is explicit and optional. Veil explains the benefit before opening Android settings, remains a complete launcher when access is declined, and never persists or transmits notification content. Calls, conversations, email, alarms, social notifications, and unrelated notifications are excluded.
+Media may expose title, artist, artwork, position, duration and supported transport controls through `MediaSession`. Navigation and progress use only their public ongoing notifications. Private notification categories—calls, messages, email, alarms and social—remain excluded.
 
-Do not use cards, Material surfaces, a conventional app grid, a traditional bottom dock, widgets, decorative gradients, or large Android-style icons. Home uses coherent activity glyphs; Everything preserves recognizable full-color application icons.
+### Calendar
 
-### Drawer and search
+Calendar is optional and uses `CalendarContract.Instances` with `READ_CALENDAR`. Veil reads occurrences from now through seven days ahead and keeps only event ID, title, start and end in memory. It displays title and local time only: never calendar account, location, description, attendees or reminder contents. Tapping delegates to the installed calendar application.
 
-- Present all discovered launchable applications in an alphabetical typographic list.
-- Keep search immediately available and tolerant of case and accents.
-- Match application labels and package names.
-- Include direct links to common Android settings categories without attempting to replace the system Settings app.
-- Treat the drawer as a progressive layer over Home, not as the primary visual state.
-- Provide Back and a visible close action as alternatives to gestures.
-- A long press on an app from Home or the drawer opens the same contextual action sheet.
-- Contextual app actions may open the app, system app details, or Android's uninstall confirmation.
+### Weather
 
-## Explicit non-goals for v0.1
+Weather is optional. After a Veil disclosure, it requests foreground approximate location only and sends approximate coordinates to Open-Meteo over HTTPS. The free endpoint is valid for this personal, non-commercial build and requires visible attribution. Results are cached locally for 30 minutes, retained offline, and marked stale after two hours. No background or precise location is requested.
 
-Do not implement Android widgets, weather, calendar access, smart-home features, notification badges, conversation reading, UsageStats, Accessibility-based inference, AI, wallpaper analysis, app prediction, cloud sync, accounts, backend services, databases, Room, analytics, plugins, icon packs, a replacement settings UI, a custom DSL, advanced cross-task animation systems, arbitrary overlays, folders, app hiding, or a gesture editor.
+### Focus
 
-Do not promise continuity for internal app state such as a Kindle chapter unless that application publishes a compatible public Android session or notification. A third-party launcher cannot own or transform another application's cross-task transition.
+Focus provides 25- and 50-minute presets plus custom durations from 5 to 180 minutes. Running, paused, completed, duration and end time are the only persisted fields. An exact `AlarmManager` alarm and a completion notification are requested in context after an explanation; denial degrades to an inexact alert without breaking the timer. Running alarms are restored after reboot and time changes.
 
-Future possibilities must not be blocked, but do not build speculative abstractions for them.
+### System status
 
-## Technology and dependencies
+Battery, charging, storage and active transport come from Android system APIs. Veil does not replace Settings and does not toggle restricted controls indirectly.
 
-- Native Android.
-- Kotlin.
-- Jetpack Compose.
-- Kotlin Coroutines.
-- Flow or StateFlow only where they add value.
-- Gradle Kotlin DSL and the project Gradle Wrapper.
-- A single `app` module initially.
-- No persistence initially; use DataStore later only if configuration persistence becomes necessary.
+No data is transmitted except the disclosed Open-Meteo weather request. There are no analytics, accounts, cloud sync, backend services or databases.
 
-Dependency priority:
+## Technology and architecture
 
-1. Android API.
-2. AndroidX.
-3. Compose.
-4. A third-party library only for a demonstrated need.
+- Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
+- A single `app` module and no dependency-injection or state-management framework.
+- Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
+- SharedPreferences is allowed only for Focus state and weather cache. Do not add Room or general configuration persistence.
+- Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
+- Prefer platform APIs. No runtime third-party dependency is currently required.
 
-Do not use Flutter, React Native, Capacitor, WebView, Redux/MVI frameworks, or a global Gradle installation as a project dependency.
-
-## Architecture direction
-
-Keep few abstractions with clear responsibilities. A likely shape, created only as implementation requires it, is:
+The main data direction is:
 
 ```text
-app/src/main/java/<package>/
-├── MainActivity.kt
-├── launcher/
-│   ├── model/
-│   ├── repository/
-│   └── system/
-├── config/
-└── ui/
-    ├── components/
-    └── theme/
+Android APIs / Open-Meteo
+        ↓
+small repositories and system adapters
+        ↓
+LauncherController / LauncherUiState
+        ↓
+five explicit Compose workspaces
 ```
 
-Do not create empty files merely to match this tree.
+Do not introduce a generic widget engine or speculative plugin architecture. Each workspace remains an explicit product composition.
 
-The Android integration boundary is:
+## Platform and quality requirements
 
-```text
-Android package APIs
-        ↓
-AppRepository
-        ↓
-Launcher models/state
-        ↓
-Compose UI
-```
+- Veil is a real HOME candidate and must return correctly through the Home action.
+- Portrait-first, responsive to width, edge-to-edge and safe around navigation bars/cutouts.
+- Touch targets remain comfortable even when visual glyphs are small.
+- Icon rasterization respects device density and adaptive drawables.
+- No package, calendar, location or network query occurs during recomposition.
+- Permissions may be accepted, denied or revoked without making Veil unusable.
+- Weather/network failure and absent providers retain honest fallback states.
+- Missing/uninstalled quick apps never crash the launcher.
+- Focus survives process death and reboot and clearly reports when an external alert is not guaranteed.
+- Unit tests cover deterministic slots, continuity ranking/policy, weather parsing and workspace data policies. Build and install validation must use the connected physical device when available.
 
-Composables must not query `PackageManager` directly.
+## Explicit non-goals
 
-## Initial data direction
+Do not add Android widgets, conversation reading, notification badges, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, smart-home controls, a gesture editor or a general user-customization system.
 
-A launchable app needs a package name, label, Android application category, and optional drawable icon. A launcher context needs an ID, label, fixed purpose, and a list of preferred application package names. Configuration should use normal Kotlin objects and lists.
+Do not promise access to third-party internal state such as a Kindle chapter unless that application publishes a compatible Android session or notification. Veil cannot embed or transform another application's task as if it were a desktop window.
 
-Do not invent package names for configured apps. Resolve applications actually available on the device, tolerate missing configuration, and never crash because an application is absent or removed.
+## Definition of done for Cozy Workspaces
 
-App discovery must be session-cached, run outside recomposition, avoid blocking the main thread, and handle packages without launcher activities. App launching is a separate Android-system responsibility and failure should remain quiet.
-
-## Visual baseline
-
-The Home composition is explainable as:
-
-```text
-Wallpaper
-+ thin transparent context rail
-+ one continuity surface OR five fallback actions
-```
-
-The wallpaper uses crop behavior and dominates the screen. A bundled development asset is acceptable initially; integration with the real system wallpaper comes later.
-
-The top rail targets 32dp, remains transparent, has no full-width divider, and must not resemble a Material `TopAppBar`. It has no app title, hamburger menu, conventional toolbar, or oversized clock.
-
-Context indicators use small restrained geometries. Active state uses the accent token and inactive states use low contrast. Color alone must not be the only accessibility signal.
-
-The app cluster sits toward the lower-left using constraints and responsive spacing rather than fixed pixel coordinates. Each row has a comfortable touch target despite its visually small content.
-
-Use clean, technical, editorial, precise, restrained typography. Mono or mono-adjacent type may be used for status and small labels, but never to create terminal cosplay.
-
-## Platform behavior
-
-- Portrait-first, but never tied to one resolution.
-- Use dp, Compose constraints, responsive spacing, and `WindowInsets`.
-- Support edge-to-edge correctly around status bars, navigation bars, and display cutouts.
-- Do not simulate system bars.
-- Keep content descriptions, readable labels, sufficient contrast, and comfortable touch targets.
-- Essential future gestures need non-gesture alternatives.
-
-Performance is critical because Home opens constantly: no package queries during recomposition, no network or backend, small Home state, minimal dependencies, cached app metadata, and fast startup.
-
-## Implementation phases
-
-1. Validate the project: sync, build with `./gradlew assembleDebug`, run on a physical device, and remove template UI.
-2. Make it a real launcher: manifest Home intent, default-launcher selection, and Home-button verification.
-3. Add app discovery: models, repository, real launchable apps, configured resolution, and missing-app handling.
-4. Build the wallpaper-first Home with its thin context rail, activity glyphs, lower-left fallback cluster, and context navigation.
-5. Add Ambient Continuity for media, navigation, and progress with one relevant surface and optional notification access.
-6. Add the application drawer: upward gesture, Home reentry, complete app list, search, Android settings shortcuts, and continuity-access entry.
-
-## Definition of done for v0.1
-
-- Project opens and syncs in Android Studio.
-- `./gradlew assembleDebug` succeeds and produces an installable APK.
-- The app runs on a physical Android device.
-- Android recognizes and can select Veil as Home.
-- Home returns correctly to Veil.
-- Veil discovers real apps and resolves configured apps.
-- Tapping an app launches it.
-- Swiping upward and pressing Home on a running Veil instance open the drawer.
-- Pressing Home again closes an open drawer.
-- The drawer lists and filters real applications and opens Android settings shortcuts.
-- Long-pressing an application opens actions for launch, system app details, and uninstall request.
-- Missing configured apps never crash the launcher.
-- Wallpaper remains visually dominant.
-- The top rail is transparent and minimal, Home uses activity glyphs, and full application icons render correctly in Everything.
-- CURRENT and MEDIA show at most one relevant continuity surface; WORK, SOCIAL, and TOOLS retain distinct purposes.
-- Access can be accepted, declined, or revoked without breaking the launcher, and private notification categories never enter launcher state.
-- There are no cards, conventional grids, widgets, UsageStats, persistence, or backend.
-- The architecture remains small and easy to change.
-
-## Code guardrails
-
-- Use idiomatic Kotlin and Compose.
-- Separate Android integration from UI.
-- Avoid premature abstraction, giant composables, and one-line abstractions with no utility.
-- Comment only non-obvious decisions.
-- Use explicit names and deterministic behavior.
-- Prefer real Android APIs and real app metadata.
-- Test on a physical device as soon as a phase permits it.
-- Keep Android handles such as `PendingIntent` and `MediaController` outside Compose state.
+- Five visibly distinct, stable workspaces render over the wallpaper and retain a single visual priority.
+- Horizontal context navigation, top indicators, the four contextual docks, upward Everything gesture, Back and Home-layer behavior all work together.
+- The configured personal quick apps resolve in fixed order with deterministic fallback and crisp real icons.
+- Calendar, weather, Focus, system status and enhanced media use real data and degrade safely.
+- Social never surfaces private notification or conversation information.
+- The app compiles, unit tests pass, an installable debug APK is produced and core flows are exercised on the connected Xiaomi device.

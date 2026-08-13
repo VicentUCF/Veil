@@ -1,5 +1,7 @@
 package dev.vicent.veil.launcher.model
 
+import android.graphics.Bitmap
+
 sealed interface ContinuityItem {
     val id: String
     val packageName: String
@@ -21,6 +23,10 @@ sealed interface ContinuityItem {
         override val supportedActions: Set<ContinuityAction>,
         val isPlaying: Boolean,
         val isVideo: Boolean,
+        val durationMillis: Long? = null,
+        val positionMillis: Long? = null,
+        val positionUpdatedAtElapsedRealtime: Long? = null,
+        val artwork: Bitmap? = null,
     ) : ContinuityItem
 
     data class Navigation(
@@ -51,4 +57,7 @@ sealed interface ContinuityItem {
 enum class ContinuityAction {
     OPEN,
     TOGGLE_PLAYBACK,
+    SKIP_PREVIOUS,
+    SKIP_NEXT,
+    SEEK_TO,
 }
