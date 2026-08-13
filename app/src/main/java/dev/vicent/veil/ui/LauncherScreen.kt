@@ -44,6 +44,7 @@ import dev.vicent.veil.launcher.WorkspaceDataPolicy
 import dev.vicent.veil.launcher.model.AccentMode
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
+import dev.vicent.veil.launcher.model.WallpaperScrimPolicy
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.LauncherApp
@@ -111,6 +112,7 @@ fun LauncherScreen(
     onHomeTextToneSelected: (HomeTextTone) -> Unit,
     onHomeTextWeightSelected: (HomeTextWeight) -> Unit,
     onWallpaperScrimEnabledChanged: (Boolean) -> Unit,
+    onWallpaperScrimIntensityChanged: (Float) -> Unit,
     onWallpaperSelected: () -> Boolean,
     onAppPermissionSettingsRequested: () -> Boolean,
     onFocusNotificationsSelected: () -> Boolean,
@@ -213,8 +215,18 @@ fun LauncherScreen(
     Box(modifier = modifier.fillMaxSize().then(homeGestureModifier)) {
         if (state.preferences.wallpaperScrimEnabled) {
             val wallpaperScrim = when (state.preferences.homeTextTone) {
-                HomeTextTone.LIGHT -> Color.Black.copy(alpha = 0.12f)
-                HomeTextTone.DARK -> Color.White.copy(alpha = 0.10f)
+                HomeTextTone.LIGHT -> Color.Black.copy(
+                    alpha = WallpaperScrimPolicy.alpha(
+                        tone = HomeTextTone.LIGHT,
+                        intensity = state.preferences.wallpaperScrimIntensity,
+                    ),
+                )
+                HomeTextTone.DARK -> Color.White.copy(
+                    alpha = WallpaperScrimPolicy.alpha(
+                        tone = HomeTextTone.DARK,
+                        intensity = state.preferences.wallpaperScrimIntensity,
+                    ),
+                )
             }
             Box(
                 modifier = Modifier
@@ -460,6 +472,7 @@ fun LauncherScreen(
                 onHomeTextToneSelected = onHomeTextToneSelected,
                 onHomeTextWeightSelected = onHomeTextWeightSelected,
                 onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
+                onWallpaperScrimIntensityChanged = onWallpaperScrimIntensityChanged,
                 onOpenMusicProviderPicker = onOpenMusicProviderPicker,
                 onSettingsAppSelected = onSettingsAppSelected,
                 onMusicProviderCleared = onMusicProviderCleared,

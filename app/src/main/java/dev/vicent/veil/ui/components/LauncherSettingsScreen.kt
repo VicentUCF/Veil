@@ -5,6 +5,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,11 +35,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +63,7 @@ import dev.vicent.veil.launcher.model.SettingsAppTarget
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import java.text.Normalizer
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun LauncherSettingsScreen(
@@ -71,6 +79,7 @@ fun LauncherSettingsScreen(
     onHomeTextToneSelected: (HomeTextTone) -> Unit,
     onHomeTextWeightSelected: (HomeTextWeight) -> Unit,
     onWallpaperScrimEnabledChanged: (Boolean) -> Unit,
+    onWallpaperScrimIntensityChanged: (Float) -> Unit,
     onOpenMusicProviderPicker: () -> Unit,
     onSettingsAppSelected: (String) -> Unit,
     onMusicProviderCleared: () -> Unit,
@@ -112,6 +121,7 @@ fun LauncherSettingsScreen(
             onHomeTextToneSelected = onHomeTextToneSelected,
             onHomeTextWeightSelected = onHomeTextWeightSelected,
             onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
+            onWallpaperScrimIntensityChanged = onWallpaperScrimIntensityChanged,
             modifier = modifier,
         )
         return
@@ -330,6 +340,7 @@ private fun CurrentHomeFontSettings(
     onHomeTextToneSelected: (HomeTextTone) -> Unit,
     onHomeTextWeightSelected: (HomeTextWeight) -> Unit,
     onWallpaperScrimEnabledChanged: (Boolean) -> Unit,
+    onWallpaperScrimIntensityChanged: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
@@ -405,7 +416,82 @@ private fun CurrentHomeFontSettings(
                     },
                 )
             }
+            item(key = "wallpaper-filter-intensity") {
+                WallpaperFilterIntensitySlider(
+                    intensity = preferences.wallpaperScrimIntensity,
+                    enabled = preferences.wallpaperScrimEnabled,
+                    onChanged = onWallpaperScrimIntensityChanged,
+                )
+            }
             item(key = "bottom-space") { Spacer(modifier = Modifier.height(28.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun WallpaperFilterIntensitySlider(
+    intensity: Float,
+    enabled: Boolean,
+    onChanged: (Float) -> Unit,
+) {
+    val palette = LocalVeilPalette.current
+    val normalized = intensity.coerceIn(0f, 1f)
+    val activeColor = if (enabled) palette.accentActive else palette.contentMuted
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BasicText(
+                text = "INTENSIDAD",
+                style = workspaceMonoStyle(palette.contentSecondary, 8),
+            )
+            BasicText(
+                text = "${(normalized * 100).roundToInt()}%",
+                style = workspaceMonoStyle(palette.contentMuted, 8),
+            )
+        }
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(32.dp)
+                .semantics {
+                    progressBarRangeInfo = ProgressBarRangeInfo(normalized, 0f..1f)
+                    setProgress { target ->
+                        onChanged(target.coerceIn(0f, 1f))
+                        true
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures { position ->
+                        onChanged((position.x / size.width).coerceIn(0f, 1f))
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { position ->
+                            onChanged((position.x / size.width).coerceIn(0f, 1f))
+                        },
+                        onHorizontalDrag = { change, _ ->
+                            change.consume()
+                            onChanged((change.position.x / size.width).coerceIn(0f, 1f))
+                        },
+                    )
+                },
+        ) {
+            val y = size.height / 2f
+            val progressX = size.width * normalized
+            drawLine(palette.divider, Offset(0f, y), Offset(size.width, y), 3.dp.toPx())
+            drawLine(activeColor, Offset(0f, y), Offset(progressX, y), 3.dp.toPx())
+            drawCircle(palette.contentPrimary, 4.dp.toPx(), Offset(progressX, y))
+        }
+        if (!enabled) {
+            BasicText(
+                text = "Se conservará para cuando actives el filtro",
+                style = workspaceMonoStyle(palette.contentMuted, 8),
+            )
+        } else {
+            BasicText(
+                text = "La intensidad aumenta progresivamente en el tramo alto",
+                style = workspaceMonoStyle(palette.contentMuted, 8),
+            )
         }
     }
 }

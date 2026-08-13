@@ -1,5 +1,7 @@
 package dev.vicent.veil.launcher.model
 
+import kotlin.math.pow
+
 enum class AccentMode(val persistedValue: String) {
     VEIL("veil"),
     AMBER("amber"),
@@ -35,11 +37,24 @@ enum class HomeTextWeight(val persistedValue: String) {
     }
 }
 
+object WallpaperScrimPolicy {
+    private const val CURVE_EXPONENT = 2.585f
+
+    fun alpha(tone: HomeTextTone, intensity: Float): Float {
+        val maximumAlpha = when (tone) {
+            HomeTextTone.LIGHT -> 0.72f
+            HomeTextTone.DARK -> 0.60f
+        }
+        return maximumAlpha * intensity.coerceIn(0f, 1f).pow(CURVE_EXPONENT)
+    }
+}
+
 data class LauncherPreferences(
     val accentMode: AccentMode = AccentMode.VEIL,
     val homeTextTone: HomeTextTone = HomeTextTone.LIGHT,
     val homeTextWeight: HomeTextWeight = HomeTextWeight.LIGHT,
     val wallpaperScrimEnabled: Boolean = true,
+    val wallpaperScrimIntensity: Float = 0.5f,
     val musicProviderPackage: String? = null,
     val contextAppOverrides: Map<LauncherContextKind, List<String?>> = emptyMap(),
 )
@@ -50,11 +65,13 @@ object LauncherPreferencesPolicy {
         homeTextTone: String? = null,
         homeTextWeight: String? = null,
         wallpaperScrimEnabled: Boolean = true,
+        wallpaperScrimIntensity: Float = 0.5f,
     ): LauncherPreferences = LauncherPreferences(
         accentMode = AccentMode.fromPersistedValue(accent),
         homeTextTone = HomeTextTone.fromPersistedValue(homeTextTone),
         homeTextWeight = HomeTextWeight.fromPersistedValue(homeTextWeight),
         wallpaperScrimEnabled = wallpaperScrimEnabled,
+        wallpaperScrimIntensity = wallpaperScrimIntensity.coerceIn(0f, 1f),
     )
 
     fun encodeAccent(preferences: LauncherPreferences): String =
@@ -66,6 +83,7 @@ object LauncherPreferencesPolicy {
             homeTextTone = HomeTextTone.LIGHT,
             homeTextWeight = HomeTextWeight.LIGHT,
             wallpaperScrimEnabled = true,
+            wallpaperScrimIntensity = 0.5f,
         )
 }
 

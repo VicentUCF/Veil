@@ -36,6 +36,7 @@ class LauncherPreferencesRepository(context: Context) {
             .putString(KEY_HOME_TEXT_TONE, next.homeTextTone.persistedValue)
             .putString(KEY_HOME_TEXT_WEIGHT, next.homeTextWeight.persistedValue)
             .putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, next.wallpaperScrimEnabled)
+            .putFloat(KEY_WALLPAPER_SCRIM_INTENSITY, next.wallpaperScrimIntensity)
             .apply()
         mutableState.value = next
     }
@@ -55,6 +56,13 @@ class LauncherPreferencesRepository(context: Context) {
     fun setWallpaperScrimEnabled(enabled: Boolean) {
         val next = mutableState.value.copy(wallpaperScrimEnabled = enabled)
         preferences.edit().putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, enabled).apply()
+        mutableState.value = next
+    }
+
+    fun setWallpaperScrimIntensity(intensity: Float) {
+        val normalized = intensity.coerceIn(0f, 1f)
+        val next = mutableState.value.copy(wallpaperScrimIntensity = normalized)
+        preferences.edit().putFloat(KEY_WALLPAPER_SCRIM_INTENSITY, normalized).apply()
         mutableState.value = next
     }
 
@@ -116,6 +124,10 @@ class LauncherPreferencesRepository(context: Context) {
                 KEY_WALLPAPER_SCRIM_ENABLED,
                 true,
             ),
+            wallpaperScrimIntensity = preferences.getFloat(
+                KEY_WALLPAPER_SCRIM_INTENSITY,
+                0.5f,
+            ),
         )
         val overrides = LauncherContextKind.entries.mapNotNull { kind ->
             if (!preferences.getBoolean(contextConfiguredKey(kind), false)) return@mapNotNull null
@@ -142,6 +154,7 @@ class LauncherPreferencesRepository(context: Context) {
         private const val KEY_HOME_TEXT_TONE = "home_text_tone"
         private const val KEY_HOME_TEXT_WEIGHT = "home_text_weight"
         private const val KEY_WALLPAPER_SCRIM_ENABLED = "wallpaper_scrim_enabled"
+        private const val KEY_WALLPAPER_SCRIM_INTENSITY = "wallpaper_scrim_intensity"
         private const val KEY_MUSIC_PROVIDER = "music_provider_package"
     }
 }

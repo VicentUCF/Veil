@@ -252,6 +252,7 @@ class MainActivity : ComponentActivity() {
                     onHomeTextToneSelected = controller::setHomeTextTone,
                     onHomeTextWeightSelected = controller::setHomeTextWeight,
                     onWallpaperScrimEnabledChanged = controller::setWallpaperScrimEnabled,
+                    onWallpaperScrimIntensityChanged = controller::setWallpaperScrimIntensity,
                     onWallpaperSelected = {
                         launchExternal(settingsLauncher::openWallpaperChooser)
                     },

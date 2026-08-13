@@ -9,6 +9,8 @@ import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.LauncherSurface
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
+import dev.vicent.veil.launcher.model.WallpaperScrimPolicy
+import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 import org.junit.Test
 
@@ -35,6 +37,7 @@ class LauncherSettingsTest {
             homeTextTone = HomeTextTone.DARK,
             homeTextWeight = HomeTextWeight.SEMIBOLD,
             wallpaperScrimEnabled = false,
+            wallpaperScrimIntensity = 0.9f,
             musicProviderPackage = "com.spotify.music",
             contextAppOverrides = mapOf(LauncherContextKind.WORK to listOf("com.example")),
         )
@@ -43,6 +46,7 @@ class LauncherSettingsTest {
         assertEquals(HomeTextTone.LIGHT, reset.homeTextTone)
         assertEquals(HomeTextWeight.LIGHT, reset.homeTextWeight)
         assertEquals(true, reset.wallpaperScrimEnabled)
+        assertEquals(0.5f, reset.wallpaperScrimIntensity)
         assertEquals(customized.musicProviderPackage, reset.musicProviderPackage)
         assertEquals(customized.contextAppOverrides, reset.contextAppOverrides)
     }
@@ -54,11 +58,13 @@ class LauncherSettingsTest {
             homeTextTone = HomeTextTone.DARK.persistedValue,
             homeTextWeight = HomeTextWeight.REGULAR.persistedValue,
             wallpaperScrimEnabled = false,
+            wallpaperScrimIntensity = 0.8f,
         )
 
         assertEquals(HomeTextTone.DARK, decoded.homeTextTone)
         assertEquals(HomeTextWeight.REGULAR, decoded.homeTextWeight)
         assertEquals(false, decoded.wallpaperScrimEnabled)
+        assertEquals(0.8f, decoded.wallpaperScrimIntensity)
         assertEquals(
             HomeTextTone.LIGHT,
             LauncherPreferencesPolicy.decodeAppearance(null, "future", null).homeTextTone,
@@ -67,6 +73,35 @@ class LauncherSettingsTest {
             HomeTextWeight.LIGHT,
             LauncherPreferencesPolicy.decodeAppearance(null, null, "future").homeTextWeight,
         )
+    }
+
+    @Test
+    fun `wallpaper filter intensity is constrained to its valid range`() {
+        assertEquals(
+            1f,
+            LauncherPreferencesPolicy.decodeAppearance(
+                accent = null,
+                wallpaperScrimIntensity = 4f,
+            ).wallpaperScrimIntensity,
+        )
+        assertEquals(
+            0f,
+            LauncherPreferencesPolicy.decodeAppearance(
+                accent = null,
+                wallpaperScrimIntensity = -1f,
+            ).wallpaperScrimIntensity,
+        )
+    }
+
+    @Test
+    fun `wallpaper filter preserves the soft midpoint but makes maximum obvious`() {
+        val midpoint = WallpaperScrimPolicy.alpha(HomeTextTone.LIGHT, 0.5f)
+        val maximum = WallpaperScrimPolicy.alpha(HomeTextTone.LIGHT, 1f)
+
+        assertTrue(midpoint in 0.11f..0.13f)
+        assertEquals(0.72f, maximum)
+        assertTrue(maximum > midpoint * 5f)
+        assertEquals(0f, WallpaperScrimPolicy.alpha(HomeTextTone.DARK, 0f))
     }
 
     @Test

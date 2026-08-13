@@ -358,6 +358,9 @@ class LauncherController(
     fun setWallpaperScrimEnabled(enabled: Boolean) =
         preferencesRepository.setWallpaperScrimEnabled(enabled)
 
+    fun setWallpaperScrimIntensity(intensity: Float) =
+        preferencesRepository.setWallpaperScrimIntensity(intensity)
+
     fun resetAppearance() = preferencesRepository.resetAppearance()
 
     fun openMusicProviderPicker() {
