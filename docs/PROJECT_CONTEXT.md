@@ -36,13 +36,19 @@ Wallpaper remains perceptible around and through every tile. Dense does not mean
 
 ## Context dock and applications
 
-Each context owns five declarative, stable quick-action slots. WORK, MEDIA, SOCIAL and TOOLS expose them continuously in a bottom dock; CURRENT keeps its configured set available to the model but does not render a dock. The dock has no floating trigger, expanded state or overlay. It uses recognizable real application icons in uniform 48 dp slots. A missing configured app is replaced deterministically without moving the other available configured apps. There is no usage prediction, position reshuffling or configuration UI in this personal version.
+Each context owns five declarative, stable quick-action slots. WORK, MEDIA, SOCIAL and TOOLS expose them continuously in a bottom dock; CURRENT keeps its configured set available to the model but does not render a dock. The dock has no floating trigger, expanded state or overlay. It uses recognizable real application icons in uniform 48 dp slots. A missing configured app is replaced deterministically without moving the other available configured apps. There is no usage prediction or position reshuffling. The essential Veil settings screen does not edit dock assignments; those remain source-configured in this personal version.
 
 Applications shown in the dock must not be repeated as portal rows inside the same workspace. Workspace tiles add context—status, continuity, library, Focus or system controls—while the dock owns launching.
 
 CURRENT app rows and the four contextual docks may show one restrained binary dot when Android exposes at least one active, badge-eligible notification for that package. The dot never contains a count or content, does not claim to represent unread state and remains synchronized with Android rather than being cleared locally when the app opens. Everything, workspace tiles and the top rail do not show these indicators.
 
-Everything preserves the full alphabetical app list, search, settings shortcuts and app actions. App discovery remains cached and outside Compose.
+Everything preserves the full alphabetical app list, search, settings shortcuts and app actions. Its SYSTEM section opens the essential Veil settings screen as well as Android settings. App discovery remains cached and outside Compose.
+
+## Essential launcher settings
+
+Veil provides a deliberately bounded internal settings screen, reachable from Everything and TOOLS. It controls only the Veil accent, delegates wallpaper selection to Android, reports and links to the permissions and special accesses already used by the launcher, reports the active HOME role and can restore the default accent. Changes apply immediately. The screen does not expose layout, dock, icon, font, folder, widget or gesture customization.
+
+The accent may use the Veil coral, a short accessible preset palette or Android's wallpaper-derived dynamic color on Android 12 and later. Veil never reads or stores wallpaper imagery; Android owns wallpaper selection and rendering.
 
 ## Real data and privacy boundaries
 
@@ -81,7 +87,7 @@ No data is transmitted except the disclosed Open-Meteo weather request. There ar
 - Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
 - A single `app` module and no dependency-injection or state-management framework.
 - Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
-- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list and the one-bit notification-access onboarding acknowledgement. Do not add Room or general configuration persistence.
+- SharedPreferences is allowed only for Focus state, weather cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the single essential launcher-accent preference. Do not add Room or broader configuration persistence.
 - Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
 - Prefer platform APIs. No runtime third-party dependency is currently required.
 
@@ -114,7 +120,7 @@ Do not introduce a generic widget engine or speculative plugin architecture. Eac
 
 ## Explicit non-goals
 
-Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, smart-home controls, a gesture editor or a general user-customization system. The sole badge-like surface is the binary, content-free active-notification dot defined above.
+Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, custom fonts, editable grids or docks, theme export, manual launcher backups, smart-home controls, a gesture editor or a general user-customization system. The bounded accent/wallpaper/access screen above is the only customization exception. The sole badge-like surface is the binary, content-free active-notification dot defined above.
 
 Do not promise access to third-party internal state such as a Kindle chapter unless that application publishes a compatible Android session or notification. Veil cannot embed or transform another application's task as if it were a desktop window.
 

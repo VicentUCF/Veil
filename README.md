@@ -33,6 +33,8 @@ The initial configuration lives in [`LauncherConfig.kt`](app/src/main/java/dev/v
 
 Veil displays the real system wallpaper through the Android window. The visual concept images are kept under [`docs/design`](docs/design) as references and are not bundled into the APK.
 
+Runtime appearance and access settings live in the internal **Ajustes de Veil** screen, available from Everything and TOOLS. It offers five accessible accent presets, Android 12+ dynamic color, the system wallpaper chooser, permission/special-access status, HOME-role selection and appearance reset. Changes apply immediately; dock assignments remain source-configured.
+
 ## Application drawer
 
 - Swipe upward on Home to open the complete alphabetical application list.

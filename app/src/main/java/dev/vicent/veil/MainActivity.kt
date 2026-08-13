@@ -2,12 +2,14 @@ package dev.vicent.veil
 
 import android.Manifest
 import android.app.AlarmManager
+import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
@@ -19,12 +21,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import dev.vicent.veil.config.AccentPalette
 import dev.vicent.veil.config.LauncherConfig
 import dev.vicent.veil.launcher.LauncherController
 import dev.vicent.veil.launcher.LauncherUiState
@@ -34,16 +39,21 @@ import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.AudioMixerRepository
 import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
+import dev.vicent.veil.launcher.repository.LauncherPreferencesRepository
 import dev.vicent.veil.launcher.repository.QuickNotesRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
 import dev.vicent.veil.launcher.system.AndroidAppLauncher
 import dev.vicent.veil.launcher.system.AndroidClockLauncher
 import dev.vicent.veil.launcher.system.AndroidSettingsLauncher
+import dev.vicent.veil.launcher.system.LauncherAccessMonitor
 import dev.vicent.veil.ui.LauncherScreen
 import dev.vicent.veil.ui.theme.VeilTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
+    private val preferencesRepository by lazy { LauncherPreferencesRepository(applicationContext) }
+    private val accessMonitor by lazy { LauncherAccessMonitor(applicationContext) }
     private val controller by lazy {
         LauncherController(
             appRepository = AppRepository(applicationContext),
@@ -54,6 +64,8 @@ class MainActivity : ComponentActivity() {
             quickNotesRepository = QuickNotesRepository(applicationContext),
             systemStatusRepository = SystemStatusRepository(applicationContext),
             audioMixerRepository = AudioMixerRepository(applicationContext),
+            preferencesRepository = preferencesRepository,
+            accessMonitor = accessMonitor,
             contexts = LauncherConfig.contexts,
             quickActionCount = LauncherConfig.quickActionCount,
         )
@@ -68,6 +80,8 @@ class MainActivity : ComponentActivity() {
     private var hasLauncherWindowFocus = false
     private var launcherPausedAtElapsedRealtime = Long.MIN_VALUE
     private var isPackageReceiverRegistered = false
+    private var isWallpaperReceiverRegistered = false
+    private val wallpaperRefreshRevision = MutableStateFlow(0)
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -77,6 +91,12 @@ class MainActivity : ComponentActivity() {
                 return
             }
             controller.refreshApps(lifecycleScope)
+        }
+    }
+
+    private val wallpaperReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            wallpaperRefreshRevision.value += 1
         }
     }
 
@@ -93,11 +113,18 @@ class MainActivity : ComponentActivity() {
     ) {
         if (requestExactAlarmAfterNotification) requestExactAlarmAccess()
         requestExactAlarmAfterNotification = false
+        controller.refreshAccessState(lifecycleScope)
     }
 
     private val audioVisualizerPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> controller.setAudioVisualizerPermissionGranted(granted) }
+
+    private val homeRoleLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) {
+        controller.refreshAccessState(lifecycleScope)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,15 +138,31 @@ class MainActivity : ComponentActivity() {
 
         controller.load(lifecycleScope)
         registerPackageReceiver()
-        controller.setContinuityAccessGranted(hasContinuityAccess())
-        controller.setAudioVisualizerPermissionGranted(hasPermission(Manifest.permission.RECORD_AUDIO))
+        registerWallpaperReceiver()
+        controller.refreshAccessState(lifecycleScope)
 
         setContent {
             val state by controller.state.collectAsState()
+            val wallpaperRevision by wallpaperRefreshRevision.collectAsState()
+            val systemAccent = remember(wallpaperRevision) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    dynamicDarkColorScheme(this@MainActivity).primary
+                } else {
+                    null
+                }
+            }
+            val palette = remember(state.preferences.accentMode, systemAccent) {
+                AccentPalette.resolvePalette(
+                    base = LauncherConfig.palette,
+                    mode = state.preferences.accentMode,
+                    systemAccent = systemAccent,
+                )
+            }
 
-            VeilTheme(palette = LauncherConfig.palette) {
+            VeilTheme(palette = palette) {
                 LauncherScreen(
                     state = state,
+                    systemAccent = systemAccent,
                     settingsShortcuts = settingsLauncher.shortcuts,
                     onContextSelected = { index ->
                         controller.selectContext(index)
@@ -127,6 +170,8 @@ class MainActivity : ComponentActivity() {
                     },
                     onOpenDrawer = controller::openDrawer,
                     onCloseDrawer = controller::closeDrawer,
+                    onOpenSettings = controller::openSettings,
+                    onCloseSettings = controller::closeSettings,
                     onAppSelected = { app ->
                         if (appLauncher.launch(app)) {
                             externalSurfaceLaunched = true
@@ -201,6 +246,22 @@ class MainActivity : ComponentActivity() {
                     onHomeButtonLongPress = {
                         performHomeButtonAction(LauncherConfig.homeButton.onLongPress, state)
                     },
+                    onAccentSelected = controller::setAccentMode,
+                    onWallpaperSelected = {
+                        launchExternal(settingsLauncher::openWallpaperChooser)
+                    },
+                    onAppPermissionSettingsRequested = {
+                        launchExternal(settingsLauncher::openAppDetails)
+                    },
+                    onFocusNotificationsSelected = ::configureFocusNotifications,
+                    onExactAlarmsSelected = {
+                        launchExternal(settingsLauncher::openExactAlarmSettings)
+                    },
+                    onDefaultHomeSelected = ::requestHomeRole,
+                    onAndroidSettingsSelected = {
+                        launchExternal(settingsLauncher::openGeneralSettings)
+                    },
+                    onResetAppearance = controller::resetAppearance,
                 )
             }
         }
@@ -210,10 +271,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         isLauncherResumed = true
         externalSurfaceLaunched = false
-        controller.setContinuityAccessGranted(hasContinuityAccess())
-        controller.setAudioVisualizerPermissionGranted(hasPermission(Manifest.permission.RECORD_AUDIO))
-        controller.setCalendarAccessGranted(hasPermission(Manifest.permission.READ_CALENDAR), lifecycleScope)
-        controller.setLocationAccessGranted(hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION), lifecycleScope)
+        wallpaperRefreshRevision.value += 1
+        controller.refreshAccessState(lifecycleScope)
         controller.restoreFocusAlarm()
         controller.refreshVisibleData(lifecycleScope)
     }
@@ -243,6 +302,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (isPackageReceiverRegistered) unregisterReceiver(packageReceiver)
+        if (isWallpaperReceiverRegistered) unregisterReceiver(wallpaperReceiver)
         super.onDestroy()
     }
 
@@ -276,13 +336,52 @@ class MainActivity : ComponentActivity() {
         isPackageReceiverRegistered = true
     }
 
-    private fun hasContinuityAccess(): Boolean =
-        NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+    private fun registerWallpaperReceiver() {
+        ContextCompat.registerReceiver(
+            this,
+            wallpaperReceiver,
+            IntentFilter(Intent.ACTION_WALLPAPER_CHANGED),
+            ContextCompat.RECEIVER_EXPORTED,
+        )
+        isWallpaperReceiverRegistered = true
+    }
 
-    private fun openContinuityAccessSettings() {
-        externalSurfaceLaunched = true
-        runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-            .recoverCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }
+    private fun openContinuityAccessSettings(): Boolean =
+        launchExternal(settingsLauncher::openNotificationListenerSettings)
+
+    private fun launchExternal(action: () -> Boolean): Boolean {
+        val launched = action()
+        if (launched) externalSurfaceLaunched = true
+        return launched
+    }
+
+    private fun configureFocusNotifications(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !hasPermission(Manifest.permission.POST_NOTIFICATIONS)
+        ) {
+            return runCatching {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                true
+            }.getOrDefault(false)
+        }
+        return launchExternal(settingsLauncher::openNotificationSettings)
+    }
+
+    private fun requestHomeRole(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            if (roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
+                if (roleManager.isRoleHeld(RoleManager.ROLE_HOME)) {
+                    return launchExternal(settingsLauncher::openHomeSettings)
+                }
+                return runCatching {
+                    externalSurfaceLaunched = true
+                    homeRoleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME))
+                    true
+                }.getOrDefault(false)
+            }
+        }
+        return launchExternal(settingsLauncher::openHomeSettings)
     }
 
     private fun startFocusWithPermissions(minutes: Int) {

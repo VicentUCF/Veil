@@ -62,6 +62,7 @@ fun AppDrawer(
     onAppSelected: (LauncherApp) -> Unit,
     onAppLongPressed: (LauncherApp) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
+    onVeilSettingsSelected: () -> Unit,
     continuityAccessGranted: Boolean,
     onContinuityAccessSelected: () -> Unit,
     onClose: () -> Unit,
@@ -73,6 +74,7 @@ fun AppDrawer(
     val normalizedTerms = remember(query) {
         query.normalizeForSearch().split(Regex("\\s+")).filter(String::isNotBlank)
     }
+    val veilSettingsVisible = remember(query) { veilSettingsMatches(query) }
     val visibleSettings = remember(settingsShortcuts, normalizedTerms) {
         if (normalizedTerms.isEmpty()) {
             settingsShortcuts.take(1)
@@ -95,7 +97,8 @@ fun AppDrawer(
             }
         }
     }
-    val firstResult = visibleApps.firstOrNull() ?: visibleSettings.firstOrNull()
+    val firstResult = visibleApps.firstOrNull()
+        ?: if (veilSettingsVisible) VeilSettingsResult else visibleSettings.firstOrNull()
 
     Column(
         modifier = modifier
@@ -110,6 +113,7 @@ fun AppDrawer(
             onClear = { query = "" },
             onSubmit = {
                 when (firstResult) {
+                    VeilSettingsResult -> onVeilSettingsSelected()
                     is SettingsShortcut -> onSettingsSelected(firstResult)
                     is LauncherApp -> onAppSelected(firstResult)
                 }
@@ -146,6 +150,11 @@ fun AppDrawer(
             item(key = "system-header") {
                 DrawerSectionLabel(text = "SISTEMA")
             }
+            if (veilSettingsVisible) {
+                item(key = "veil-settings") {
+                    VeilSettingsRow(onClick = onVeilSettingsSelected)
+                }
+            }
             item(key = "continuity-access") {
                 ContinuityAccessRow(
                     accessGranted = continuityAccessGranted,
@@ -161,7 +170,7 @@ fun AppDrawer(
                 }
             }
 
-            if (!isLoading && visibleSettings.isEmpty() && visibleApps.isEmpty()) {
+            if (!isLoading && !veilSettingsVisible && visibleSettings.isEmpty() && visibleApps.isEmpty()) {
                 item(key = "empty") {
                     EmptyResult(query = query)
                 }
@@ -176,6 +185,15 @@ fun AppDrawer(
             item(key = "bottom-space") { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
+}
+
+private data object VeilSettingsResult
+
+internal fun veilSettingsMatches(query: String): Boolean {
+    val terms = query.normalizeForSearch().split(Regex("\\s+")).filter(String::isNotBlank)
+    if (terms.isEmpty()) return true
+    val searchable = "ajustes configuracion preferencias veil tema color acento fondo wallpaper permisos privacidad launcher"
+    return terms.all(searchable::contains)
 }
 
 @Composable
@@ -204,6 +222,42 @@ private fun ContinuityAccessRow(
         )
         BasicText(
             text = label,
+            style = TextStyle(
+                color = palette.contentPrimary,
+                fontFamily = FontFamily.SansSerif,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+            modifier = Modifier.padding(start = 20.dp),
+        )
+    }
+}
+
+@Composable
+private fun VeilSettingsRow(onClick: () -> Unit) {
+    val palette = LocalVeilPalette.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Abrir Ajustes de Veil",
+                onClick = onClick,
+            )
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Canvas(modifier = Modifier.size(28.dp)) {
+            drawCircle(
+                color = palette.accentActive,
+                radius = 10.dp.toPx(),
+                style = Stroke(width = 1.dp.toPx()),
+            )
+            drawCircle(color = palette.accentActive, radius = 3.dp.toPx())
+        }
+        BasicText(
+            text = "Ajustes de Veil",
             style = TextStyle(
                 color = palette.contentPrimary,
                 fontFamily = FontFamily.SansSerif,

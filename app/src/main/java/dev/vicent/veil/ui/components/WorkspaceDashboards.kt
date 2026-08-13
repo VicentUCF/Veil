@@ -123,6 +123,7 @@ fun WorkspaceDashboard(
     onAudioVisualizerPermissionRequested: () -> Unit,
     onAudioVolumeChanged: (AudioChannel, Float) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
+    onVeilSettingsSelected: () -> Unit,
     onFocusStart: (Int) -> Unit,
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
@@ -186,6 +187,7 @@ fun WorkspaceDashboard(
             LauncherContextKind.TOOLS -> ToolsWorkspace(
                 state,
                 compact,
+                onVeilSettingsSelected,
                 onSettingsSelected = { id -> settingsShortcuts.find { it.id == id }?.let(onSettingsSelected) },
             )
         }
@@ -735,6 +737,7 @@ private fun SocialWorkspace(compact: Boolean) {
 private fun ToolsWorkspace(
     state: LauncherUiState,
     compact: Boolean,
+    onVeilSettingsSelected: () -> Unit,
     onSettingsSelected: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -778,7 +781,7 @@ private fun ToolsWorkspace(
                 }
             }
         })
-        SettingsPanel(onSettingsSelected)
+        SettingsPanel(onVeilSettingsSelected, onSettingsSelected)
     }
 }
 
@@ -1272,7 +1275,10 @@ private fun SocialModeRow(index: String, title: String, detail: String) {
 }
 
 @Composable
-private fun SettingsPanel(onSettingsSelected: (String) -> Unit) {
+private fun SettingsPanel(
+    onVeilSettingsSelected: () -> Unit,
+    onSettingsSelected: (String) -> Unit,
+) {
     CozyTile(
         label = "Centro de control",
         modifier = Modifier.fillMaxWidth().heightIn(min = SettingsTileHeight),
@@ -1288,7 +1294,10 @@ private fun SettingsPanel(onSettingsSelected: (String) -> Unit) {
             SettingsCell("Aplicaciones", "applications", onSettingsSelected, Modifier.weight(1f))
             SettingsCell("Seguridad", "security", onSettingsSelected, Modifier.weight(1f))
         }
-        TileAction("Todos los ajustes") { onSettingsSelected("settings") }
+        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            TileAction("Ajustes de Veil", onVeilSettingsSelected)
+            TileAction("Todos los ajustes") { onSettingsSelected("settings") }
+        }
     }
 }
 

@@ -2,4 +2,5 @@
 <full-backup-content>
     <exclude domain="sharedpref" path="veil_quick_notes.xml" />
     <exclude domain="sharedpref" path="veil_notification_access.xml" />
+    <exclude domain="sharedpref" path="veil_launcher_preferences.xml" />
 </full-backup-content>

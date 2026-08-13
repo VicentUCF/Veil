@@ -1,6 +1,11 @@
 package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.LauncherApp
+import dev.vicent.veil.launcher.model.AccentMode
+import dev.vicent.veil.launcher.model.LauncherAccessState
+import dev.vicent.veil.launcher.model.LauncherNavigationState
+import dev.vicent.veil.launcher.model.LauncherPreferences
+import dev.vicent.veil.launcher.model.LauncherSurface
 import dev.vicent.veil.launcher.model.LauncherContext
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
@@ -20,9 +25,11 @@ import dev.vicent.veil.launcher.repository.AudioMixerRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
+import dev.vicent.veil.launcher.repository.LauncherPreferencesRepository
 import dev.vicent.veil.launcher.repository.QuickNotesRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
+import dev.vicent.veil.launcher.system.LauncherAccessMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,22 +53,27 @@ data class LauncherUiState(
     val installedApps: List<LauncherApp> = emptyList(),
     val activeContextIndex: Int = 0,
     val isLoading: Boolean = true,
-    val isDrawerOpen: Boolean = false,
-    val continuityAccessGranted: Boolean = false,
+    val navigation: LauncherNavigationState = LauncherNavigationState(),
+    val preferences: LauncherPreferences = LauncherPreferences(),
+    val access: LauncherAccessState = LauncherAccessState(),
     val notificationIndicatorPackages: Set<String> = emptySet(),
     val currentContinuity: ContinuityItem? = null,
     val mediaContinuity: ContinuityItem.Media? = null,
     val workProgress: ContinuityItem.Progress? = null,
     val calendarEvents: List<CalendarEventSummary> = emptyList(),
-    val calendarAccessGranted: Boolean = false,
     val weather: WeatherState = WeatherState(),
-    val locationAccessGranted: Boolean = false,
     val focusTimer: FocusTimerState = FocusTimerState(),
     val quickNotes: List<QuickNote> = emptyList(),
     val systemStatus: SystemStatus = SystemStatus(),
     val audioMixer: AudioMixerState = AudioMixerState(),
     val isContinuityOnboardingDismissed: Boolean = false,
-)
+) {
+    val isDrawerOpen: Boolean get() = navigation.surface == LauncherSurface.EVERYTHING
+    val isSettingsOpen: Boolean get() = navigation.surface == LauncherSurface.SETTINGS
+    val continuityAccessGranted: Boolean get() = access.continuityGranted
+    val calendarAccessGranted: Boolean get() = access.calendarGranted
+    val locationAccessGranted: Boolean get() = access.approximateLocationGranted
+}
 
 class LauncherController(
     private val appRepository: AppRepository,
@@ -72,6 +84,8 @@ class LauncherController(
     private val quickNotesRepository: QuickNotesRepository,
     private val systemStatusRepository: SystemStatusRepository,
     private val audioMixerRepository: AudioMixerRepository,
+    private val preferencesRepository: LauncherPreferencesRepository,
+    private val accessMonitor: LauncherAccessMonitor,
     contexts: List<LauncherContext>,
     private val quickActionCount: Int,
 ) {
@@ -82,6 +96,8 @@ class LauncherController(
     private val mutableState = MutableStateFlow(
         LauncherUiState(
             contexts = initialContexts,
+            preferences = preferencesRepository.state.value,
+            access = accessMonitor.snapshot(),
             isContinuityOnboardingDismissed =
                 continuityRepository.isNotificationOnboardingSeen(),
         ),
@@ -99,6 +115,11 @@ class LauncherController(
         systemStatusRepository.start(scope)
         calendarRepository.startObserving(scope) { mutableState.value.calendarAccessGranted }
         focusTimerRepository.startObserving(scope)
+        scope.launch {
+            preferencesRepository.state.collect { preferences ->
+                mutableState.update { it.copy(preferences = preferences) }
+            }
+        }
         scope.launch {
             continuityRepository.items.collect { items ->
                 val now = System.currentTimeMillis()
@@ -171,7 +192,7 @@ class LauncherController(
         if (granted) continuityRepository.markNotificationOnboardingSeen()
         mutableState.update {
             it.copy(
-                continuityAccessGranted = granted,
+                access = it.access.copy(continuityGranted = granted),
                 notificationIndicatorPackages = if (granted) {
                     it.notificationIndicatorPackages
                 } else {
@@ -198,6 +219,9 @@ class LauncherController(
 
     fun setAudioVisualizerPermissionGranted(granted: Boolean) {
         audioMixerRepository.setVisualizerPermissionGranted(granted)
+        mutableState.update {
+            it.copy(access = it.access.copy(audioVisualizerGranted = granted))
+        }
     }
 
     fun setAudioVolume(channel: AudioChannel, fraction: Float) {
@@ -205,12 +229,14 @@ class LauncherController(
     }
 
     fun setCalendarAccessGranted(granted: Boolean, scope: CoroutineScope) {
-        mutableState.update { it.copy(calendarAccessGranted = granted) }
+        mutableState.update { it.copy(access = it.access.copy(calendarGranted = granted)) }
         scope.launch { calendarRepository.refresh(granted) }
     }
 
     fun setLocationAccessGranted(granted: Boolean, scope: CoroutineScope) {
-        mutableState.update { it.copy(locationAccessGranted = granted) }
+        mutableState.update {
+            it.copy(access = it.access.copy(approximateLocationGranted = granted))
+        }
         scope.launch { weatherRepository.refresh(granted) }
     }
 
@@ -250,26 +276,58 @@ class LauncherController(
     fun deleteQuickNote(id: Long) = quickNotesRepository.delete(id)
 
     fun openDrawer() {
-        mutableState.update { currentState -> currentState.copy(isDrawerOpen = true) }
+        mutableState.update { currentState ->
+            currentState.copy(navigation = currentState.navigation.openEverything())
+        }
     }
 
     fun closeDrawer() {
-        mutableState.update { currentState -> currentState.copy(isDrawerOpen = false) }
+        mutableState.update { currentState ->
+            currentState.copy(navigation = currentState.navigation.closeToHome())
+        }
     }
 
     fun toggleDrawer() {
         mutableState.update { currentState ->
-            currentState.copy(isDrawerOpen = !currentState.isDrawerOpen)
+            currentState.copy(
+                navigation = if (currentState.isDrawerOpen) {
+                    currentState.navigation.closeToHome()
+                } else {
+                    currentState.navigation.openEverything()
+                },
+            )
         }
     }
 
     fun handleHomePressed() {
         mutableState.update { currentState ->
-            when {
-                currentState.isDrawerOpen -> currentState.copy(isDrawerOpen = false)
-                else -> currentState.copy(isDrawerOpen = true)
-            }
+            currentState.copy(navigation = currentState.navigation.handleHomePressed())
         }
+    }
+
+    fun openSettings() {
+        mutableState.update { currentState ->
+            currentState.copy(navigation = currentState.navigation.openSettings())
+        }
+    }
+
+    fun closeSettings() {
+        mutableState.update { currentState ->
+            currentState.copy(navigation = currentState.navigation.closeSettings())
+        }
+    }
+
+    fun setAccentMode(mode: AccentMode) = preferencesRepository.setAccentMode(mode)
+
+    fun resetAppearance() = preferencesRepository.resetAppearance()
+
+    fun refreshAccessState(scope: CoroutineScope) {
+        val access = accessMonitor.snapshot()
+        setContinuityAccessGranted(access.continuityGranted)
+        setAudioVisualizerPermissionGranted(access.audioVisualizerGranted)
+        setCalendarAccessGranted(access.calendarGranted, scope)
+        setLocationAccessGranted(access.approximateLocationGranted, scope)
+        mutableState.update { it.copy(access = access) }
     }
 
     fun selectContext(index: Int) {

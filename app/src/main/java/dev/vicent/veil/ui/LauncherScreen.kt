@@ -33,21 +33,25 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.vicent.veil.R
 import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.WorkspaceDataPolicy
-import dev.vicent.veil.launcher.model.ContinuityAction
+import dev.vicent.veil.launcher.model.AccentMode
 import dev.vicent.veil.launcher.model.AudioChannel
+import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.LauncherApp
+import dev.vicent.veil.launcher.model.LauncherSurface
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
 import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.ui.components.AppActionsBottomSheet
 import dev.vicent.veil.ui.components.AppDrawer
 import dev.vicent.veil.ui.components.ContextDock
+import dev.vicent.veil.ui.components.LauncherSettingsScreen
 import dev.vicent.veil.ui.components.RofiAction
 import dev.vicent.veil.ui.components.RofiBody
 import dev.vicent.veil.ui.components.RofiDialog
@@ -59,15 +63,18 @@ import kotlinx.coroutines.launch
 @Composable
 fun LauncherScreen(
     state: LauncherUiState,
+    systemAccent: Color?,
     settingsShortcuts: List<SettingsShortcut>,
     onContextSelected: (Int) -> Unit,
     onOpenDrawer: () -> Unit,
     onCloseDrawer: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onCloseSettings: () -> Unit,
     onAppSelected: (LauncherApp) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
     onAppInfoSelected: (LauncherApp) -> Unit,
     onAppUninstallSelected: (LauncherApp) -> Unit,
-    onContinuityAccessRequested: () -> Unit,
+    onContinuityAccessRequested: () -> Boolean,
     onContinuityOnboardingDismissed: () -> Unit,
     onCalendarPermissionRequested: () -> Unit,
     onLocationPermissionRequested: () -> Unit,
@@ -89,6 +96,14 @@ fun LauncherScreen(
     onQuickNoteDeleted: (Long) -> Unit,
     onHomeButtonTap: () -> Unit,
     onHomeButtonLongPress: () -> Unit,
+    onAccentSelected: (AccentMode) -> Unit,
+    onWallpaperSelected: () -> Boolean,
+    onAppPermissionSettingsRequested: () -> Boolean,
+    onFocusNotificationsSelected: () -> Boolean,
+    onExactAlarmsSelected: () -> Boolean,
+    onDefaultHomeSelected: () -> Boolean,
+    onAndroidSettingsSelected: () -> Boolean,
+    onResetAppearance: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var appWithOpenActions by remember { mutableStateOf<LauncherApp?>(null) }
@@ -101,7 +116,7 @@ fun LauncherScreen(
     }
 
     val contextCount = state.contexts.size
-    val gesturesEnabled = !state.isDrawerOpen
+    val gesturesEnabled = state.navigation.surface == LauncherSurface.HOME
     val pagerState = if (contextCount > 0) {
         rememberPagerState(
             initialPage = canonicalPagerPage(
@@ -201,7 +216,7 @@ fun LauncherScreen(
                             onCalendarPermissionRequested = onCalendarPermissionRequested,
                             onLocationPermissionRequested = { showLocationDisclosure = true },
                             onClockOpenRequested = onClockOpenRequested,
-                            onContinuityAccessRequested = onContinuityAccessRequested,
+                            onContinuityAccessRequested = { onContinuityAccessRequested() },
                             onCalendarEventSelected = onCalendarEventSelected,
                             onCalendarEventCreateRequested = onCalendarEventCreateRequested,
                             onCalendarOpenRequested = onCalendarOpenRequested,
@@ -213,6 +228,7 @@ fun LauncherScreen(
                             },
                             onAudioVolumeChanged = onAudioVolumeChanged,
                             onSettingsSelected = onSettingsSelected,
+                            onVeilSettingsSelected = onOpenSettings,
                             onFocusStart = onFocusStartRequested,
                             onFocusPause = onFocusPause,
                             onFocusResume = onFocusResume,
@@ -338,15 +354,87 @@ fun LauncherScreen(
                 onAppSelected = onAppSelected,
                 onAppLongPressed = { appWithOpenActions = it },
                 onSettingsSelected = onSettingsSelected,
+                onVeilSettingsSelected = onOpenSettings,
                 continuityAccessGranted = state.continuityAccessGranted,
                 onContinuityAccessSelected = { showContinuityDisclosure = true },
                 onClose = onCloseDrawer,
                 modifier = Modifier.fillMaxSize(),
             )
         }
+
+        AnimatedVisibility(
+            visible = state.isSettingsOpen,
+            enter = fadeIn(
+                animationSpec = tween(
+                    VeilMotion.StandardDurationMillis,
+                    easing = VeilMotion.enterEasing,
+                ),
+            ) + slideInVertically(
+                animationSpec = tween(
+                    VeilMotion.EmphasizedDurationMillis,
+                    easing = VeilMotion.standardEasing,
+                ),
+                initialOffsetY = { it / 8 },
+            ),
+            exit = fadeOut(
+                animationSpec = tween(
+                    VeilMotion.QuickDurationMillis,
+                    easing = VeilMotion.exitEasing,
+                ),
+            ),
+            label = "launcher settings",
+        ) {
+            LauncherSettingsScreen(
+                preferences = state.preferences,
+                access = state.access,
+                systemAccent = systemAccent,
+                onBack = onCloseSettings,
+                onAccentSelected = onAccentSelected,
+                onWallpaperSelected = onWallpaperSelected,
+                onContinuitySelected = {
+                    if (state.access.continuityGranted) {
+                        onContinuityAccessRequested()
+                    } else {
+                        showContinuityDisclosure = true
+                        true
+                    }
+                },
+                onCalendarSelected = {
+                    if (state.access.calendarGranted) {
+                        onAppPermissionSettingsRequested()
+                    } else {
+                        onCalendarPermissionRequested()
+                        true
+                    }
+                },
+                onLocationSelected = {
+                    if (state.access.approximateLocationGranted) {
+                        onAppPermissionSettingsRequested()
+                    } else {
+                        showLocationDisclosure = true
+                        true
+                    }
+                },
+                onAudioVisualizerSelected = {
+                    if (state.access.audioVisualizerGranted) {
+                        onAppPermissionSettingsRequested()
+                    } else {
+                        showAudioVisualizerDisclosure = true
+                        true
+                    }
+                },
+                onFocusNotificationsSelected = onFocusNotificationsSelected,
+                onExactAlarmsSelected = onExactAlarmsSelected,
+                onDefaultHomeSelected = onDefaultHomeSelected,
+                onAndroidSettingsSelected = onAndroidSettingsSelected,
+                onResetAppearance = onResetAppearance,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 
     BackHandler(enabled = state.isDrawerOpen, onBack = onCloseDrawer)
+    BackHandler(enabled = state.isSettingsOpen, onBack = onCloseSettings)
 
     val showAutomaticContinuityDisclosure =
         !state.continuityAccessGranted && !state.isContinuityOnboardingDismissed

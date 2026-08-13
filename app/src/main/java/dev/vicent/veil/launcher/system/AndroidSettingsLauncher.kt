@@ -3,6 +3,8 @@ package dev.vicent.veil.launcher.system
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import dev.vicent.veil.launcher.model.SettingsShortcut
 
@@ -84,6 +86,42 @@ class AndroidSettingsLauncher(private val context: Context) {
 
     fun launch(shortcut: SettingsShortcut): Boolean =
         start(Intent(shortcut.action)) || start(Intent(Settings.ACTION_SETTINGS))
+
+    fun openWallpaperChooser(): Boolean =
+        start(Intent(Intent.ACTION_SET_WALLPAPER)) ||
+            start(Intent(Settings.ACTION_DISPLAY_SETTINGS)) ||
+            openGeneralSettings()
+
+    fun openAppDetails(): Boolean =
+        start(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            },
+        ) || start(Intent(Settings.ACTION_APPLICATION_SETTINGS)) || openGeneralSettings()
+
+    fun openNotificationSettings(): Boolean =
+        start(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            },
+        ) || openAppDetails()
+
+    fun openNotificationListenerSettings(): Boolean =
+        start(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) || openGeneralSettings()
+
+    fun openHomeSettings(): Boolean =
+        start(Intent(Settings.ACTION_HOME_SETTINGS)) || openGeneralSettings()
+
+    fun openExactAlarmSettings(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        return start(
+            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                data = Uri.parse("package:${context.packageName}")
+            },
+        ) || openAppDetails()
+    }
+
+    fun openGeneralSettings(): Boolean = start(Intent(Settings.ACTION_SETTINGS))
 
     private fun start(intent: Intent): Boolean {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
