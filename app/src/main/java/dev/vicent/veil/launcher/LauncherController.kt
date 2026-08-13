@@ -267,15 +267,6 @@ class LauncherController(
         }
     }
 
-    fun stepContext(direction: Int) {
-        val contextCount = mutableState.value.contexts.size
-        if (contextCount == 0 || direction == 0) return
-
-        val nextIndex = (mutableState.value.activeContextIndex + direction)
-            .floorMod(contextCount)
-        selectContext(nextIndex)
-    }
-
     fun removeUnavailableApp(packageName: String) {
         mutableState.update { currentState ->
             currentState.copy(
@@ -289,7 +280,5 @@ class LauncherController(
         }
     }
 }
-
-private fun Int.floorMod(modulus: Int): Int = ((this % modulus) + modulus) % modulus
 
 private var continuityOnboardingDismissed = false

@@ -105,10 +105,6 @@ class MainActivity : ComponentActivity() {
                         controller.selectContext(index)
                         controller.refreshVisibleData(lifecycleScope)
                     },
-                    onContextStep = { direction ->
-                        controller.stepContext(direction)
-                        controller.refreshVisibleData(lifecycleScope)
-                    },
                     onOpenDrawer = controller::openDrawer,
                     onCloseDrawer = controller::closeDrawer,
                     onAppSelected = { app ->
