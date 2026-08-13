@@ -24,6 +24,7 @@ The initial configuration lives in [`LauncherConfig.kt`](app/src/main/java/dev/v
 
 - Change the complete color system through `LauncherConfig.palette`.
 - Change context labels and preferred packages through `LauncherConfig.contexts`; each context keeps its fixed product purpose.
+- Configure the two CURRENT floating-button bindings through `LauncherConfig.homeButton`: `onTap` and `onLongPress` accept Everything, an app package, or a system-settings shortcut.
 - Add installed application package names to a context's `apps` list to configure it explicitly.
 - Veil completes CURRENT with the available default phone, messaging, browser, music, and camera applications; it leaves a slot empty rather than filling it with an irrelevant app.
 - WORK, MEDIA, and SOCIAL put configured installed packages first, then fill remaining positions from Android application categories.

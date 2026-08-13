@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -62,9 +63,10 @@ fun ActivityGlyph(
     size: Dp,
     modifier: Modifier = Modifier,
     isActive: Boolean = false,
+    color: Color? = null,
 ) {
     val palette = LocalVeilPalette.current
-    val color = if (isActive) palette.accentActive else palette.contentSecondary
+    val glyphColor = color ?: if (isActive) palette.accentActive else palette.contentSecondary
     Canvas(modifier = modifier.size(size)) {
         val stroke = Stroke(width = 1.15.dp.toPx())
         val w = this.size.width
@@ -74,23 +76,23 @@ fun ActivityGlyph(
         when (kind) {
             ActivityGlyphKind.CURRENT -> {
                 drawCircle(
-                    color = color,
+                    color = glyphColor,
                     radius = w * 0.27f,
                     center = center,
                     style = if (isActive) androidx.compose.ui.graphics.drawscope.Fill else stroke,
                 )
-                if (!isActive) drawCircle(color, w * 0.07f, center)
+                if (!isActive) drawCircle(glyphColor, w * 0.07f, center)
             }
             ActivityGlyphKind.WORK -> {
                 drawRect(
-                    color,
+                    glyphColor,
                     Offset(inset, h * .34f),
                     Size(w - inset * 2, h * .42f),
                     style = if (isActive) androidx.compose.ui.graphics.drawscope.Fill else stroke,
                 )
-                drawLine(color, Offset(w * .39f, h * .34f), Offset(w * .39f, h * .24f), stroke.width)
-                drawLine(color, Offset(w * .39f, h * .24f), Offset(w * .61f, h * .24f), stroke.width)
-                drawLine(color, Offset(w * .61f, h * .24f), Offset(w * .61f, h * .34f), stroke.width)
+                drawLine(glyphColor, Offset(w * .39f, h * .34f), Offset(w * .39f, h * .24f), stroke.width)
+                drawLine(glyphColor, Offset(w * .39f, h * .24f), Offset(w * .61f, h * .24f), stroke.width)
+                drawLine(glyphColor, Offset(w * .61f, h * .24f), Offset(w * .61f, h * .34f), stroke.width)
             }
             ActivityGlyphKind.MEDIA -> {
                 val triangle = Path().apply {
@@ -101,35 +103,35 @@ fun ActivityGlyph(
                 }
                 drawPath(
                     path = triangle,
-                    color = color,
+                    color = glyphColor,
                     style = if (isActive) androidx.compose.ui.graphics.drawscope.Fill else stroke,
                 )
             }
             ActivityGlyphKind.SOCIAL, ActivityGlyphKind.MESSAGE -> {
                 drawRoundRect(
-                    color,
+                    glyphColor,
                     Offset(w * .2f, h * .24f),
                     Size(w * .6f, h * .46f),
                     CornerRadius(w * .08f),
                     style = if (isActive) androidx.compose.ui.graphics.drawscope.Fill else stroke,
                 )
-                drawLine(color, Offset(w * .32f, h * .7f), Offset(w * .25f, h * .82f), stroke.width)
-                drawLine(color, Offset(w * .32f, h * .7f), Offset(w * .45f, h * .7f), stroke.width)
+                drawLine(glyphColor, Offset(w * .32f, h * .7f), Offset(w * .25f, h * .82f), stroke.width)
+                drawLine(glyphColor, Offset(w * .32f, h * .7f), Offset(w * .45f, h * .7f), stroke.width)
             }
             ActivityGlyphKind.TOOLS -> {
                 drawCircle(
-                    color,
+                    glyphColor,
                     w * .29f,
                     center,
                     style = if (isActive) androidx.compose.ui.graphics.drawscope.Fill else stroke,
                 )
-                drawCircle(color, w * .08f, center)
+                drawCircle(glyphColor, w * .08f, center)
                 repeat(4) { index ->
                     val horizontal = index % 2 == 0
                     val sign = if (index < 2) -1 else 1
                     val start = if (horizontal) Offset(center.x + sign * w * .29f, center.y) else Offset(center.x, center.y + sign * h * .29f)
                     val end = if (horizontal) Offset(center.x + sign * w * .41f, center.y) else Offset(center.x, center.y + sign * h * .41f)
-                    drawLine(color, start, end, stroke.width)
+                    drawLine(glyphColor, start, end, stroke.width)
                 }
             }
             ActivityGlyphKind.PHONE -> {
@@ -143,17 +145,17 @@ fun ActivityGlyph(
                     lineTo(w * .43f, h * .31f)
                     close()
                 }
-                drawPath(path, color, style = stroke)
+                drawPath(path, glyphColor, style = stroke)
             }
             ActivityGlyphKind.BROWSER -> {
-                drawCircle(color, w * .31f, center, style = stroke)
-                drawLine(color, Offset(w * .28f, h * .72f), Offset(w * .72f, h * .28f), stroke.width)
+                drawCircle(glyphColor, w * .31f, center, style = stroke)
+                drawLine(glyphColor, Offset(w * .28f, h * .72f), Offset(w * .72f, h * .28f), stroke.width)
             }
             ActivityGlyphKind.CAMERA -> {
-                drawRoundRect(color, Offset(w * .18f, h * .3f), Size(w * .64f, h * .46f), CornerRadius(w * .06f), style = stroke)
-                drawCircle(color, w * .13f, center, style = stroke)
-                drawLine(color, Offset(w * .34f, h * .3f), Offset(w * .4f, h * .22f), stroke.width)
-                drawLine(color, Offset(w * .4f, h * .22f), Offset(w * .58f, h * .22f), stroke.width)
+                drawRoundRect(glyphColor, Offset(w * .18f, h * .3f), Size(w * .64f, h * .46f), CornerRadius(w * .06f), style = stroke)
+                drawCircle(glyphColor, w * .13f, center, style = stroke)
+                drawLine(glyphColor, Offset(w * .34f, h * .3f), Offset(w * .4f, h * .22f), stroke.width)
+                drawLine(glyphColor, Offset(w * .4f, h * .22f), Offset(w * .58f, h * .22f), stroke.width)
             }
             ActivityGlyphKind.NAVIGATION -> {
                 val path = Path().apply {
@@ -163,11 +165,11 @@ fun ActivityGlyph(
                     lineTo(w * .24f, h * .78f)
                     close()
                 }
-                drawPath(path, color, style = stroke)
+                drawPath(path, glyphColor, style = stroke)
             }
             ActivityGlyphKind.PROGRESS -> {
                 drawArc(
-                    color = color,
+                    color = glyphColor,
                     startAngle = -90f,
                     sweepAngle = 275f,
                     useCenter = false,
@@ -177,8 +179,8 @@ fun ActivityGlyph(
                 )
             }
             ActivityGlyphKind.APP -> {
-                drawRect(color, Offset(w * .25f, h * .25f), Size(w * .5f, h * .5f), style = stroke)
-                drawCircle(color, w * .055f, center)
+                drawRect(glyphColor, Offset(w * .25f, h * .25f), Size(w * .5f, h * .5f), style = stroke)
+                drawCircle(glyphColor, w * .055f, center)
             }
         }
     }

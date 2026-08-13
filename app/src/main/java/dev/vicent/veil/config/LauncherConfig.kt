@@ -3,6 +3,8 @@ package dev.vicent.veil.config
 import androidx.compose.ui.graphics.Color
 import dev.vicent.veil.launcher.model.LauncherContext
 import dev.vicent.veil.launcher.model.LauncherContextKind
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
+import dev.vicent.veil.launcher.model.HomeButtonConfig
 import dev.vicent.veil.launcher.model.QuickActionSpec
 import dev.vicent.veil.ui.theme.VeilPalette
 
@@ -21,6 +23,12 @@ object LauncherConfig {
     )
 
     const val quickActionCount = 5
+
+    /** CURRENT action button: a tap opens Everything; holding it opens the camera. */
+    val homeButton = HomeButtonConfig(
+        onTap = HomeButtonActionSpec.Everything,
+        onLongPress = HomeButtonActionSpec.App("com.android.camera"),
+    )
 
     private fun apps(vararg packageNames: String) =
         packageNames.map(QuickActionSpec::App)

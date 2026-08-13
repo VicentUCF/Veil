@@ -74,6 +74,10 @@ fun WorkspaceDashboard(
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
     onFocusFinish: () -> Unit,
+    onAppSelected: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
+    onAppLongPressed: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
+    onHomeButtonTap: () -> Unit,
+    onHomeButtonLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -81,14 +85,16 @@ fun WorkspaceDashboard(
         // content width corresponds to the product's 360 dp screen breakpoint.
         val compact = maxWidth < 328.dp
         when (context.definition.kind) {
-            LauncherContextKind.CURRENT -> CurrentWorkspace(
-                state,
-                compact,
-                onCalendarPermissionRequested,
-                onLocationPermissionRequested,
-                onContinuityAccessRequested,
-                onCalendarEventSelected,
-                onContinuityAction,
+            LauncherContextKind.CURRENT -> CurrentHome(
+                state = state,
+                apps = context.apps,
+                onAppSelected = onAppSelected,
+                onAppLongPressed = onAppLongPressed,
+                onLocationPermissionRequested = onLocationPermissionRequested,
+                onContinuityAction = onContinuityAction,
+                onQuickButtonTap = onHomeButtonTap,
+                onQuickButtonLongPress = onHomeButtonLongPress,
+                modifier = Modifier.fillMaxSize(),
             )
             LauncherContextKind.WORK -> WorkWorkspace(
                 state,

@@ -12,6 +12,18 @@ sealed interface QuickActionSpec {
     data class Setting(val id: String) : QuickActionSpec
 }
 
+/** The two deliberately small, source-configured bindings for CURRENT's action button. */
+sealed interface HomeButtonActionSpec {
+    data object Everything : HomeButtonActionSpec
+    data class App(val packageName: String) : HomeButtonActionSpec
+    data class Setting(val id: String) : HomeButtonActionSpec
+}
+
+data class HomeButtonConfig(
+    val onTap: HomeButtonActionSpec,
+    val onLongPress: HomeButtonActionSpec,
+)
+
 enum class LauncherContextKind {
     CURRENT,
     WORK,

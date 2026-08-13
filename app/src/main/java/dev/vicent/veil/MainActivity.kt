@@ -23,6 +23,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import dev.vicent.veil.config.LauncherConfig
 import dev.vicent.veil.launcher.LauncherController
+import dev.vicent.veil.launcher.LauncherUiState
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.CalendarRepository
@@ -51,6 +53,7 @@ class MainActivity : ComponentActivity() {
     private val appLauncher by lazy { AndroidAppLauncher(applicationContext) }
     private val settingsLauncher by lazy { AndroidSettingsLauncher(applicationContext) }
     private var requestExactAlarmAfterNotification = false
+    private var isLauncherForeground = false
 
     private val calendarPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -132,6 +135,12 @@ class MainActivity : ComponentActivity() {
                     onFocusPause = controller::pauseFocus,
                     onFocusResume = controller::resumeFocus,
                     onFocusFinish = controller::finishFocus,
+                    onHomeButtonTap = {
+                        performHomeButtonAction(LauncherConfig.homeButton.onTap, state)
+                    },
+                    onHomeButtonLongPress = {
+                        performHomeButtonAction(LauncherConfig.homeButton.onLongPress, state)
+                    },
                 )
             }
         }
@@ -139,6 +148,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        isLauncherForeground = true
         controller.setContinuityAccessGranted(hasContinuityAccess())
         controller.setCalendarAccessGranted(hasPermission(Manifest.permission.READ_CALENDAR), lifecycleScope)
         controller.setLocationAccessGranted(hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION), lifecycleScope)
@@ -150,8 +160,17 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
-            controller.handleHomePressed()
+            if (isLauncherForeground) {
+                controller.handleHomePressed()
+            } else {
+                controller.closeDrawer()
+            }
         }
+    }
+
+    override fun onPause() {
+        isLauncherForeground = false
+        super.onPause()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -202,4 +221,24 @@ class MainActivity : ComponentActivity() {
 
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun performHomeButtonAction(
+        action: HomeButtonActionSpec,
+        state: LauncherUiState,
+    ) {
+        when (action) {
+            HomeButtonActionSpec.Everything -> controller.openDrawer()
+            is HomeButtonActionSpec.App -> {
+                val app = state.installedApps.firstOrNull { it.packageName == action.packageName }
+                if (app == null || !appLauncher.launch(app)) {
+                    app?.let { controller.removeUnavailableApp(it.packageName) }
+                    controller.openDrawer()
+                }
+            }
+            is HomeButtonActionSpec.Setting -> {
+                val shortcut = settingsLauncher.shortcuts.firstOrNull { it.id == action.id }
+                if (shortcut == null || !settingsLauncher.launch(shortcut)) controller.openDrawer()
+            }
+        }
+    }
 }

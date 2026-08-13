@@ -66,6 +66,8 @@ fun LauncherScreen(
     onFocusPause: () -> Unit,
     onFocusResume: () -> Unit,
     onFocusFinish: () -> Unit,
+    onHomeButtonTap: () -> Unit,
+    onHomeButtonLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val activeContext = state.contexts.getOrNull(state.activeContextIndex)
@@ -85,6 +87,7 @@ fun LauncherScreen(
             detectDragGestures(
                 onDragStart = { horizontalDistance = 0f; verticalDistance = 0f },
                 onDrag = { change, dragAmount ->
+                    if (change.isConsumed) return@detectDragGestures
                     horizontalDistance += dragAmount.x
                     verticalDistance += dragAmount.y
                     if (abs(horizontalDistance) >= threshold || abs(verticalDistance) >= threshold) {
@@ -119,7 +122,7 @@ fun LauncherScreen(
                     .padding(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 42.dp,
+                        top = 48.dp,
                         bottom = if (activeContext.definition.kind == LauncherContextKind.CURRENT) {
                             16.dp
                         } else {
@@ -142,6 +145,10 @@ fun LauncherScreen(
                         onFocusPause = onFocusPause,
                         onFocusResume = onFocusResume,
                         onFocusFinish = onFocusFinish,
+                        onAppSelected = onAppSelected,
+                        onAppLongPressed = { appWithOpenActions = it },
+                        onHomeButtonTap = onHomeButtonTap,
+                        onHomeButtonLongPress = onHomeButtonLongPress,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -152,6 +159,7 @@ fun LauncherScreen(
             contexts = state.contexts.map { it.definition },
             activeContextIndex = state.activeContextIndex,
             onContextSelected = onContextSelected,
+            systemStatus = state.systemStatus,
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
