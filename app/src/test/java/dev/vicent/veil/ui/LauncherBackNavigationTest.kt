@@ -1,8 +1,8 @@
 package dev.vicent.veil.ui
 
 import dev.vicent.veil.launcher.model.LauncherSurface
-import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.junit.Test
 
 class LauncherBackNavigationTest {
     @Test
