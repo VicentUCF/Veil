@@ -1,0 +1,84 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Test and build debug APK
+        run: ./gradlew testDebugUnitTest assembleDebug
+
+      - name: Read version and stage APK
+        id: package
+        shell: bash
+        run: |
+          version_name="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts)"
+          if [[ -z "$version_name" ]]; then
+            echo "Could not read versionName from app/build.gradle.kts" >&2
+            exit 1
+          fi
+
+          apk_name="Veil-${version_name}-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$apk_name"
+          echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version_name}" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.apk_name }}
+          path: ${{ steps.package.outputs.apk_name }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Check whether this version is already published
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.package.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub prerelease
+        if: github.ref == 'refs/heads/main' && steps.release.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_NAME: ${{ steps.package.outputs.apk_name }}
+          TAG: ${{ steps.package.outputs.tag }}
+          VERSION_NAME: ${{ steps.package.outputs.version_name }}
+        run: |
+          gh release create "$TAG" "$APK_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Veil ${VERSION_NAME} (debug)" \
+            --notes "Installable debug build for testing. This release keeps Veil on Home when the Android Back action is pressed, preventing the launcher activity from being recreated." \
+            --prerelease

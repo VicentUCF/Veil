@@ -70,6 +70,26 @@ private data class AppActionsTarget(
     val slotIndex: Int? = null,
 )
 
+internal enum class LauncherBackAction {
+    KEEP_HOME,
+    CLOSE_EVERYTHING,
+    CLOSE_SETTINGS_DETAIL,
+    CLOSE_SETTINGS,
+}
+
+internal fun launcherBackAction(
+    surface: LauncherSurface,
+    isSettingsDetailOpen: Boolean,
+): LauncherBackAction = when (surface) {
+    LauncherSurface.HOME -> LauncherBackAction.KEEP_HOME
+    LauncherSurface.EVERYTHING -> LauncherBackAction.CLOSE_EVERYTHING
+    LauncherSurface.SETTINGS -> if (isSettingsDetailOpen) {
+        LauncherBackAction.CLOSE_SETTINGS_DETAIL
+    } else {
+        LauncherBackAction.CLOSE_SETTINGS
+    }
+}
+
 @Composable
 fun LauncherScreen(
     state: LauncherUiState,
@@ -521,8 +541,14 @@ fun LauncherScreen(
         }
     }
 
-    BackHandler(enabled = state.isDrawerOpen, onBack = onCloseDrawer)
-    BackHandler(enabled = state.isSettingsOpen, onBack = handleSettingsBack)
+    BackHandler {
+        when (launcherBackAction(state.navigation.surface, showFontSettings)) {
+            LauncherBackAction.KEEP_HOME -> Unit
+            LauncherBackAction.CLOSE_EVERYTHING -> onCloseDrawer()
+            LauncherBackAction.CLOSE_SETTINGS_DETAIL -> showFontSettings = false
+            LauncherBackAction.CLOSE_SETTINGS -> onCloseSettings()
+        }
+    }
 
     val showAutomaticContinuityDisclosure =
         !state.continuityAccessGranted && !state.isContinuityOnboardingDismissed
