@@ -1,6 +1,7 @@
 package dev.vicent.veil.launcher.repository
 
 import android.content.Context
+import androidx.core.content.edit
 import dev.vicent.veil.launcher.QuickNotesPolicy
 import dev.vicent.veil.launcher.model.QuickNote
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
@@ -11,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class QuickNotesRepository(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(
-        PreferencesName,
+        PREFERENCES_NAME,
         Context.MODE_PRIVATE,
     )
     private val mutableNotes = MutableStateFlow(readNotes())
@@ -25,7 +26,7 @@ class QuickNotesRepository(context: Context) {
         checklist: List<QuickNoteChecklistItem>,
     ) {
         val current = mutableNotes.value
-        val nextId = preferences.getLong(KeyNextId, defaultNextId(current))
+        val nextId = preferences.getLong(KEY_NEXT_ID, defaultNextId(current))
             .coerceAtLeast(defaultNextId(current))
         val updated = QuickNotesPolicy.add(
             current,
@@ -49,7 +50,7 @@ class QuickNotesRepository(context: Context) {
             QuickNote(id = id, title = title, type = type, body = body, checklist = checklist),
         )
         if (updated == current) return
-        writeNotes(updated, preferences.getLong(KeyNextId, defaultNextId(updated)))
+        writeNotes(updated, preferences.getLong(KEY_NEXT_ID, defaultNextId(updated)))
     }
 
     @Synchronized
@@ -57,38 +58,38 @@ class QuickNotesRepository(context: Context) {
         val current = mutableNotes.value
         val updated = QuickNotesPolicy.delete(current, id)
         if (updated.size == current.size) return
-        writeNotes(updated, preferences.getLong(KeyNextId, defaultNextId(updated)))
+        writeNotes(updated, preferences.getLong(KEY_NEXT_ID, defaultNextId(updated)))
     }
 
     private fun readNotes(): List<QuickNote> {
-        val count = preferences.getInt(KeyCount, 0).coerceIn(0, QuickNotesPolicy.MaxNotes)
+        val count = preferences.getInt(KEY_COUNT, 0).coerceIn(0, QuickNotesPolicy.MAX_NOTES)
         val usedIds = mutableSetOf<Long>()
         return buildList {
             repeat(count) { index ->
-                val id = preferences.getLong("$KeyIdPrefix$index", index + 1L)
-                val title = preferences.getString("$KeyTitlePrefix$index", null)
-                    ?: preferences.getString("$LegacyTextPrefix$index", null)
+                val id = preferences.getLong("$KEY_ID_PREFIX$index", index + 1L)
+                val title = preferences.getString("$KEY_TITLE_PREFIX$index", null)
+                    ?: preferences.getString("$LEGACY_TEXT_PREFIX$index", null)
                     ?: return@repeat
                 val checklistCount = preferences.getInt(
-                    "$KeyChecklistCountPrefix$index",
+                    "$KEY_CHECKLIST_COUNT_PREFIX$index",
                     0,
-                ).coerceIn(0, QuickNotesPolicy.MaxChecklistItems)
+                ).coerceIn(0, QuickNotesPolicy.MAX_CHECKLIST_ITEMS)
                 val checklist = buildList {
                     repeat(checklistCount) { itemIndex ->
                         val itemText = preferences.getString(
-                            "$KeyChecklistTextPrefix${index}_$itemIndex",
+                            "$KEY_CHECKLIST_TEXT_PREFIX${index}_$itemIndex",
                             null,
                         ).orEmpty()
                         if (itemText.isBlank()) return@repeat
                         add(
                             QuickNoteChecklistItem(
                                 id = preferences.getLong(
-                                    "$KeyChecklistIdPrefix${index}_$itemIndex",
+                                    "$KEY_CHECKLIST_ID_PREFIX${index}_$itemIndex",
                                     itemIndex + 1L,
                                 ),
                                 text = itemText,
                                 checked = preferences.getBoolean(
-                                    "$KeyChecklistCheckedPrefix${index}_$itemIndex",
+                                    "$KEY_CHECKLIST_CHECKED_PREFIX${index}_$itemIndex",
                                     false,
                                 ),
                             ),
@@ -99,7 +100,7 @@ class QuickNotesRepository(context: Context) {
                     QuickNote(
                         id = id,
                         title = title,
-                        type = preferences.getString("$KeyTypePrefix$index", null)
+                        type = preferences.getString("$KEY_TYPE_PREFIX$index", null)
                             ?.let { stored ->
                                 runCatching { QuickNoteType.valueOf(stored) }.getOrNull()
                             }
@@ -108,7 +109,7 @@ class QuickNotesRepository(context: Context) {
                             } else {
                                 QuickNoteType.TEXT
                             },
-                        body = preferences.getString("$KeyBodyPrefix$index", "").orEmpty(),
+                        body = preferences.getString("$KEY_BODY_PREFIX$index", "").orEmpty(),
                         checklist = checklist,
                     ),
                 ) ?: return@repeat
@@ -118,22 +119,23 @@ class QuickNotesRepository(context: Context) {
     }
 
     private fun writeNotes(notes: List<QuickNote>, nextId: Long) {
-        preferences.edit().clear().apply {
-            putInt(KeyCount, notes.size)
-            putLong(KeyNextId, nextId.coerceAtLeast(defaultNextId(notes)))
+        preferences.edit {
+            clear()
+            putInt(KEY_COUNT, notes.size)
+            putLong(KEY_NEXT_ID, nextId.coerceAtLeast(defaultNextId(notes)))
             notes.forEachIndexed { index, note ->
-                putLong("$KeyIdPrefix$index", note.id)
-                putString("$KeyTitlePrefix$index", note.title)
-                putString("$KeyTypePrefix$index", note.type.name)
-                putString("$KeyBodyPrefix$index", note.body)
-                putInt("$KeyChecklistCountPrefix$index", note.checklist.size)
+                putLong("$KEY_ID_PREFIX$index", note.id)
+                putString("$KEY_TITLE_PREFIX$index", note.title)
+                putString("$KEY_TYPE_PREFIX$index", note.type.name)
+                putString("$KEY_BODY_PREFIX$index", note.body)
+                putInt("$KEY_CHECKLIST_COUNT_PREFIX$index", note.checklist.size)
                 note.checklist.forEachIndexed { itemIndex, item ->
-                    putLong("$KeyChecklistIdPrefix${index}_$itemIndex", item.id)
-                    putString("$KeyChecklistTextPrefix${index}_$itemIndex", item.text)
-                    putBoolean("$KeyChecklistCheckedPrefix${index}_$itemIndex", item.checked)
+                    putLong("$KEY_CHECKLIST_ID_PREFIX${index}_$itemIndex", item.id)
+                    putString("$KEY_CHECKLIST_TEXT_PREFIX${index}_$itemIndex", item.text)
+                    putBoolean("$KEY_CHECKLIST_CHECKED_PREFIX${index}_$itemIndex", item.checked)
                 }
             }
-        }.apply()
+        }
         mutableNotes.value = notes
     }
 
@@ -141,17 +143,17 @@ class QuickNotesRepository(context: Context) {
         (notes.maxOfOrNull(QuickNote::id) ?: 0L) + 1L
 
     companion object {
-        const val PreferencesName = "veil_quick_notes"
-        private const val KeyCount = "count"
-        private const val KeyNextId = "next_id"
-        private const val KeyIdPrefix = "id_"
-        private const val KeyTitlePrefix = "title_"
-        private const val KeyTypePrefix = "type_"
-        private const val KeyBodyPrefix = "body_"
-        private const val KeyChecklistCountPrefix = "checklist_count_"
-        private const val KeyChecklistIdPrefix = "checklist_id_"
-        private const val KeyChecklistTextPrefix = "checklist_text_"
-        private const val KeyChecklistCheckedPrefix = "checklist_checked_"
-        private const val LegacyTextPrefix = "text_"
+        const val PREFERENCES_NAME = "veil_quick_notes"
+        private const val KEY_COUNT = "count"
+        private const val KEY_NEXT_ID = "next_id"
+        private const val KEY_ID_PREFIX = "id_"
+        private const val KEY_TITLE_PREFIX = "title_"
+        private const val KEY_TYPE_PREFIX = "type_"
+        private const val KEY_BODY_PREFIX = "body_"
+        private const val KEY_CHECKLIST_COUNT_PREFIX = "checklist_count_"
+        private const val KEY_CHECKLIST_ID_PREFIX = "checklist_id_"
+        private const val KEY_CHECKLIST_TEXT_PREFIX = "checklist_text_"
+        private const val KEY_CHECKLIST_CHECKED_PREFIX = "checklist_checked_"
+        private const val LEGACY_TEXT_PREFIX = "text_"
     }
 }

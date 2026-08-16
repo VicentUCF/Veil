@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 class SteamGameRepositoryTest {
     @Test
     fun `chart parser keeps valid public ranking fields`() {
-        val parsed = SteamGameRepository.parseChartResponse(
+        val parsed = SteamResponseParser.parseChart(
             """
             {"response":{"ranks":[
               {"rank":1,"appid":730,"last_week_rank":3,"peak_in_game":1200000},
@@ -24,7 +24,7 @@ class SteamGameRepositoryTest {
 
     @Test
     fun `news parser rejects incomplete and non https entries`() {
-        val parsed = SteamGameRepository.parseNewsResponse(
+        val parsed = SteamResponseParser.parseNews(
             """
             {"appnews":{"appid":730,"newsitems":[
               {"gid":"one","title":"Update","url":"https://store.steampowered.com/news/1","date":100},

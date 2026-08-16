@@ -17,7 +17,11 @@ class ContextAppSelectorTest {
 
         val result = ContextAppSelector.selectQuickSlots(
             kind = LauncherContextKind.WORK,
-            configuredPackageNames = listOf("fixed.one", "missing", "fixed.three"),
+            configuredPackageCandidates = listOf(
+                listOf("fixed.one"),
+                listOf("missing"),
+                listOf("fixed.three"),
+            ),
             installedApps = installed,
             count = 3,
         )
@@ -36,7 +40,11 @@ class ContextAppSelectorTest {
 
         val result = ContextAppSelector.selectQuickSlots(
             kind = LauncherContextKind.WORK,
-            configuredPackageNames = listOf("fixed.one", "removed.work", "fixed.three"),
+            configuredPackageCandidates = listOf(
+                listOf("fixed.one"),
+                listOf("removed.work"),
+                listOf("fixed.three"),
+            ),
             installedApps = remaining,
             count = 3,
         )
@@ -45,38 +53,34 @@ class ContextAppSelectorTest {
     }
 
     @Test
-    fun `configured apps lead and automatic category apps fill remaining slots`() {
+    fun `slot selects the first installed provider candidate`() {
         val installed = listOf(
-            AppCandidate("work.auto", AppCategory.WORK),
-            AppCandidate("configured.media", AppCategory.MEDIA),
-            AppCandidate("work.second", AppCategory.WORK),
+            AppCandidate("browser.second", AppCategory.GENERAL),
+            AppCandidate("unrelated", AppCategory.GENERAL),
         )
 
-        val result = ContextAppSelector.selectPackageNames(
-            kind = LauncherContextKind.WORK,
-            configuredPackageNames = listOf("configured.media"),
+        val result = ContextAppSelector.selectQuickSlots(
+            kind = LauncherContextKind.CURRENT,
+            configuredPackageCandidates = listOf(
+                listOf("browser.first", "browser.second"),
+            ),
             installedApps = installed,
-            count = 3,
+            count = 1,
         )
 
-        assertEquals(listOf("configured.media", "work.auto", "work.second"), result)
+        assertEquals(listOf("browser.second"), result)
     }
 
     @Test
-    fun `missing configured apps duplicates and overflow are removed`() {
-        val installed = listOf(
-            AppCandidate("one", AppCategory.GAME),
-            AppCandidate("two", AppCategory.GAME),
-            AppCandidate("three", AppCategory.GAME),
+    fun `context without a category leaves an unrelated missing slot empty`() {
+        val result = ContextAppSelector.selectQuickSlots(
+            kind = LauncherContextKind.CURRENT,
+            configuredPackageCandidates = listOf(listOf("missing.phone")),
+            installedApps = listOf(AppCandidate("unrelated", AppCategory.GENERAL)),
+            count = 1,
         )
 
-        val result = ContextAppSelector.selectPackageNames(
-            kind = LauncherContextKind.GAME,
-            configuredPackageNames = listOf("missing", "one", "one"),
-            installedApps = installed,
-            count = 2,
-        )
-
-        assertEquals(listOf("one", "two"), result)
+        assertEquals(listOf(null), result)
     }
+
 }

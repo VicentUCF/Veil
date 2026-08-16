@@ -1,7 +1,7 @@
 package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.WeatherAvailability
-import dev.vicent.veil.launcher.repository.WeatherRepository
+import dev.vicent.veil.launcher.repository.OpenMeteoClient
 import dev.vicent.veil.launcher.repository.readBounded
 import java.io.StringReader
 import kotlin.test.assertEquals
@@ -11,7 +11,7 @@ import org.junit.Test
 class WeatherRepositoryTest {
     @Test
     fun `open meteo response maps only the fields shown by Veil`() {
-        val state = WeatherRepository.parseWeather(
+        val state = OpenMeteoClient.parse(
             json = """{
                 "current":{"temperature_2m":18.4,"apparent_temperature":17.1,"weather_code":2},
                 "daily":{"temperature_2m_max":[22.8],"temperature_2m_min":[12.3]}
@@ -31,7 +31,7 @@ class WeatherRepositoryTest {
     @Test
     fun `weather parser rejects implausible remote values`() {
         assertFailsWith<IllegalArgumentException> {
-            WeatherRepository.parseWeather(
+            OpenMeteoClient.parse(
                 json = """{
                     "current":{"temperature_2m":999,"apparent_temperature":17.1,"weather_code":2},
                     "daily":{"temperature_2m_max":[22.8],"temperature_2m_min":[12.3]}

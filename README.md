@@ -21,7 +21,7 @@ The repository contains a functional launcher with Android Home integration, rea
 
 ## Ambient Continuity
 
-CURRENT shows one relevant ongoing activity when Android exposes it: navigation, active or recently paused media, or progress. MEDIA specializes in the current media session. WORK, SOCIAL, and TOOLS remain focused lenses with automatically classified fallbacks.
+CURRENT shows one relevant ongoing activity when Android exposes it: navigation, active or recently paused media, or progress. MEDIA specializes in the current media session. WORK, GAME, and TOOLS remain focused lenses with deterministic fallbacks.
 
 Veil asks for Android notification-listener access contextually. This access is optional, content remains in memory, and Ambient Continuity deliberately ignores calls, conversations, email, alarms, social notifications, and unrelated notifications. Without access, every launcher and drawer feature continues to work normally.
 
@@ -37,18 +37,15 @@ The product direction and implementation guardrails are documented in [PROJECT_C
 
 ## Configuration
 
-The initial configuration lives in [`LauncherConfig.kt`](app/src/main/java/dev/vicent/veil/config/LauncherConfig.kt).
+Veil ships vendor-neutral semantic defaults rather than a single developer's app list. Each initial slot contains alternatives from several providers; WORK, MEDIA and GAME can also use Android application categories as deterministic fallbacks. CURRENT and TOOLS leave a missing semantic slot empty instead of inserting an unrelated app.
 
-- Change the complete color system through `LauncherConfig.palette`.
-- Change context labels and preferred packages through `LauncherConfig.contexts`; each context keeps its fixed product purpose.
-- Configure the two CURRENT floating-button bindings through `LauncherConfig.homeButton`: `onTap` and `onLongPress` accept Everything, an app package, or a system-settings shortcut.
-- Add installed application package names to a context's `apps` list to configure it explicitly.
-- Veil completes CURRENT with the available default phone, messaging, browser, music, and camera applications; it leaves a slot empty rather than filling it with an irrelevant app.
-- WORK, MEDIA, and SOCIAL put configured installed packages first, then fill remaining positions from Android application categories.
+Runtime preferences live in the internal **Ajustes de Veil** screen, available from Everything and TOOLS. Context apps are edited directly where they appear: hold an app to replace or remove it, or tap an empty `+` slot. Once a context is customized, its five exact package positions are persisted and Veil no longer refills or reorders them automatically.
+
+The bounded product defaults and palette remain declared in [`LauncherConfig.kt`](app/src/main/java/dev/vicent/veil/config/LauncherConfig.kt); normal personalization does not require editing source code.
 
 Veil displays the real system wallpaper through the Android window. The visual concept images are kept under [`docs/design`](docs/design) as references and are not bundled into the APK.
 
-Runtime preferences live in the internal **Ajustes de Veil** screen, available from Everything and TOOLS. It offers five accessible accent presets, Android 12+ dynamic color, a **Fuente de CURRENT** submenu with light/dark foreground, three fixed text weights and an optional intensity-adjustable contrast filter behind every view, the system wallpaper chooser, permission/special-access status, HOME-role selection and a preferred music provider. Context apps are edited directly where they appear: hold an app to replace or remove it, or tap an empty `+` slot. Changes apply immediately; customized slots persist locally and may be left empty.
+The settings screen also offers five accessible accent presets, Android 12+ dynamic color, a **Fuente de CURRENT** submenu with light/dark foreground, three fixed text weights and an optional intensity-adjustable contrast filter behind every view, the system wallpaper chooser, permission/special-access status, HOME-role selection and a preferred music provider.
 
 ## Application drawer
 

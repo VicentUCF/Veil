@@ -11,7 +11,7 @@ import kotlin.test.assertNull
 class WorkspaceDataPolicyTest {
     @Test
     fun `dock stays hidden only in current`() {
-        assertEquals(false, WorkspaceDataPolicy.showsContextDock(LauncherContextKind.CURRENT))
+        assertEquals(false, WorkspaceLayoutPolicy.showsContextDock(LauncherContextKind.CURRENT))
         assertEquals(
             listOf(true, true, true, true),
             listOf(
@@ -19,7 +19,7 @@ class WorkspaceDataPolicyTest {
                 LauncherContextKind.MEDIA,
                 LauncherContextKind.GAME,
                 LauncherContextKind.TOOLS,
-            ).map(WorkspaceDataPolicy::showsContextDock),
+            ).map(WorkspaceLayoutPolicy::showsContextDock),
         )
     }
 
@@ -36,7 +36,7 @@ class WorkspaceDataPolicyTest {
 
         assertEquals(
             listOf("one", "two", "three"),
-            WorkspaceDataPolicy.workEvents(events, now).map(CalendarEventSummary::title),
+            AgendaPolicy.workEvents(events, now).map(CalendarEventSummary::title),
         )
     }
 
@@ -50,7 +50,7 @@ class WorkspaceDataPolicyTest {
 
         assertEquals(
             listOf("next"),
-            WorkspaceDataPolicy.workEvents(events, now).map(CalendarEventSummary::title),
+            AgendaPolicy.workEvents(events, now).map(CalendarEventSummary::title),
         )
     }
 
@@ -58,7 +58,7 @@ class WorkspaceDataPolicyTest {
     fun `running focus derives remaining time from its deadline`() {
         assertEquals(
             45_000L,
-            WorkspaceDataPolicy.focusRemainingMillis(
+            FocusTimerPolicy.remainingMillis(
                 status = FocusTimerStatus.RUNNING,
                 endAtMillis = 100_000L,
                 storedRemainingMillis = 70_000L,
@@ -71,7 +71,7 @@ class WorkspaceDataPolicyTest {
     fun `paused focus keeps its stored remaining time`() {
         assertEquals(
             70_000L,
-            WorkspaceDataPolicy.focusRemainingMillis(
+            FocusTimerPolicy.remainingMillis(
                 status = FocusTimerStatus.PAUSED,
                 endAtMillis = 100_000L,
                 storedRemainingMillis = 70_000L,
@@ -84,7 +84,7 @@ class WorkspaceDataPolicyTest {
     fun `expired running focus reaches zero for repository completion`() {
         assertEquals(
             0L,
-            WorkspaceDataPolicy.focusRemainingMillis(
+            FocusTimerPolicy.remainingMillis(
                 status = FocusTimerStatus.RUNNING,
                 endAtMillis = 50_000L,
                 storedRemainingMillis = 70_000L,
@@ -95,19 +95,19 @@ class WorkspaceDataPolicyTest {
 
     @Test
     fun `system usage reports the used fraction`() {
-        assertEquals(0.75f, WorkspaceDataPolicy.usedFraction(availableBytes = 25L, totalBytes = 100L))
+        assertEquals(0.75f, StorageUsagePolicy.usedFraction(availableBytes = 25L, totalBytes = 100L))
     }
 
     @Test
     fun `system usage bounds invalid available values`() {
-        assertEquals(1f, WorkspaceDataPolicy.usedFraction(availableBytes = -1L, totalBytes = 100L))
-        assertEquals(0f, WorkspaceDataPolicy.usedFraction(availableBytes = 150L, totalBytes = 100L))
+        assertEquals(1f, StorageUsagePolicy.usedFraction(availableBytes = -1L, totalBytes = 100L))
+        assertEquals(0f, StorageUsagePolicy.usedFraction(availableBytes = 150L, totalBytes = 100L))
     }
 
     @Test
     fun `system usage is unavailable without a valid total`() {
-        assertNull(WorkspaceDataPolicy.usedFraction(availableBytes = 0L, totalBytes = 0L))
-        assertNull(WorkspaceDataPolicy.usedFraction(availableBytes = 0L, totalBytes = -1L))
+        assertNull(StorageUsagePolicy.usedFraction(availableBytes = 0L, totalBytes = 0L))
+        assertNull(StorageUsagePolicy.usedFraction(availableBytes = 0L, totalBytes = -1L))
     }
 
     @Test
@@ -122,7 +122,7 @@ class WorkspaceDataPolicyTest {
 
         assertEquals(
             listOf("emulator", "game.z", "game.a"),
-            WorkspaceDataPolicy.gameLibraryPackages(installed, setOf("emulator")),
+            GameLibraryPolicy.gameLibraryPackages(installed, setOf("emulator")),
         )
     }
 

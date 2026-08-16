@@ -19,6 +19,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class CalendarRepository(private val context: Context) {
     private val mutableEvents = MutableStateFlow<List<CalendarEventSummary>>(emptyList())
@@ -26,6 +28,7 @@ class CalendarRepository(private val context: Context) {
     private var observer: ContentObserver? = null
     private var observerScope: CoroutineScope? = null
     private var accessCheck: (() -> Boolean)? = null
+    private val refreshMutex = Mutex()
 
     fun startObserving(scope: CoroutineScope, hasAccess: () -> Boolean) {
         observerScope = scope
@@ -40,7 +43,7 @@ class CalendarRepository(private val context: Context) {
         }
     }
 
-    suspend fun refresh(accessGranted: Boolean) {
+    suspend fun refresh(accessGranted: Boolean) = refreshMutex.withLock {
         if (accessGranted) ensureObserver() else removeObserver()
         mutableEvents.value = if (accessGranted) queryEvents() else emptyList()
     }
@@ -65,18 +68,18 @@ class CalendarRepository(private val context: Context) {
             .resolveActivity(viewCalendar, PackageManager.MATCH_DEFAULT_ONLY)
             ?.activityInfo
             ?.packageName
-            ?.takeUnless { it == "android" || it == AndroidResolverPackage }
+            ?.takeUnless { it == "android" || it == ANDROID_RESOLVER_PACKAGE }
 
         if (defaultPackage != null && start(Intent(viewCalendar).setPackage(defaultPackage))) {
             return true
         }
-        if (start(Intent(viewCalendar).setPackage(GoogleCalendarPackage))) return true
+        if (start(Intent(viewCalendar).setPackage(GOOGLE_CALENDAR_PACKAGE))) return true
         return start(viewCalendar)
     }
 
     fun configureGoogleCalendar(): Boolean {
         val launchGoogleCalendar = context.packageManager
-            .getLaunchIntentForPackage(GoogleCalendarPackage)
+            .getLaunchIntentForPackage(GOOGLE_CALENDAR_PACKAGE)
         return if (launchGoogleCalendar != null) {
             start(launchGoogleCalendar)
         } else {
@@ -155,7 +158,7 @@ class CalendarRepository(private val context: Context) {
     }
 
     private companion object {
-        const val AndroidResolverPackage = "com.android.intentresolver"
-        const val GoogleCalendarPackage = "com.google.android.calendar"
+        const val ANDROID_RESOLVER_PACKAGE = "com.android.intentresolver"
+        const val GOOGLE_CALENDAR_PACKAGE = "com.google.android.calendar"
     }
 }

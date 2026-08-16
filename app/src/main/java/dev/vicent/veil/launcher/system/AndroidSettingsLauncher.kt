@@ -3,9 +3,9 @@ package dev.vicent.veil.launcher.system
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.core.net.toUri
 import dev.vicent.veil.launcher.model.SettingsShortcut
 
 class AndroidSettingsLauncher(private val context: Context) {
@@ -95,7 +95,7 @@ class AndroidSettingsLauncher(private val context: Context) {
     fun openAppDetails(): Boolean =
         start(
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.parse("package:${context.packageName}")
+                data = "package:${context.packageName}".toUri()
             },
         ) || start(Intent(Settings.ACTION_APPLICATION_SETTINGS)) || openGeneralSettings()
 
@@ -118,7 +118,7 @@ class AndroidSettingsLauncher(private val context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
         return start(
             Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                data = Uri.parse("package:${context.packageName}")
+                data = "package:${context.packageName}".toUri()
             },
         ) || openAppDetails()
     }

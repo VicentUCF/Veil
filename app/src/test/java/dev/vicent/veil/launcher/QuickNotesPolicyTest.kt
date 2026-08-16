@@ -40,7 +40,7 @@ class QuickNotesPolicyTest {
 
     @Test
     fun `note fields are trimmed bounded and blank checklist items are discarded`() {
-        val longTitle = "x".repeat(QuickNotesPolicy.MaxTitleLength + 20)
+        val longTitle = "x".repeat(QuickNotesPolicy.MAX_TITLE_LENGTH + 20)
         val note = QuickNote(
             id = 1L,
             title = "  $longTitle  ",
@@ -53,7 +53,7 @@ class QuickNotesPolicyTest {
         )
         val sanitized = QuickNotesPolicy.sanitize(note)
 
-        assertEquals(QuickNotesPolicy.MaxTitleLength, sanitized?.title?.length)
+        assertEquals(QuickNotesPolicy.MAX_TITLE_LENGTH, sanitized?.title?.length)
         assertEquals(QuickNoteType.CHECKLIST, sanitized?.type)
         assertEquals("", sanitized?.body)
         assertEquals(listOf(QuickNoteChecklistItem(1L, "comprar")), sanitized?.checklist)

@@ -11,18 +11,24 @@ data class AppCandidate(
 object ContextAppSelector {
     fun selectQuickSlots(
         kind: LauncherContextKind,
-        configuredPackageNames: List<String>,
+        configuredPackageCandidates: List<List<String>>,
         installedApps: List<AppCandidate>,
         count: Int,
-    ): List<String> {
+    ): List<String?> {
         val installedPackages = installedApps.mapTo(mutableSetOf(), AppCandidate::packageName)
-        val reserved = configuredPackageNames.filter(installedPackages::contains).toSet()
+        val reserved = configuredPackageCandidates
+            .asSequence()
+            .flatten()
+            .filter(installedPackages::contains)
+            .toSet()
         val used = mutableSetOf<String>()
         val fallbacks = orderedCandidates(kind, installedApps)
             .filter { it.packageName !in reserved }
             .iterator()
-        return configuredPackageNames.take(count).mapNotNull { configured ->
-            val resolved = configured.takeIf { it in installedPackages && used.add(it) }
+        return configuredPackageCandidates.take(count).map { candidates ->
+            val resolved = candidates.firstOrNull { candidate ->
+                candidate in installedPackages && used.add(candidate)
+            }
                 ?: generateSequence { if (fallbacks.hasNext()) fallbacks.next() else null }
                     .map(AppCandidate::packageName)
                     .firstOrNull(used::add)
@@ -30,34 +36,14 @@ object ContextAppSelector {
         }
     }
 
-    fun selectPackageNames(
-        kind: LauncherContextKind,
-        configuredPackageNames: List<String>,
-        installedApps: List<AppCandidate>,
-        count: Int,
-    ): List<String> {
-        val wantedCategory = wantedCategory(kind)
-            ?: return configuredPackageNames.distinct().take(count)
-        val installedPackages = installedApps.mapTo(mutableSetOf(), AppCandidate::packageName)
-        val configured = configuredPackageNames.filter(installedPackages::contains).distinct()
-        val configuredSet = configured.toSet()
-        val automatic = installedApps.asSequence()
-            .filter { it.category == wantedCategory && it.packageName !in configuredSet }
-            .map(AppCandidate::packageName)
-            .distinct()
-        return (configured.asSequence() + automatic).take(count).toList()
-    }
-
     private fun orderedCandidates(
         kind: LauncherContextKind,
         installedApps: List<AppCandidate>,
     ): Sequence<AppCandidate> {
-        val category = wantedCategory(kind)
-        return installedApps.asSequence().sortedWith(
-            compareBy<AppCandidate> { candidate ->
-                if (category != null && candidate.category == category) 0 else 1
-            }.thenBy(AppCandidate::packageName),
-        )
+        val category = wantedCategory(kind) ?: return emptySequence()
+        return installedApps.asSequence()
+            .filter { it.category == category }
+            .sortedBy(AppCandidate::packageName)
     }
 
     private fun wantedCategory(kind: LauncherContextKind): AppCategory? = when (kind) {

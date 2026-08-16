@@ -110,7 +110,6 @@ class SystemStatusRepository(context: Context) {
             memoryTotalBytes = memory.totalMem,
             connectionType = connectionType,
             connectionSignalLevel = connectionSignalLevel,
-            connectionLabel = connectionType.label,
             deviceManufacturer = Build.MANUFACTURER.trim().takeIf(String::isNotEmpty),
             deviceModel = Build.MODEL.trim().takeIf(String::isNotEmpty),
             androidVersion = Build.VERSION.RELEASE.trim().takeIf(String::isNotEmpty),
@@ -216,15 +215,6 @@ class SystemStatusRepository(context: Context) {
         return runCatching { telephonyManager.signalStrength?.level?.coerceIn(0, MAX_SIGNAL_LEVEL) }
             .getOrNull()
     }
-
-    private val ConnectionType.label: String
-        get() = when (this) {
-            ConnectionType.NONE -> "Sin conexión"
-            ConnectionType.WIFI -> "Wi‑Fi"
-            ConnectionType.CELLULAR -> "Datos móviles"
-            ConnectionType.ETHERNET -> "Ethernet"
-            ConnectionType.OTHER -> "Conectado"
-        }
 
     companion object {
         private const val MAX_SIGNAL_LEVEL = 4

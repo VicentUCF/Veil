@@ -38,39 +38,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import dev.vicent.veil.R
 import dev.vicent.veil.launcher.LauncherUiState
-import dev.vicent.veil.launcher.WorkspaceDataPolicy
-import dev.vicent.veil.launcher.model.AccentMode
+import dev.vicent.veil.launcher.WorkspaceLayoutPolicy
 import dev.vicent.veil.launcher.model.HomeTextTone
-import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.WallpaperScrimPolicy
-import dev.vicent.veil.launcher.model.AudioChannel
-import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherSurface
-import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
-import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.model.SettingsShortcut
-import dev.vicent.veil.ui.components.AppActionsBottomSheet
 import dev.vicent.veil.ui.components.AppDrawer
 import dev.vicent.veil.ui.components.ContextDock
 import dev.vicent.veil.ui.components.LauncherSettingsScreen
-import dev.vicent.veil.ui.components.RofiAction
-import dev.vicent.veil.ui.components.RofiBody
-import dev.vicent.veil.ui.components.RofiDialog
+import dev.vicent.veil.ui.components.LauncherSettingsUiState
+import dev.vicent.veil.ui.components.SettingsAccessActions
+import dev.vicent.veil.ui.components.SettingsAppActions
+import dev.vicent.veil.ui.components.SettingsAppearanceActions
+import dev.vicent.veil.ui.components.SettingsNavigationActions
 import dev.vicent.veil.ui.components.TopBar
 import dev.vicent.veil.ui.components.WorkspaceDashboard
 import dev.vicent.veil.ui.theme.VeilMotion
 import kotlinx.coroutines.launch
-
-private data class AppActionsTarget(
-    val app: LauncherApp,
-    val contextKind: dev.vicent.veil.launcher.model.LauncherContextKind? = null,
-    val slotIndex: Int? = null,
-)
 
 internal enum class LauncherBackAction {
     KEEP_HOME,
@@ -97,64 +84,77 @@ fun LauncherScreen(
     state: LauncherUiState,
     systemAccent: Color?,
     settingsShortcuts: List<SettingsShortcut>,
-    onContextSelected: (Int) -> Unit,
-    onOpenDrawer: () -> Unit,
-    onCloseDrawer: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenMusicProviderPicker: () -> Unit,
-    onOpenContextSlotPicker: (dev.vicent.veil.launcher.model.LauncherContextKind, Int) -> Unit,
-    onCloseSettings: () -> Unit,
-    onAppSelected: (LauncherApp) -> Unit,
-    onSettingsSelected: (SettingsShortcut) -> Unit,
-    onAppInfoSelected: (LauncherApp) -> Unit,
-    onAppUninstallSelected: (LauncherApp) -> Unit,
-    onContinuityAccessRequested: () -> Boolean,
-    onContinuityOnboardingDismissed: () -> Unit,
-    onCalendarPermissionRequested: () -> Unit,
-    onLocationPermissionRequested: () -> Unit,
-    onClockOpenRequested: () -> Unit,
-    onCalendarEventSelected: (Long) -> Unit,
-    onCalendarEventCreateRequested: () -> Unit,
-    onCalendarOpenRequested: () -> Unit,
-    onGoogleCalendarConfigureRequested: () -> Unit,
-    onContinuityAction: (String, ContinuityAction, Long?) -> Unit,
-    onHomeMediaDismissed: (String) -> Unit,
-    onAudioVisualizerPermissionRequested: () -> Unit,
-    onAudioVolumeChanged: (AudioChannel, Float) -> Unit,
-    onFocusStartRequested: (Int) -> Unit,
-    onFocusPause: () -> Unit,
-    onFocusResume: () -> Unit,
-    onFocusFinish: () -> Unit,
-    onQuickNoteAdded: (String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
-    onQuickNoteUpdated: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
-    onQuickNoteDeleted: (Long) -> Unit,
-    onExternalLinkSelected: (String) -> Unit,
-    onPrivacyPolicySelected: () -> Boolean,
-    onHomeButtonTap: () -> Unit,
-    onHomeButtonLongPress: () -> Unit,
-    onAccentSelected: (AccentMode) -> Unit,
-    onHomeTextToneSelected: (HomeTextTone) -> Unit,
-    onHomeTextWeightSelected: (HomeTextWeight) -> Unit,
-    onWallpaperScrimEnabledChanged: (Boolean) -> Unit,
-    onWallpaperScrimIntensityChanged: (Float) -> Unit,
-    onWallpaperSelected: () -> Boolean,
-    onAppPermissionSettingsRequested: () -> Boolean,
-    onFocusNotificationsSelected: () -> Boolean,
-    onExactAlarmsSelected: () -> Boolean,
-    onDefaultHomeSelected: () -> Boolean,
-    onAndroidSettingsSelected: () -> Boolean,
-    onResetAppearance: () -> Unit,
-    onSettingsAppSelected: (String) -> Unit,
-    onMusicProviderCleared: () -> Unit,
-    onContextSlotCleared: (dev.vicent.veil.launcher.model.LauncherContextKind, Int) -> Unit,
+    navigationActions: LauncherNavigationActions,
+    appActions: LauncherAppActions,
+    accessActions: LauncherAccessActions,
+    workspaceActions: LauncherWorkspaceActions,
+    appearanceActions: LauncherAppearanceActions,
     modifier: Modifier = Modifier,
 ) {
+    val (
+        onContextSelected,
+        onOpenDrawer,
+        onCloseDrawer,
+        onOpenSettings,
+        onCloseSettings,
+        onOpenMusicProviderPicker,
+        onOpenContextSlotPicker,
+        onHomeButtonTap,
+        onHomeButtonLongPress,
+    ) = navigationActions
+    val (
+        onAppSelected,
+        onSettingsSelected,
+        onAppInfoSelected,
+        onAppUninstallSelected,
+        onExternalLinkSelected,
+        onPrivacyPolicySelected,
+        onSettingsAppSelected,
+        onMusicProviderCleared,
+        onContextSlotCleared,
+    ) = appActions
+    val (
+        onContinuityAccessRequested,
+        onContinuityOnboardingDismissed,
+        onCalendarPermissionRequested,
+        onLocationPermissionRequested,
+        onAudioVisualizerPermissionRequested,
+        onWallpaperSelected,
+        onAppPermissionSettingsRequested,
+        onFocusNotificationsSelected,
+        onExactAlarmsSelected,
+        onDefaultHomeSelected,
+        onAndroidSettingsSelected,
+    ) = accessActions
+    val (
+        onClockOpenRequested,
+        onCalendarEventSelected,
+        onCalendarEventCreateRequested,
+        onCalendarOpenRequested,
+        onGoogleCalendarConfigureRequested,
+        onContinuityAction,
+        onHomeMediaDismissed,
+        onAudioVolumeChanged,
+        onFocusStartRequested,
+        onFocusPause,
+        onFocusResume,
+        onFocusFinish,
+        onQuickNoteAdded,
+        onQuickNoteUpdated,
+        onQuickNoteDeleted,
+    ) = workspaceActions
+    val (
+        onAccentSelected,
+        onHomeTextToneSelected,
+        onHomeTextWeightSelected,
+        onWallpaperScrimEnabledChanged,
+        onWallpaperScrimIntensityChanged,
+        onResetAppearance,
+    ) = appearanceActions
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var appWithOpenActions by remember { mutableStateOf<AppActionsTarget?>(null) }
-    var showLocationDisclosure by remember { mutableStateOf(false) }
-    var showAudioVisualizerDisclosure by remember { mutableStateOf(false) }
-    var showContinuityDisclosure by remember { mutableStateOf(false) }
+    var activeDisclosure by remember { mutableStateOf<LauncherDisclosure?>(null) }
     var showFontSettings by remember { mutableStateOf(false) }
 
     val handleSettingsBack = {
@@ -188,7 +188,7 @@ fun LauncherScreen(
     }
     val pagerSnapAnimationSpec = remember {
         tween<Float>(
-            durationMillis = VeilMotion.StandardDurationMillis,
+            durationMillis = VeilMotion.STANDARD_DURATION_MILLIS,
             easing = VeilMotion.standardEasing,
         )
     }
@@ -294,7 +294,9 @@ fun LauncherScreen(
                             context = renderedContext,
                             settingsShortcuts = settingsShortcuts,
                             onCalendarPermissionRequested = onCalendarPermissionRequested,
-                            onLocationPermissionRequested = { showLocationDisclosure = true },
+                            onLocationPermissionRequested = {
+                                activeDisclosure = LauncherDisclosure.LOCATION
+                            },
                             onClockOpenRequested = onClockOpenRequested,
                             onContinuityAccessRequested = { onContinuityAccessRequested() },
                             onCalendarEventSelected = onCalendarEventSelected,
@@ -304,7 +306,7 @@ fun LauncherScreen(
                             onContinuityAction = onContinuityAction,
                             onHomeMediaDismissed = onHomeMediaDismissed,
                             onAudioVisualizerPermissionRequested = {
-                                showAudioVisualizerDisclosure = true
+                                activeDisclosure = LauncherDisclosure.AUDIO_VISUALIZER
                             },
                             onAudioVolumeChanged = onAudioVolumeChanged,
                             onSettingsSelected = onSettingsSelected,
@@ -339,7 +341,7 @@ fun LauncherScreen(
                                     end = 16.dp,
                                     top = 48.dp,
                                     bottom = if (
-                                        WorkspaceDataPolicy.showsContextDock(
+                                        WorkspaceLayoutPolicy.showsContextDock(
                                             renderedContext.definition.kind,
                                         )
                                     ) {
@@ -350,7 +352,7 @@ fun LauncherScreen(
                                 ),
                         )
 
-                        if (WorkspaceDataPolicy.showsContextDock(renderedContext.definition.kind)) {
+                        if (WorkspaceLayoutPolicy.showsContextDock(renderedContext.definition.kind)) {
                             ContextDock(
                                 actions = renderedContext.quickActions,
                                 notificationIndicatorPackages = state.notificationIndicatorPackages,
@@ -429,25 +431,25 @@ fun LauncherScreen(
             visible = state.isDrawerOpen,
             enter = fadeIn(
                 animationSpec = tween(
-                    VeilMotion.StandardDurationMillis,
+                    VeilMotion.STANDARD_DURATION_MILLIS,
                     easing = VeilMotion.enterEasing,
                 ),
                 initialAlpha = 0.72f,
             ) + slideInVertically(
                 animationSpec = tween(
-                    VeilMotion.EmphasizedDurationMillis,
+                    VeilMotion.EMPHASIZED_DURATION_MILLIS,
                     easing = VeilMotion.standardEasing,
                 ),
                 initialOffsetY = { it / 6 },
             ),
             exit = fadeOut(
                 animationSpec = tween(
-                    VeilMotion.QuickDurationMillis,
+                    VeilMotion.QUICK_DURATION_MILLIS,
                     easing = VeilMotion.exitEasing,
                 ),
             ) + slideOutVertically(
                 animationSpec = tween(
-                    VeilMotion.StandardDurationMillis,
+                    VeilMotion.STANDARD_DURATION_MILLIS,
                     easing = VeilMotion.exitEasing,
                 ),
                 targetOffsetY = { it / 8 },
@@ -463,7 +465,9 @@ fun LauncherScreen(
                 onSettingsSelected = onSettingsSelected,
                 onVeilSettingsSelected = onOpenSettings,
                 continuityAccessGranted = state.continuityAccessGranted,
-                onContinuityAccessSelected = { showContinuityDisclosure = true },
+                onContinuityAccessSelected = {
+                    activeDisclosure = LauncherDisclosure.CONTINUITY
+                },
                 onClose = onCloseDrawer,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -473,80 +477,90 @@ fun LauncherScreen(
             visible = state.isSettingsOpen,
             enter = fadeIn(
                 animationSpec = tween(
-                    VeilMotion.StandardDurationMillis,
+                    VeilMotion.STANDARD_DURATION_MILLIS,
                     easing = VeilMotion.enterEasing,
                 ),
             ) + slideInVertically(
                 animationSpec = tween(
-                    VeilMotion.EmphasizedDurationMillis,
+                    VeilMotion.EMPHASIZED_DURATION_MILLIS,
                     easing = VeilMotion.standardEasing,
                 ),
                 initialOffsetY = { it / 8 },
             ),
             exit = fadeOut(
                 animationSpec = tween(
-                    VeilMotion.QuickDurationMillis,
+                    VeilMotion.QUICK_DURATION_MILLIS,
                     easing = VeilMotion.exitEasing,
                 ),
             ),
             label = "launcher settings",
         ) {
             LauncherSettingsScreen(
-                preferences = state.preferences,
-                access = state.access,
-                installedApps = state.installedApps,
-                appTarget = state.settingsAppTarget,
-                showFontSettings = showFontSettings,
-                systemAccent = systemAccent,
-                onBack = handleSettingsBack,
-                onOpenFontSettings = { showFontSettings = true },
-                onAccentSelected = onAccentSelected,
-                onHomeTextToneSelected = onHomeTextToneSelected,
-                onHomeTextWeightSelected = onHomeTextWeightSelected,
-                onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
-                onWallpaperScrimIntensityChanged = onWallpaperScrimIntensityChanged,
-                onOpenMusicProviderPicker = onOpenMusicProviderPicker,
-                onSettingsAppSelected = onSettingsAppSelected,
-                onMusicProviderCleared = onMusicProviderCleared,
-                onWallpaperSelected = onWallpaperSelected,
-                onContinuitySelected = {
-                    if (state.access.continuityGranted) {
-                        onContinuityAccessRequested()
-                    } else {
-                        showContinuityDisclosure = true
-                        true
-                    }
-                },
-                onCalendarSelected = {
-                    if (state.access.calendarGranted) {
-                        onAppPermissionSettingsRequested()
-                    } else {
-                        onCalendarPermissionRequested()
-                        true
-                    }
-                },
-                onLocationSelected = {
-                    if (state.access.approximateLocationGranted) {
-                        onAppPermissionSettingsRequested()
-                    } else {
-                        showLocationDisclosure = true
-                        true
-                    }
-                },
-                onAudioVisualizerSelected = {
-                    if (state.access.audioVisualizerGranted) {
-                        onAppPermissionSettingsRequested()
-                    } else {
-                        showAudioVisualizerDisclosure = true
-                        true
-                    }
-                },
-                onPrivacyPolicySelected = onPrivacyPolicySelected,
-                onFocusNotificationsSelected = onFocusNotificationsSelected,
-                onExactAlarmsSelected = onExactAlarmsSelected,
-                onDefaultHomeSelected = onDefaultHomeSelected,
-                onAndroidSettingsSelected = onAndroidSettingsSelected,
-                onResetAppearance = onResetAppearance,
+                state = LauncherSettingsUiState(
+                    preferences = state.preferences,
+                    access = state.access,
+                    installedApps = state.installedApps,
+                    appTarget = state.settingsAppTarget,
+                    showFontSettings = showFontSettings,
+                    systemAccent = systemAccent,
+                ),
+                navigationActions = SettingsNavigationActions(
+                    onBack = handleSettingsBack,
+                    onOpenFontSettings = { showFontSettings = true },
+                ),
+                appearanceActions = SettingsAppearanceActions(
+                    onAccentSelected = onAccentSelected,
+                    onHomeTextToneSelected = onHomeTextToneSelected,
+                    onHomeTextWeightSelected = onHomeTextWeightSelected,
+                    onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
+                    onWallpaperScrimIntensityChanged = onWallpaperScrimIntensityChanged,
+                    onWallpaperSelected = onWallpaperSelected,
+                    onResetAppearance = onResetAppearance,
+                ),
+                appActions = SettingsAppActions(
+                    onOpenMusicProviderPicker = onOpenMusicProviderPicker,
+                    onSettingsAppSelected = onSettingsAppSelected,
+                    onMusicProviderCleared = onMusicProviderCleared,
+                ),
+                accessActions = SettingsAccessActions(
+                    onContinuitySelected = {
+                        if (state.access.continuityGranted) {
+                            onContinuityAccessRequested()
+                        } else {
+                            activeDisclosure = LauncherDisclosure.CONTINUITY
+                            true
+                        }
+                    },
+                    onCalendarSelected = {
+                        if (state.access.calendarGranted) {
+                            onAppPermissionSettingsRequested()
+                        } else {
+                            onCalendarPermissionRequested()
+                            true
+                        }
+                    },
+                    onLocationSelected = {
+                        if (state.access.approximateLocationGranted) {
+                            onAppPermissionSettingsRequested()
+                        } else {
+                            activeDisclosure = LauncherDisclosure.LOCATION
+                            true
+                        }
+                    },
+                    onAudioVisualizerSelected = {
+                        if (state.access.audioVisualizerGranted) {
+                            onAppPermissionSettingsRequested()
+                        } else {
+                            activeDisclosure = LauncherDisclosure.AUDIO_VISUALIZER
+                            true
+                        }
+                    },
+                    onPrivacyPolicySelected = onPrivacyPolicySelected,
+                    onFocusNotificationsSelected = onFocusNotificationsSelected,
+                    onExactAlarmsSelected = onExactAlarmsSelected,
+                    onDefaultHomeSelected = onDefaultHomeSelected,
+                    onAndroidSettingsSelected = onAndroidSettingsSelected,
+                ),
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -563,91 +577,14 @@ fun LauncherScreen(
 
     val showAutomaticContinuityDisclosure =
         !state.continuityAccessGranted && !state.isContinuityOnboardingDismissed
-    if (showContinuityDisclosure || showAutomaticContinuityDisclosure) {
-        fun closeContinuityDisclosure() {
-            showContinuityDisclosure = false
-            if (showAutomaticContinuityDisclosure) onContinuityOnboardingDismissed()
-        }
-        RofiDialog(
-            title = stringResource(R.string.continuity_onboarding_title),
-            onDismiss = ::closeContinuityDisclosure,
-            actions = {
-                RofiAction("ahora no", ::closeContinuityDisclosure)
-                RofiAction("revisar ajustes", {
-                    closeContinuityDisclosure()
-                    onContinuityAccessRequested()
-                })
-            },
-        ) {
-            RofiBody(stringResource(R.string.continuity_onboarding_body))
-        }
-    }
-
-    if (showLocationDisclosure) {
-        RofiDialog(
-            title = "tiempo local",
-            onDismiss = { showLocationDisclosure = false },
-            actions = {
-                RofiAction("cancelar", { showLocationDisclosure = false })
-                RofiAction("continuar", {
-                    showLocationDisclosure = false
-                    onLocationPermissionRequested()
-                })
-            },
-        ) {
-            RofiBody(
-                "Veil usará únicamente ubicación aproximada mientras Home esté visible. " +
-                    "Las coordenadas aproximadas y tu IP se enviarán a Open‑Meteo; " +
-                    "Veil guardará sólo el último resultado durante la caché.",
-            )
-        }
-    }
-
-    if (showAudioVisualizerDisclosure) {
-        RofiDialog(
-            title = "espectro de audio",
-            onDismiss = { showAudioVisualizerDisclosure = false },
-            actions = {
-                RofiAction("ahora no", { showAudioVisualizerDisclosure = false })
-                RofiAction("activar", {
-                    showAudioVisualizerDisclosure = false
-                    onAudioVisualizerPermissionRequested()
-                })
-            },
-        ) {
-            RofiBody(
-                "Android exige permiso de micrófono para analizar la mezcla de salida. " +
-                    "Veil sólo recibe una señal FFT de baja calidad mientras MEDIA está visible; " +
-                    "no graba, guarda ni transmite audio.",
-            )
-        }
-    }
-
-    appWithOpenActions?.let { target ->
-        val app = target.app
-        AppActionsBottomSheet(
-            app = app,
-            onDismiss = { appWithOpenActions = null },
-            onOpen = { appWithOpenActions = null; onAppSelected(app) },
-            onAppInfo = { appWithOpenActions = null; onAppInfoSelected(app) },
-            onUninstall = { appWithOpenActions = null; onAppUninstallSelected(app) },
-            contextLabel = target.contextKind?.name,
-            onReplaceInContext = target.contextKind?.let { kind ->
-                target.slotIndex?.let { slotIndex ->
-                    {
-                        appWithOpenActions = null
-                        onOpenContextSlotPicker(kind, slotIndex)
-                    }
-                }
-            },
-            onRemoveFromContext = target.contextKind?.let { kind ->
-                target.slotIndex?.let { slotIndex ->
-                    {
-                        appWithOpenActions = null
-                        onContextSlotCleared(kind, slotIndex)
-                    }
-                }
-            },
-        )
-    }
+    LauncherOverlays(
+        activeDisclosure = activeDisclosure,
+        showAutomaticContinuityDisclosure = showAutomaticContinuityDisclosure,
+        appActionsTarget = appWithOpenActions,
+        navigationActions = navigationActions,
+        appActions = appActions,
+        accessActions = accessActions,
+        onDisclosureDismissed = { activeDisclosure = null },
+        onAppActionsDismissed = { appWithOpenActions = null },
+    )
 }

@@ -1,6 +1,7 @@
 package dev.vicent.veil.launcher.repository
 
 import android.content.Context
+import androidx.core.content.edit
 import dev.vicent.veil.launcher.model.AccentMode
 import dev.vicent.veil.launcher.model.LauncherPreferences
 import dev.vicent.veil.launcher.model.LauncherPreferencesPolicy
@@ -23,55 +24,53 @@ class LauncherPreferencesRepository(context: Context) {
 
     fun setAccentMode(mode: AccentMode) {
         val next = mutableState.value.copy(accentMode = mode)
-        preferences.edit()
-            .putString(KEY_ACCENT_MODE, LauncherPreferencesPolicy.encodeAccent(next))
-            .apply()
+        preferences.edit { putString(KEY_ACCENT_MODE, LauncherPreferencesPolicy.encodeAccent(next)) }
         mutableState.value = next
     }
 
     fun resetAppearance() {
         val next = LauncherPreferencesPolicy.resetAppearance(mutableState.value)
-        preferences.edit()
-            .putString(KEY_ACCENT_MODE, next.accentMode.persistedValue)
-            .putString(KEY_HOME_TEXT_TONE, next.homeTextTone.persistedValue)
-            .putString(KEY_HOME_TEXT_WEIGHT, next.homeTextWeight.persistedValue)
-            .putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, next.wallpaperScrimEnabled)
-            .putFloat(KEY_WALLPAPER_SCRIM_INTENSITY, next.wallpaperScrimIntensity)
-            .apply()
+        preferences.edit {
+            putString(KEY_ACCENT_MODE, next.accentMode.persistedValue)
+            putString(KEY_HOME_TEXT_TONE, next.homeTextTone.persistedValue)
+            putString(KEY_HOME_TEXT_WEIGHT, next.homeTextWeight.persistedValue)
+            putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, next.wallpaperScrimEnabled)
+            putFloat(KEY_WALLPAPER_SCRIM_INTENSITY, next.wallpaperScrimIntensity)
+        }
         mutableState.value = next
     }
 
     fun setHomeTextTone(mode: HomeTextTone) {
         val next = mutableState.value.copy(homeTextTone = mode)
-        preferences.edit().putString(KEY_HOME_TEXT_TONE, mode.persistedValue).apply()
+        preferences.edit { putString(KEY_HOME_TEXT_TONE, mode.persistedValue) }
         mutableState.value = next
     }
 
     fun setHomeTextWeight(mode: HomeTextWeight) {
         val next = mutableState.value.copy(homeTextWeight = mode)
-        preferences.edit().putString(KEY_HOME_TEXT_WEIGHT, mode.persistedValue).apply()
+        preferences.edit { putString(KEY_HOME_TEXT_WEIGHT, mode.persistedValue) }
         mutableState.value = next
     }
 
     fun setWallpaperScrimEnabled(enabled: Boolean) {
         val next = mutableState.value.copy(wallpaperScrimEnabled = enabled)
-        preferences.edit().putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, enabled).apply()
+        preferences.edit { putBoolean(KEY_WALLPAPER_SCRIM_ENABLED, enabled) }
         mutableState.value = next
     }
 
     fun setWallpaperScrimIntensity(intensity: Float) {
         val normalized = intensity.coerceIn(0f, 1f)
         val next = mutableState.value.copy(wallpaperScrimIntensity = normalized)
-        preferences.edit().putFloat(KEY_WALLPAPER_SCRIM_INTENSITY, normalized).apply()
+        preferences.edit { putFloat(KEY_WALLPAPER_SCRIM_INTENSITY, normalized) }
         mutableState.value = next
     }
 
     fun setMusicProvider(packageName: String?) {
         val next = mutableState.value.copy(musicProviderPackage = packageName)
-        preferences.edit().apply {
+        preferences.edit {
             if (packageName == null) remove(KEY_MUSIC_PROVIDER)
             else putString(KEY_MUSIC_PROVIDER, packageName)
-        }.apply()
+        }
         mutableState.value = next
     }
 
@@ -91,25 +90,15 @@ class LauncherPreferencesRepository(context: Context) {
         writeContextOverride(kind, slots)
     }
 
-    fun resetContext(kind: LauncherContextKind) {
-        preferences.edit().apply {
-            remove(contextConfiguredKey(kind))
-            repeat(CONTEXT_SLOT_COUNT) { remove(contextSlotKey(kind, it)) }
-        }.apply()
-        mutableState.value = mutableState.value.copy(
-            contextAppOverrides = mutableState.value.contextAppOverrides - kind,
-        )
-    }
-
     private fun writeContextOverride(kind: LauncherContextKind, slots: List<String?>) {
         val normalized = ContextAppPreferencesPolicy.normalize(slots, CONTEXT_SLOT_COUNT)
-        preferences.edit().apply {
+        preferences.edit {
             putBoolean(contextConfiguredKey(kind), true)
             normalized.forEachIndexed { index, packageName ->
                 if (packageName == null) remove(contextSlotKey(kind, index))
                 else putString(contextSlotKey(kind, index), packageName)
             }
-        }.apply()
+        }
         mutableState.value = mutableState.value.copy(
             contextAppOverrides = mutableState.value.contextAppOverrides + (kind to normalized),
         )

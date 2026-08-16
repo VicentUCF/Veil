@@ -1,38 +1,29 @@
 package dev.vicent.veil
 
-import android.Manifest
-import android.app.AlarmManager
-import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.vicent.veil.config.AccentPalette
 import dev.vicent.veil.config.LauncherConfig
 import dev.vicent.veil.launcher.LauncherController
-import dev.vicent.veil.launcher.LauncherUiState
-import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.AudioMixerRepository
@@ -48,7 +39,14 @@ import dev.vicent.veil.launcher.system.AndroidClockLauncher
 import dev.vicent.veil.launcher.system.AndroidSettingsLauncher
 import dev.vicent.veil.launcher.system.AndroidWebLauncher
 import dev.vicent.veil.launcher.system.LauncherAccessMonitor
+import dev.vicent.veil.launcher.system.LauncherAccessCoordinator
+import dev.vicent.veil.launcher.system.LauncherExternalActionCoordinator
+import dev.vicent.veil.ui.LauncherAccessActions
+import dev.vicent.veil.ui.LauncherAppActions
+import dev.vicent.veil.ui.LauncherAppearanceActions
+import dev.vicent.veil.ui.LauncherNavigationActions
 import dev.vicent.veil.ui.LauncherScreen
+import dev.vicent.veil.ui.LauncherWorkspaceActions
 import dev.vicent.veil.ui.theme.VeilTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -69,7 +67,8 @@ class MainActivity : ComponentActivity() {
             preferencesRepository = preferencesRepository,
             accessMonitor = accessMonitor,
             contexts = LauncherConfig.contexts,
-            quickActionCount = LauncherConfig.quickActionCount,
+            quickActionCount = LauncherConfig.QUICK_ACTION_COUNT,
+            scope = lifecycleScope,
         )
     }
 
@@ -77,7 +76,6 @@ class MainActivity : ComponentActivity() {
     private val clockLauncher by lazy { AndroidClockLauncher(applicationContext) }
     private val settingsLauncher by lazy { AndroidSettingsLauncher(applicationContext) }
     private val webLauncher by lazy { AndroidWebLauncher(applicationContext) }
-    private var requestExactAlarmAfterNotification = false
     private var externalSurfaceLaunched = false
     private var hasCompletedFirstResume = false
     private var wasStoppedSinceLastResume = false
@@ -92,7 +90,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 return
             }
-            controller.refreshApps(lifecycleScope)
+            controller.refreshApps()
         }
     }
 
@@ -102,31 +100,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val calendarPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted -> controller.setCalendarAccessGranted(granted, lifecycleScope) }
-
-    private val locationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted -> controller.setLocationAccessGranted(granted, lifecycleScope) }
-
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {
-        if (requestExactAlarmAfterNotification) requestExactAlarmAccess()
-        requestExactAlarmAfterNotification = false
-        controller.refreshAccessState(lifecycleScope)
-    }
-
-    private val audioVisualizerPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted -> controller.setAudioVisualizerPermissionGranted(granted) }
-
-    private val homeRoleLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) {
-        controller.refreshAccessState(lifecycleScope)
-    }
+    private val accessCoordinator = LauncherAccessCoordinator(
+        activity = this,
+        controller = { controller },
+        settingsLauncher = { settingsLauncher },
+        onExternalSurfaceLaunched = { externalSurfaceLaunched = true },
+    )
+    private val externalActions = LauncherExternalActionCoordinator(
+        controller = { controller },
+        appLauncher = { appLauncher },
+        settingsLauncher = { settingsLauncher },
+        webLauncher = { webLauncher },
+        clockLauncher = { clockLauncher },
+        onExternalSurfaceLaunched = { externalSurfaceLaunched = true },
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -138,14 +125,14 @@ class MainActivity : ComponentActivity() {
         )
         hideStatusBar()
 
-        controller.load(lifecycleScope)
+        controller.load()
         registerPackageReceiver()
         registerWallpaperReceiver()
-        controller.refreshAccessState(lifecycleScope)
+        controller.refreshAccessState()
 
         setContent {
-            val state by controller.state.collectAsState()
-            val wallpaperRevision by wallpaperRefreshRevision.collectAsState()
+            val state by controller.state.collectAsStateWithLifecycle()
+            val wallpaperRevision by wallpaperRefreshRevision.collectAsStateWithLifecycle()
             val systemAccent = remember(wallpaperRevision) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     dynamicDarkColorScheme(this@MainActivity).primary
@@ -166,124 +153,85 @@ class MainActivity : ComponentActivity() {
                     state = state,
                     systemAccent = systemAccent,
                     settingsShortcuts = settingsLauncher.shortcuts,
-                    onContextSelected = { index ->
-                        controller.selectContext(index)
-                        controller.refreshVisibleData(lifecycleScope)
-                    },
-                    onOpenDrawer = controller::openDrawer,
-                    onCloseDrawer = controller::closeDrawer,
-                    onOpenSettings = controller::openSettings,
-                    onCloseSettings = controller::closeSettings,
-                    onOpenMusicProviderPicker = controller::openMusicProviderPicker,
-                    onOpenContextSlotPicker = controller::openContextSlotPicker,
-                    onAppSelected = { app ->
-                        if (appLauncher.launch(app)) {
-                            externalSurfaceLaunched = true
-                            controller.closeDrawer()
-                        } else {
-                            controller.removeUnavailableApp(app.packageName)
-                        }
-                    },
-                    onSettingsSelected = { shortcut ->
-                        if (settingsLauncher.launch(shortcut)) {
-                            externalSurfaceLaunched = true
-                            controller.closeDrawer()
-                        }
-                    },
-                    onAppInfoSelected = { app ->
-                        if (appLauncher.openAppInfo(app)) {
-                            externalSurfaceLaunched = true
-                            controller.closeDrawer()
-                        }
-                    },
-                    onAppUninstallSelected = { app ->
-                        if (appLauncher.requestUninstall(app)) {
-                            externalSurfaceLaunched = true
-                            controller.closeDrawer()
-                        }
-                    },
-                    onContinuityAccessRequested = ::openContinuityAccessSettings,
-                    onContinuityOnboardingDismissed = controller::dismissContinuityOnboarding,
-                    onCalendarPermissionRequested = {
-                        externalSurfaceLaunched = true
-                        calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
-                    },
-                    onLocationPermissionRequested = {
-                        externalSurfaceLaunched = true
-                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-                    },
-                    onClockOpenRequested = {
-                        externalSurfaceLaunched = clockLauncher.openClock()
-                    },
-                    onCalendarEventSelected = { eventId ->
-                        externalSurfaceLaunched = true
-                        controller.openCalendarEvent(eventId)
-                    },
-                    onCalendarEventCreateRequested = {
-                        externalSurfaceLaunched = controller.createCalendarEvent()
-                    },
-                    onCalendarOpenRequested = {
-                        externalSurfaceLaunched = controller.openCalendar()
-                    },
-                    onGoogleCalendarConfigureRequested = {
-                        externalSurfaceLaunched = controller.configureGoogleCalendar()
-                    },
-                    onContinuityAction = { itemId, action, position ->
-                        if (action == dev.vicent.veil.launcher.model.ContinuityAction.OPEN) {
-                            externalSurfaceLaunched = true
-                        }
-                        controller.performContinuityAction(itemId, action, position)
-                    },
-                    onHomeMediaDismissed = controller::dismissHomeMedia,
-                    onAudioVisualizerPermissionRequested = {
-                        externalSurfaceLaunched = true
-                        audioVisualizerPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    },
-                    onAudioVolumeChanged = controller::setAudioVolume,
-                    onFocusStartRequested = ::startFocusWithPermissions,
-                    onFocusPause = controller::pauseFocus,
-                    onFocusResume = controller::resumeFocus,
-                    onFocusFinish = controller::finishFocus,
-                    onQuickNoteAdded = controller::addQuickNote,
-                    onQuickNoteUpdated = controller::updateQuickNote,
-                    onQuickNoteDeleted = controller::deleteQuickNote,
-                    onExternalLinkSelected = { url ->
-                        launchExternal { webLauncher.open(url) }
-                    },
-                    onPrivacyPolicySelected = {
-                        launchExternal {
-                            webLauncher.openPrivacyPolicy(BuildConfig.PRIVACY_POLICY_URL)
-                        }
-                    },
-                    onHomeButtonTap = {
-                        performHomeButtonAction(LauncherConfig.homeButton.onTap, state)
-                    },
-                    onHomeButtonLongPress = {
-                        performHomeButtonAction(LauncherConfig.homeButton.onLongPress, state)
-                    },
-                    onAccentSelected = controller::setAccentMode,
-                    onHomeTextToneSelected = controller::setHomeTextTone,
-                    onHomeTextWeightSelected = controller::setHomeTextWeight,
-                    onWallpaperScrimEnabledChanged = controller::setWallpaperScrimEnabled,
-                    onWallpaperScrimIntensityChanged = controller::setWallpaperScrimIntensity,
-                    onWallpaperSelected = {
-                        launchExternal(settingsLauncher::openWallpaperChooser)
-                    },
-                    onAppPermissionSettingsRequested = {
-                        launchExternal(settingsLauncher::openAppDetails)
-                    },
-                    onFocusNotificationsSelected = ::configureFocusNotifications,
-                    onExactAlarmsSelected = {
-                        launchExternal(settingsLauncher::openExactAlarmSettings)
-                    },
-                    onDefaultHomeSelected = ::requestHomeRole,
-                    onAndroidSettingsSelected = {
-                        launchExternal(settingsLauncher::openGeneralSettings)
-                    },
-                    onResetAppearance = controller::resetAppearance,
-                    onSettingsAppSelected = controller::selectSettingsApp,
-                    onMusicProviderCleared = controller::clearMusicProvider,
-                    onContextSlotCleared = controller::clearContextSlot,
+                    navigationActions = LauncherNavigationActions(
+                        onContextSelected = { index ->
+                            controller.selectContext(index)
+                            controller.refreshVisibleData()
+                        },
+                        onOpenDrawer = controller::openDrawer,
+                        onCloseDrawer = controller::closeDrawer,
+                        onOpenSettings = controller::openSettings,
+                        onCloseSettings = controller::closeSettings,
+                        onOpenMusicProviderPicker = controller::openMusicProviderPicker,
+                        onOpenContextSlotPicker = controller::openContextSlotPicker,
+                        onHomeButtonTap = {
+                            externalActions.performHomeButtonAction(LauncherConfig.homeButton.onTap, state)
+                        },
+                        onHomeButtonLongPress = {
+                            externalActions.performHomeButtonAction(
+                                LauncherConfig.homeButton.onLongPress,
+                                state,
+                            )
+                        },
+                    ),
+                    appActions = LauncherAppActions(
+                        onAppSelected = externalActions::openApp,
+                        onSettingsSelected = externalActions::openSetting,
+                        onAppInfoSelected = externalActions::openAppInfo,
+                        onAppUninstallSelected = externalActions::requestUninstall,
+                        onExternalLinkSelected = externalActions::openExternalLink,
+                        onPrivacyPolicySelected = externalActions::openPrivacyPolicy,
+                        onSettingsAppSelected = controller::selectSettingsApp,
+                        onMusicProviderCleared = controller::clearMusicProvider,
+                        onContextSlotCleared = controller::clearContextSlot,
+                    ),
+                    accessActions = LauncherAccessActions(
+                        onContinuityAccessRequested = accessCoordinator::openContinuityAccessSettings,
+                        onContinuityOnboardingDismissed = controller::dismissContinuityOnboarding,
+                        onCalendarPermissionRequested = accessCoordinator::requestCalendarPermission,
+                        onLocationPermissionRequested = accessCoordinator::requestLocationPermission,
+                        onAudioVisualizerPermissionRequested =
+                            accessCoordinator::requestAudioVisualizerPermission,
+                        onWallpaperSelected = {
+                            externalActions.launchExternal(settingsLauncher::openWallpaperChooser)
+                        },
+                        onAppPermissionSettingsRequested = {
+                            externalActions.launchExternal(settingsLauncher::openAppDetails)
+                        },
+                        onFocusNotificationsSelected = accessCoordinator::configureFocusNotifications,
+                        onExactAlarmsSelected = {
+                            externalActions.launchExternal(settingsLauncher::openExactAlarmSettings)
+                        },
+                        onDefaultHomeSelected = accessCoordinator::requestHomeRole,
+                        onAndroidSettingsSelected = {
+                            externalActions.launchExternal(settingsLauncher::openGeneralSettings)
+                        },
+                    ),
+                    workspaceActions = LauncherWorkspaceActions(
+                        onClockOpenRequested = externalActions::openClock,
+                        onCalendarEventSelected = externalActions::openCalendarEvent,
+                        onCalendarEventCreateRequested = externalActions::createCalendarEvent,
+                        onCalendarOpenRequested = externalActions::openCalendar,
+                        onGoogleCalendarConfigureRequested = externalActions::configureGoogleCalendar,
+                        onContinuityAction = externalActions::performContinuityAction,
+                        onHomeMediaDismissed = controller::dismissHomeMedia,
+                        onAudioVolumeChanged = controller::setAudioVolume,
+                        onFocusStartRequested = accessCoordinator::startFocusWithPermissions,
+                        onFocusPause = controller::pauseFocus,
+                        onFocusResume = controller::resumeFocus,
+                        onFocusFinish = controller::finishFocus,
+                        onQuickNoteAdded = controller::addQuickNote,
+                        onQuickNoteUpdated = controller::updateQuickNote,
+                        onQuickNoteDeleted = controller::deleteQuickNote,
+                    ),
+                    appearanceActions = LauncherAppearanceActions(
+                        onAccentSelected = controller::setAccentMode,
+                        onHomeTextToneSelected = controller::setHomeTextTone,
+                        onHomeTextWeightSelected = controller::setHomeTextWeight,
+                        onWallpaperScrimEnabledChanged = controller::setWallpaperScrimEnabled,
+                        onWallpaperScrimIntensityChanged = controller::setWallpaperScrimIntensity,
+                        onResetAppearance = controller::resetAppearance,
+                    ),
                 )
             }
         }
@@ -296,9 +244,9 @@ class MainActivity : ComponentActivity() {
         controller.setAppVisible(true)
         externalSurfaceLaunched = false
         wallpaperRefreshRevision.value += 1
-        controller.refreshAccessState(lifecycleScope)
+        controller.refreshAccessState()
         controller.restoreFocusAlarm()
-        controller.refreshVisibleData(lifecycleScope)
+        controller.refreshVisibleData()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -375,100 +323,6 @@ class MainActivity : ComponentActivity() {
         isWallpaperReceiverRegistered = true
     }
 
-    private fun openContinuityAccessSettings(): Boolean =
-        launchExternal(settingsLauncher::openNotificationListenerSettings)
-
-    private fun launchExternal(action: () -> Boolean): Boolean {
-        val launched = action()
-        if (launched) externalSurfaceLaunched = true
-        return launched
-    }
-
-    private fun configureFocusNotifications(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !hasPermission(Manifest.permission.POST_NOTIFICATIONS)
-        ) {
-            return runCatching {
-                externalSurfaceLaunched = true
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                true
-            }.getOrDefault(false)
-        }
-        return launchExternal(settingsLauncher::openNotificationSettings)
-    }
-
-    private fun requestHomeRole(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val roleManager = getSystemService(RoleManager::class.java)
-            if (roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
-                if (roleManager.isRoleHeld(RoleManager.ROLE_HOME)) {
-                    return launchExternal(settingsLauncher::openHomeSettings)
-                }
-                return runCatching {
-                    externalSurfaceLaunched = true
-                    homeRoleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME))
-                    true
-                }.getOrDefault(false)
-            }
-        }
-        return launchExternal(settingsLauncher::openHomeSettings)
-    }
-
-    private fun startFocusWithPermissions(minutes: Int) {
-        controller.startFocus(minutes)
-        val needsNotifications = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-            !hasPermission(Manifest.permission.POST_NOTIFICATIONS)
-        requestExactAlarmAfterNotification = needsNotifications
-        if (needsNotifications) {
-            externalSurfaceLaunched = true
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            requestExactAlarmAccess()
-        }
-    }
-
-    private fun requestExactAlarmAccess() {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return
-        val alarmManager = getSystemService(AlarmManager::class.java)
-        if (alarmManager.canScheduleExactAlarms()) return
-        runCatching {
-            externalSurfaceLaunched = true
-            startActivity(
-                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                    data = android.net.Uri.parse("package:$packageName")
-                },
-            )
-        }
-    }
-
-    private fun hasPermission(permission: String): Boolean =
-        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-
-    private fun performHomeButtonAction(
-        action: HomeButtonActionSpec,
-        state: LauncherUiState,
-    ) {
-        when (action) {
-            HomeButtonActionSpec.Everything -> controller.openDrawer()
-            is HomeButtonActionSpec.App -> {
-                val app = state.installedApps.firstOrNull { it.packageName == action.packageName }
-                if (app != null && appLauncher.launch(app)) {
-                    externalSurfaceLaunched = true
-                } else {
-                    app?.let { controller.removeUnavailableApp(it.packageName) }
-                    controller.openDrawer()
-                }
-            }
-            is HomeButtonActionSpec.Setting -> {
-                val shortcut = settingsLauncher.shortcuts.firstOrNull { it.id == action.id }
-                if (shortcut != null && settingsLauncher.launch(shortcut)) {
-                    externalSurfaceLaunched = true
-                } else {
-                    controller.openDrawer()
-                }
-            }
-        }
-    }
 }
 
 internal fun shouldHandleAsRepeatedHomePress(
