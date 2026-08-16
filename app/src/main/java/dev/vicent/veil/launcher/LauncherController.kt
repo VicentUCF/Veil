@@ -130,7 +130,10 @@ class LauncherController(
             preferencesRepository.state.collect { preferences ->
                 mutableState.update { currentState ->
                     currentState.copy(preferences = preferences)
-                        .withInstalledApps(currentState.installedApps)
+                        .withInstalledApps(
+                            installedApps = currentState.installedApps,
+                            appScanComplete = !currentState.isLoading,
+                        )
                 }
             }
         }
@@ -163,9 +166,28 @@ class LauncherController(
         }
 
         scope.launch {
+            val priorityApps = appRepository.loadPriorityApps(
+                priorityPackageNames(preferencesRepository.state.value),
+            )
+            mutableState.update { currentState ->
+                if (!currentState.isLoading) {
+                    currentState
+                } else {
+                    currentState.withInstalledApps(
+                        installedApps = mergeApps(currentState.installedApps, priorityApps),
+                        appScanComplete = false,
+                    )
+                }
+            }
+        }
+
+        scope.launch {
             val installedApps = appRepository.loadLaunchableApps()
             mutableState.update { currentState ->
-                currentState.withInstalledApps(installedApps).copy(isLoading = false)
+                currentState.withInstalledApps(
+                    installedApps = installedApps,
+                    appScanComplete = true,
+                ).copy(isLoading = false)
             }
         }
 
@@ -487,10 +509,12 @@ class LauncherController(
 
     private fun LauncherUiState.withInstalledApps(
         installedApps: List<LauncherApp>,
+        appScanComplete: Boolean = true,
     ): LauncherUiState {
         val resolvedContexts = resolveContexts(
             installedApps = installedApps,
             preferences = preferences,
+            appScanComplete = appScanComplete,
         )
         val workPackages = resolvedContexts
             .firstOrNull { it.definition.kind == LauncherContextKind.WORK }
@@ -511,6 +535,7 @@ class LauncherController(
     private fun resolveContexts(
         installedApps: List<LauncherApp>,
         preferences: LauncherPreferences,
+        appScanComplete: Boolean,
     ): List<ResolvedLauncherContext> {
         val appsByPackage = installedApps.associateBy(LauncherApp::packageName)
         val candidates = installedApps.map { AppCandidate(it.packageName, it.category) }
@@ -526,6 +551,29 @@ class LauncherController(
                 }
                 return@map context.copy(
                     apps = quickActions.mapNotNull { (it as? ResolvedQuickAction.App)?.app },
+                    quickActions = quickActions,
+                )
+            }
+            if (!appScanComplete) {
+                val quickActions = context.definition.quickActions
+                    .take(quickActionCount)
+                    .mapIndexed { index, spec ->
+                        when (spec) {
+                            is QuickActionSpec.App -> appsByPackage[spec.packageName]
+                                ?.let(ResolvedQuickAction::App)
+                                ?: ResolvedQuickAction.Empty(index)
+                            is QuickActionSpec.Setting -> ResolvedQuickAction.Setting(spec.id)
+                        }
+                    }
+                    .let { resolved ->
+                        (resolved + List(quickActionCount) { index ->
+                            ResolvedQuickAction.Empty(resolved.size + index)
+                        }).take(quickActionCount)
+                    }
+                return@map context.copy(
+                    apps = quickActions.mapNotNull {
+                        (it as? ResolvedQuickAction.App)?.app
+                    },
                     quickActions = quickActions,
                 )
             }
@@ -556,6 +604,23 @@ class LauncherController(
             context.copy(apps = apps, quickActions = quickActions)
         }
     }
+
+    private fun priorityPackageNames(preferences: LauncherPreferences): List<String> =
+        buildList {
+            initialContexts.forEach { context ->
+                context.definition.quickActions.forEach { action ->
+                    if (action is QuickActionSpec.App) add(action.packageName)
+                }
+            }
+            preferences.contextAppOverrides.values.forEach { slots ->
+                slots.forEach { packageName -> if (packageName != null) add(packageName) }
+            }
+        }.distinct()
+
+    private fun mergeApps(
+        current: List<LauncherApp>,
+        incoming: List<LauncherApp>,
+    ): List<LauncherApp> = (current + incoming).distinctBy(LauncherApp::packageName)
 
     private fun LauncherUiState.contextPackageSlots(kind: LauncherContextKind): List<String?> =
         contexts.firstOrNull { it.definition.kind == kind }

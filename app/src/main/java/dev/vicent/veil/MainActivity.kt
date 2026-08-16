@@ -11,7 +11,6 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -80,9 +79,8 @@ class MainActivity : ComponentActivity() {
     private val webLauncher by lazy { AndroidWebLauncher(applicationContext) }
     private var requestExactAlarmAfterNotification = false
     private var externalSurfaceLaunched = false
-    private var isLauncherResumed = false
-    private var hasLauncherWindowFocus = false
-    private var launcherPausedAtElapsedRealtime = Long.MIN_VALUE
+    private var hasCompletedFirstResume = false
+    private var wasStoppedSinceLastResume = false
     private var isPackageReceiverRegistered = false
     private var isWallpaperReceiverRegistered = false
     private val wallpaperRefreshRevision = MutableStateFlow(0)
@@ -207,9 +205,11 @@ class MainActivity : ComponentActivity() {
                     onContinuityAccessRequested = ::openContinuityAccessSettings,
                     onContinuityOnboardingDismissed = controller::dismissContinuityOnboarding,
                     onCalendarPermissionRequested = {
+                        externalSurfaceLaunched = true
                         calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
                     },
                     onLocationPermissionRequested = {
+                        externalSurfaceLaunched = true
                         locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
                     onClockOpenRequested = {
@@ -236,6 +236,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onHomeMediaDismissed = controller::dismissHomeMedia,
                     onAudioVisualizerPermissionRequested = {
+                        externalSurfaceLaunched = true
                         audioVisualizerPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     },
                     onAudioVolumeChanged = controller::setAudioVolume,
@@ -290,7 +291,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        isLauncherResumed = true
+        hasCompletedFirstResume = true
+        wasStoppedSinceLastResume = false
         controller.setAppVisible(true)
         externalSurfaceLaunched = false
         wallpaperRefreshRevision.value += 1
@@ -303,10 +305,11 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
-            val wasJustResumed = launcherPausedAtElapsedRealtime != Long.MIN_VALUE &&
-                SystemClock.elapsedRealtime() - launcherPausedAtElapsedRealtime < 2_000L
-            if (!externalSurfaceLaunched &&
-                (isLauncherResumed || hasLauncherWindowFocus || wasJustResumed)
+            if (shouldHandleAsRepeatedHomePress(
+                    externalSurfaceLaunched = externalSurfaceLaunched,
+                    hasCompletedFirstResume = hasCompletedFirstResume,
+                    wasStoppedSinceLastResume = wasStoppedSinceLastResume,
+                )
             ) {
                 controller.handleHomePressed()
             } else {
@@ -318,9 +321,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         controller.setAppVisible(false)
-        isLauncherResumed = false
-        launcherPausedAtElapsedRealtime = SystemClock.elapsedRealtime()
         super.onPause()
+    }
+
+    override fun onStop() {
+        wasStoppedSinceLastResume = true
+        super.onStop()
     }
 
     override fun onDestroy() {
@@ -332,7 +338,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        hasLauncherWindowFocus = hasFocus
         if (hasFocus) hideStatusBar()
     }
 
@@ -384,6 +389,7 @@ class MainActivity : ComponentActivity() {
             !hasPermission(Manifest.permission.POST_NOTIFICATIONS)
         ) {
             return runCatching {
+                externalSurfaceLaunched = true
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 true
             }.getOrDefault(false)
@@ -414,6 +420,7 @@ class MainActivity : ComponentActivity() {
             !hasPermission(Manifest.permission.POST_NOTIFICATIONS)
         requestExactAlarmAfterNotification = needsNotifications
         if (needsNotifications) {
+            externalSurfaceLaunched = true
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             requestExactAlarmAccess()
@@ -425,6 +432,7 @@ class MainActivity : ComponentActivity() {
         val alarmManager = getSystemService(AlarmManager::class.java)
         if (alarmManager.canScheduleExactAlarms()) return
         runCatching {
+            externalSurfaceLaunched = true
             startActivity(
                 Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                     data = android.net.Uri.parse("package:$packageName")
@@ -462,3 +470,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+internal fun shouldHandleAsRepeatedHomePress(
+    externalSurfaceLaunched: Boolean,
+    hasCompletedFirstResume: Boolean,
+    wasStoppedSinceLastResume: Boolean,
+): Boolean = !externalSurfaceLaunched &&
+    hasCompletedFirstResume &&
+    !wasStoppedSinceLastResume

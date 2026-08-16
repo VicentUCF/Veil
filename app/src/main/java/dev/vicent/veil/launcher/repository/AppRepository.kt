@@ -3,6 +3,7 @@ package dev.vicent.veil.launcher.repository
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ResolveInfo
 import android.provider.MediaStore
 import android.os.Build
 import androidx.core.net.toUri
@@ -34,6 +35,26 @@ class AppRepository(context: Context) {
             queryLaunchableApps().also { cachedApps = it }
         }
     }
+
+    /**
+     * Resolves only the apps needed by the context docks. This keeps personalized shortcuts
+     * available during a cold launcher start while the complete app list is still loading.
+     */
+    suspend fun loadPriorityApps(packageNames: Collection<String>): List<LauncherApp> =
+        withContext(Dispatchers.IO) {
+            packageNames.asSequence()
+                .distinct()
+                .mapNotNull { packageName ->
+                    val launcherIntent = Intent(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_LAUNCHER)
+                        .setPackage(packageName)
+                    packageManager.queryIntentActivities(launcherIntent, 0)
+                        .asSequence()
+                        .firstOrNull(::isLaunchable)
+                        ?.toLauncherApp()
+                }
+                .toList()
+        }
 
     fun resolveConfiguredApps(
         packageNames: List<String>,
@@ -106,35 +127,38 @@ class AppRepository(context: Context) {
 
         return packageManager.queryIntentActivities(launcherIntent, 0)
             .asSequence()
-            .filter { resolveInfo ->
-                val activityInfo = resolveInfo.activityInfo
-                activityInfo != null &&
-                    activityInfo.exported &&
-                    activityInfo.enabled &&
-                    activityInfo.applicationInfo.enabled &&
-                    activityInfo.packageName != ownPackageName
-            }
-            .map { resolveInfo ->
-                val activityInfo = resolveInfo.activityInfo
-                val packageName = activityInfo.packageName
-                LauncherApp(
-                    packageName = packageName,
-                    label = resolveInfo.loadLabel(packageManager)
-                        .toString()
-                        .trim()
-                        .ifBlank { packageName },
-                    componentName = ComponentName(packageName, activityInfo.name),
-                    icon = runCatching { resolveInfo.loadIcon(packageManager) }.getOrNull(),
-                    category = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        activityInfo.applicationInfo.category.toAppCategory()
-                    } else {
-                        AppCategory.GENERAL
-                    },
-                )
-            }
+            .filter(::isLaunchable)
+            .map { resolveInfo -> resolveInfo.toLauncherApp() }
             .distinctBy(LauncherApp::packageName)
             .sortedWith { first, second -> collator.compare(first.label, second.label) }
             .toList()
+    }
+
+    private fun isLaunchable(resolveInfo: ResolveInfo): Boolean {
+        val activityInfo = resolveInfo.activityInfo ?: return false
+        return activityInfo.exported &&
+            activityInfo.enabled &&
+            activityInfo.applicationInfo.enabled &&
+            activityInfo.packageName != ownPackageName
+    }
+
+    private fun ResolveInfo.toLauncherApp(): LauncherApp {
+        val launchActivity = requireNotNull(activityInfo)
+        val packageName = launchActivity.packageName
+        return LauncherApp(
+            packageName = packageName,
+            label = loadLabel(packageManager)
+                .toString()
+                .trim()
+                .ifBlank { packageName },
+            componentName = ComponentName(packageName, launchActivity.name),
+            icon = runCatching { loadIcon(packageManager) }.getOrNull(),
+            category = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                launchActivity.applicationInfo.category.toAppCategory()
+            } else {
+                AppCategory.GENERAL
+            },
+        )
     }
 
     private fun phoneIntent() = Intent(Intent.ACTION_DIAL, "tel:".toUri())

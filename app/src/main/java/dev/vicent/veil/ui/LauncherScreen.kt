@@ -36,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.vicent.veil.R
@@ -147,6 +149,8 @@ fun LauncherScreen(
     onContextSlotCleared: (dev.vicent.veil.launcher.model.LauncherContextKind, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var appWithOpenActions by remember { mutableStateOf<AppActionsTarget?>(null) }
     var showLocationDisclosure by remember { mutableStateOf(false) }
     var showAudioVisualizerDisclosure by remember { mutableStateOf(false) }
@@ -158,7 +162,12 @@ fun LauncherScreen(
     }
 
     LaunchedEffect(state.isDrawerOpen) {
-        if (state.isDrawerOpen) appWithOpenActions = null
+        if (state.isDrawerOpen) {
+            appWithOpenActions = null
+        } else {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
+        }
     }
     LaunchedEffect(state.isSettingsOpen) {
         if (!state.isSettingsOpen) showFontSettings = false
