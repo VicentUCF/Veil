@@ -7,6 +7,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -413,7 +414,11 @@ class AmbientContinuityRepository(private val context: Context) {
         val metadata = metadata
         return listOf(
             metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_ID),
-            metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_URI),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_URI)
+            } else {
+                null
+            },
             metadata?.getText(MediaMetadata.METADATA_KEY_DISPLAY_TITLE),
             metadata?.getText(MediaMetadata.METADATA_KEY_TITLE),
             metadata?.getText(MediaMetadata.METADATA_KEY_ARTIST),

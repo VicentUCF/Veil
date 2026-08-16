@@ -249,6 +249,11 @@ class MainActivity : ComponentActivity() {
                     onExternalLinkSelected = { url ->
                         launchExternal { webLauncher.open(url) }
                     },
+                    onPrivacyPolicySelected = {
+                        launchExternal {
+                            webLauncher.openPrivacyPolicy(BuildConfig.PRIVACY_POLICY_URL)
+                        }
+                    },
                     onHomeButtonTap = {
                         performHomeButtonAction(LauncherConfig.homeButton.onTap, state)
                     },
@@ -286,6 +291,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         isLauncherResumed = true
+        controller.setAppVisible(true)
         externalSurfaceLaunched = false
         wallpaperRefreshRevision.value += 1
         controller.refreshAccessState(lifecycleScope)
@@ -311,12 +317,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        controller.setAppVisible(false)
         isLauncherResumed = false
         launcherPausedAtElapsedRealtime = SystemClock.elapsedRealtime()
         super.onPause()
     }
 
     override fun onDestroy() {
+        controller.setAppVisible(false)
         if (isPackageReceiverRegistered) unregisterReceiver(packageReceiver)
         if (isWallpaperReceiverRegistered) unregisterReceiver(wallpaperReceiver)
         super.onDestroy()

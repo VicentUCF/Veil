@@ -99,12 +99,14 @@ class AndroidSettingsLauncher(private val context: Context) {
             },
         ) || start(Intent(Settings.ACTION_APPLICATION_SETTINGS)) || openGeneralSettings()
 
-    fun openNotificationSettings(): Boolean =
-        start(
+    fun openNotificationSettings(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return openAppDetails()
+        return start(
             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                 putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
             },
         ) || openAppDetails()
+    }
 
     fun openNotificationListenerSettings(): Boolean =
         start(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) || openGeneralSettings()

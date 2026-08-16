@@ -1,5 +1,20 @@
 # Veil
 
+## Release de producción
+
+Las releases están cerradas por defecto: `assembleRelease` y `bundleRelease` fallan si no hay firma o datos editoriales de privacidad. Configura estas variables únicamente en el almacén de secretos del entorno de publicación:
+
+```text
+VEIL_UPLOAD_STORE_FILE=/ruta/absoluta/upload.jks
+VEIL_UPLOAD_STORE_PASSWORD=...
+VEIL_UPLOAD_KEY_ALIAS=...
+VEIL_UPLOAD_KEY_PASSWORD=...
+VEIL_PRIVACY_POLICY_URL=https://…
+VEIL_PRIVACY_CONTACT=...
+```
+
+Después ejecuta `./gradlew clean test lint bundleRelease` y verifica el AAB/APK con las herramientas oficiales de Android. El gate comprueba también que la URL de privacidad responda públicamente con contenido HTML o texto, y la app incorpora el enlace y el contacto configurados. No guardes el keystore ni sus contraseñas en el repositorio. La política fuente está en [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md) y la hoja para Play Console en [`docs/DATA_SAFETY.md`](docs/DATA_SAFETY.md).
+
 Veil is an Android launcher inspired by the philosophy of Arch Linux and Qtile, translated for touch rather than copied from the desktop.
 
 The repository contains a functional launcher with Android Home integration, real application discovery and launching, five purposeful context lenses, Ambient Continuity, a searchable application drawer, and a quiet wallpaper-first Home UI.

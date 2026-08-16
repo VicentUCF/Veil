@@ -2,7 +2,10 @@ package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.launcher.repository.WeatherRepository
+import dev.vicent.veil.launcher.repository.readBounded
+import java.io.StringReader
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class WeatherRepositoryTest {
@@ -23,5 +26,26 @@ class WeatherRepositoryTest {
         assertEquals(22.8, state.maximumCelsius)
         assertEquals(2, state.weatherCode)
         assertEquals(42L, state.observedAtMillis)
+    }
+
+    @Test
+    fun `weather parser rejects implausible remote values`() {
+        assertFailsWith<IllegalArgumentException> {
+            WeatherRepository.parseWeather(
+                json = """{
+                    "current":{"temperature_2m":999,"apparent_temperature":17.1,"weather_code":2},
+                    "daily":{"temperature_2m_max":[22.8],"temperature_2m_min":[12.3]}
+                }""",
+                observedAt = 42L,
+            )
+        }
+    }
+
+    @Test
+    fun `bounded reader rejects oversized responses`() {
+        assertEquals("1234", StringReader("1234").readBounded(4))
+        assertFailsWith<IllegalStateException> {
+            StringReader("12345").readBounded(4)
+        }
     }
 }

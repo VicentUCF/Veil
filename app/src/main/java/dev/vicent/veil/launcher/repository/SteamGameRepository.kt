@@ -123,22 +123,27 @@ class SteamGameRepository(context: Context) {
         val root = JSONObject(json).optJSONObject(appId.toString()) ?: return null
         if (!root.optBoolean("success", false)) return null
         val data = root.optJSONObject("data") ?: return null
-        val title = data.optString("name").trim().takeIf(String::isNotEmpty) ?: return null
+        val title = data.optString("name").trim().take(MAX_TITLE_CHARS)
+            .takeIf(String::isNotEmpty) ?: return null
         val artworkUrl = data.optString("header_image")
             .trim()
-            .takeIf(ExternalLinkPolicy::isSafeHttps)
+            .takeIf(ExternalLinkPolicy::isAllowedSteamArtwork)
         return SteamMetadata(title, artworkUrl)
     }
 
     private fun fetchText(url: String): String {
-        val connection = open(url)
+        val connection = open(url, ExternalLinkPolicy::isAllowedSteamApi)
         return try {
             check(connection.responseCode in 200..299)
+            check(connection.contentType?.substringBefore(';')?.trim() == "application/json")
             connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
                 val output = StringBuilder()
                 val buffer = CharArray(8_192)
-                while (output.length < MAX_TEXT_RESPONSE_CHARS) {
-                    val count = reader.read(buffer, 0, minOf(buffer.size, MAX_TEXT_RESPONSE_CHARS - output.length))
+                while (true) {
+                    val remaining = MAX_TEXT_RESPONSE_CHARS - output.length
+                    check(remaining > 0 || reader.read() == -1) { "Steam response exceeds limit" }
+                    if (remaining == 0) break
+                    val count = reader.read(buffer, 0, minOf(buffer.size, remaining))
                     if (count < 0) break
                     output.append(buffer, 0, count)
                 }
@@ -150,16 +155,21 @@ class SteamGameRepository(context: Context) {
     }
 
     private fun fetchBitmap(url: String): Bitmap? {
-        if (!ExternalLinkPolicy.isSafeHttps(url)) return null
-        val connection = open(url)
+        if (!ExternalLinkPolicy.isAllowedSteamArtwork(url)) return null
+        val connection = open(url, ExternalLinkPolicy::isAllowedSteamArtwork)
         return try {
             check(connection.responseCode in 200..299)
+            check(connection.contentType?.substringBefore(';')?.trim()?.startsWith("image/") == true)
+            check(connection.contentLength in -1..MAX_ARTWORK_BYTES)
             val bytes = connection.inputStream.use { input ->
                 val output = ByteArrayOutputStream()
                 val buffer = ByteArray(8_192)
                 var total = 0
-                while (total < MAX_ARTWORK_BYTES) {
-                    val count = input.read(buffer, 0, minOf(buffer.size, MAX_ARTWORK_BYTES - total))
+                while (true) {
+                    val remaining = MAX_ARTWORK_BYTES - total
+                    check(remaining > 0 || input.read() == -1) { "Steam artwork exceeds limit" }
+                    if (remaining == 0) break
+                    val count = input.read(buffer, 0, minOf(buffer.size, remaining))
                     if (count < 0) break
                     output.write(buffer, 0, count)
                     total += count
@@ -172,12 +182,12 @@ class SteamGameRepository(context: Context) {
         }
     }
 
-    private fun open(url: String): HttpsURLConnection {
-        check(ExternalLinkPolicy.isSafeHttps(url))
+    private fun open(url: String, isAllowed: (String) -> Boolean): HttpsURLConnection {
+        check(isAllowed(url))
         return (URL(url).openConnection() as HttpsURLConnection).apply {
             connectTimeout = TIMEOUT_MILLIS
             readTimeout = TIMEOUT_MILLIS
-            instanceFollowRedirects = true
+            instanceFollowRedirects = false
             setRequestProperty("User-Agent", "Veil/0.1")
             setRequestProperty("Accept", "application/json,image/*")
         }
@@ -228,7 +238,9 @@ class SteamGameRepository(context: Context) {
             val appId = preferences.getInt("chart_${index}_appid", -1)
             val title = preferences.getString("chart_${index}_title", null).orEmpty()
             val storeUrl = preferences.getString("chart_${index}_store", null).orEmpty()
-            if (appId <= 0 || title.isBlank() || !ExternalLinkPolicy.isSafeHttps(storeUrl)) return@List null
+            if (appId <= 0 || title.isBlank() ||
+                !ExternalLinkPolicy.isAllowedSteamBrowserLink(storeUrl)
+            ) return@List null
             SteamChartEntry(
                 appId = appId,
                 rank = preferences.getInt("chart_${index}_rank", index + 1),
@@ -236,7 +248,7 @@ class SteamGameRepository(context: Context) {
                 peakPlayers = preferences.getInt("chart_${index}_peak", -1).takeIf { it >= 0 },
                 title = title,
                 artworkUrl = preferences.getString("chart_${index}_artwork", null)
-                    ?.takeIf(ExternalLinkPolicy::isSafeHttps),
+                    ?.takeIf(ExternalLinkPolicy::isAllowedSteamArtwork),
                 storeUrl = storeUrl,
             )
         }.filterNotNull()
@@ -246,7 +258,9 @@ class SteamGameRepository(context: Context) {
             val id = preferences.getString("news_${index}_id", null).orEmpty()
             val title = preferences.getString("news_${index}_title", null).orEmpty()
             val url = preferences.getString("news_${index}_url", null).orEmpty()
-            if (id.isBlank() || title.isBlank() || !ExternalLinkPolicy.isSafeHttps(url)) return@List null
+            if (id.isBlank() || title.isBlank() ||
+                !ExternalLinkPolicy.isAllowedSteamBrowserLink(url)
+            ) return@List null
             SteamNewsItem(
                 id = id,
                 appId = preferences.getInt("news_${index}_appid", -1),
@@ -311,10 +325,12 @@ class SteamGameRepository(context: Context) {
             return buildList {
                 repeat(items.length()) { index ->
                     val item = items.optJSONObject(index) ?: return@repeat
-                    val id = item.optString("gid").trim()
-                    val title = item.optString("title").trim()
+                    val id = item.optString("gid").trim().take(MAX_ID_CHARS)
+                    val title = item.optString("title").trim().take(MAX_TITLE_CHARS)
                     val url = item.optString("url").trim()
-                    if (id.isBlank() || title.isBlank() || !ExternalLinkPolicy.isSafeHttps(url)) {
+                    if (id.isBlank() || title.isBlank() ||
+                        !ExternalLinkPolicy.isAllowedSteamBrowserLink(url)
+                    ) {
                         return@repeat
                     }
                     add(
@@ -335,6 +351,7 @@ class SteamGameRepository(context: Context) {
             if (bytes.isEmpty()) return null
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
             var sample = 1
             while (bounds.outWidth / sample > MAX_ARTWORK_WIDTH ||
                 bounds.outHeight / sample > MAX_ARTWORK_HEIGHT
@@ -365,6 +382,8 @@ class SteamGameRepository(context: Context) {
         private const val NEWS_GAME_COUNT = 3
         private const val NEWS_PER_GAME = 2
         private const val MAX_NEWS_ENTRIES = 5
+        private const val MAX_ID_CHARS = 128
+        private const val MAX_TITLE_CHARS = 200
         private const val MAX_TEXT_RESPONSE_CHARS = 512 * 1_024
         private const val MAX_ARTWORK_BYTES = 2 * 1_024 * 1_024
         private const val MAX_ARTWORK_WIDTH = 1_024

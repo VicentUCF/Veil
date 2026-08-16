@@ -29,7 +29,7 @@ class SteamGameRepositoryTest {
             {"appnews":{"appid":730,"newsitems":[
               {"gid":"one","title":"Update","url":"https://store.steampowered.com/news/1","date":100},
               {"gid":"two","title":"Unsafe","url":"http://example.com","date":200},
-              {"gid":"three","title":"","url":"https://example.com","date":300}
+              {"gid":"three","title":"Off-domain","url":"https://example.com","date":300}
             ]}}
             """.trimIndent(),
             gameTitle = "Counter-Strike 2",

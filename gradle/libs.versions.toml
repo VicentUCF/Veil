@@ -1,11 +1,12 @@
 [versions]
-agp = "9.2.1"
-kotlin = "2.3.21"
+agp = "9.3.1"
+kotlin = "2.4.20-RC"
 activityCompose = "1.13.0"
-composeBom = "2026.06.00"
-coreKtx = "1.18.0"
-lifecycle = "2.10.0"
+composeBom = "2026.08.00"
+coreKtx = "1.19.0"
+lifecycle = "2.11.0"
 junit = "4.13.2"
+json = "20260719"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
@@ -16,6 +17,7 @@ androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 junit = { module = "junit:junit", version.ref = "junit" }
+json = { module = "org.json:json", version.ref = "json" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

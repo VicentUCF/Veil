@@ -1,11 +1,29 @@
 package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.repository.calculateSpectrum
+import dev.vicent.veil.launcher.repository.shouldRunAudioVisualizer
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.Test
 
 class AudioSpectrumTest {
+    @Test
+    fun visualizerOnlyRunsWithEveryForegroundGateOpen() {
+        assertTrue(
+            shouldRunAudioVisualizer(
+                permissionGranted = true,
+                appVisible = true,
+                mediaWorkspaceVisible = true,
+                mediaPlaying = true,
+            ),
+        )
+        assertFalse(shouldRunAudioVisualizer(false, true, true, true))
+        assertFalse(shouldRunAudioVisualizer(true, false, true, true))
+        assertFalse(shouldRunAudioVisualizer(true, true, false, true))
+        assertFalse(shouldRunAudioVisualizer(true, true, true, false))
+    }
+
     @Test
     fun `empty FFT produces silent bands`() {
         val result = calculateSpectrum(

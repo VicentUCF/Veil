@@ -127,6 +127,7 @@ fun LauncherScreen(
     onQuickNoteUpdated: (Long, String, QuickNoteType, String, List<QuickNoteChecklistItem>) -> Unit,
     onQuickNoteDeleted: (Long) -> Unit,
     onExternalLinkSelected: (String) -> Unit,
+    onPrivacyPolicySelected: () -> Boolean,
     onHomeButtonTap: () -> Unit,
     onHomeButtonLongPress: () -> Unit,
     onAccentSelected: (AccentMode) -> Unit,
@@ -531,6 +532,7 @@ fun LauncherScreen(
                         true
                     }
                 },
+                onPrivacyPolicySelected = onPrivacyPolicySelected,
                 onFocusNotificationsSelected = onFocusNotificationsSelected,
                 onExactAlarmsSelected = onExactAlarmsSelected,
                 onDefaultHomeSelected = onDefaultHomeSelected,

@@ -243,6 +243,10 @@ class LauncherController(
         }
     }
 
+    fun setAppVisible(visible: Boolean) {
+        audioMixerRepository.setAppVisible(visible)
+    }
+
     fun setAudioVolume(channel: AudioChannel, fraction: Float) {
         audioMixerRepository.setVolume(channel, fraction)
     }

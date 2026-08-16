@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.vicent.veil.config.AccentPalette
+import dev.vicent.veil.BuildConfig
 import dev.vicent.veil.launcher.model.AccentMode
 import dev.vicent.veil.launcher.model.AppCategory
 import dev.vicent.veil.launcher.model.LauncherAccessState
@@ -88,6 +89,7 @@ fun LauncherSettingsScreen(
     onCalendarSelected: () -> Boolean,
     onLocationSelected: () -> Boolean,
     onAudioVisualizerSelected: () -> Boolean,
+    onPrivacyPolicySelected: () -> Boolean,
     onFocusNotificationsSelected: () -> Boolean,
     onExactAlarmsSelected: () -> Boolean,
     onDefaultHomeSelected: () -> Boolean,
@@ -98,6 +100,7 @@ fun LauncherSettingsScreen(
     val palette = LocalVeilPalette.current
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showExternalError by remember { mutableStateOf(false) }
+    var showPrivacyPolicy by remember { mutableStateOf(false) }
 
     fun launch(action: () -> Boolean) {
         if (!action()) showExternalError = true
@@ -240,6 +243,14 @@ fun LauncherSettingsScreen(
                     onClick = { launch(onAudioVisualizerSelected) },
                 )
             }
+            item(key = "privacy-policy") {
+                SettingsActionRow(
+                    title = "Política de privacidad",
+                    detail = "Qué procesa Veil, dónde y durante cuánto tiempo",
+                    status = "LEER",
+                    onClick = { showPrivacyPolicy = true },
+                )
+            }
             item(key = "focus-notifications") {
                 SettingsActionRow(
                     title = "Notificaciones de Focus",
@@ -319,6 +330,40 @@ fun LauncherSettingsScreen(
                 "El acento volverá al coral; el texto y los iconos de CURRENT, a claros y finos. " +
                     "El filtro suave se activará. El wallpaper y los accesos de Android no cambiarán.",
             )
+        }
+    }
+
+    if (showPrivacyPolicy) {
+        RofiDialog(
+            title = "política de privacidad",
+            onDismiss = { showPrivacyPolicy = false },
+            actions = {
+                if (BuildConfig.PRIVACY_POLICY_URL.isNotBlank()) {
+                    RofiAction("abrir web", { launch(onPrivacyPolicySelected) })
+                }
+                RofiAction("cerrar", { showPrivacyPolicy = false })
+            },
+        ) {
+            RofiBody(
+                "Veil no tiene cuentas, publicidad, analítica ni backend propio. " +
+                    "Las apps instaladas, calendario, preferencias y notas se procesan en el dispositivo.\n\n" +
+                    "Con permiso opcional, las señales de notificación se mantienen solo en memoria y " +
+                    "sin contenido; el espectro de audio es transitorio y solo funciona con Veil visible, " +
+                    "MEDIA visible y audio reproduciéndose.\n\n" +
+                    "El tiempo envía ubicación aproximada a Open-Meteo por HTTPS. GAME consulta datos " +
+                    "públicos de Steam por HTTPS. Estos proveedores reciben la IP necesaria para la conexión.\n\n" +
+                    "Puedes revocar los accesos desde Android. Las notas rápidas se excluyen de copias y " +
+                    "transferencias del dispositivo. La política pública y el contacto del editor se " +
+                    "publican también en la ficha de distribución." +
+                    if (BuildConfig.PRIVACY_CONTACT.isNotBlank()) {
+                        "\n\nContacto: ${BuildConfig.PRIVACY_CONTACT}"
+                    } else {
+                        ""
+                    },
+            )
+            if (BuildConfig.PRIVACY_POLICY_URL.isNotBlank()) {
+                RofiBody(BuildConfig.PRIVACY_POLICY_URL)
+            }
         }
     }
 

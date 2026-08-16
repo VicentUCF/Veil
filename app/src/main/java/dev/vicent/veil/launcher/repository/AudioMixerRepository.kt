@@ -26,6 +26,7 @@ class AudioMixerRepository(private val context: Context) {
 
     private var visualizer: Visualizer? = null
     private var visualizerPermissionGranted = false
+    private var appVisible = false
     private var mediaPlaying = false
     private var mediaWorkspaceVisible = false
     private var smoothedSpectrum = FloatArray(SPECTRUM_BANDS)
@@ -46,6 +47,12 @@ class AudioMixerRepository(private val context: Context) {
     fun setVisualizerPermissionGranted(granted: Boolean) {
         if (visualizerPermissionGranted == granted) return
         visualizerPermissionGranted = granted
+        updateVisualizer()
+    }
+
+    fun setAppVisible(visible: Boolean) {
+        if (appVisible == visible) return
+        appVisible = visible
         updateVisualizer()
     }
 
@@ -92,7 +99,12 @@ class AudioMixerRepository(private val context: Context) {
         releaseVisualizer()
         when {
             !visualizerPermissionGranted -> publishSpectrum(AudioSpectrumAvailability.NEEDS_PERMISSION)
-            !mediaWorkspaceVisible || !mediaPlaying -> publishSpectrum(AudioSpectrumAvailability.IDLE)
+            !shouldRunAudioVisualizer(
+                permissionGranted = visualizerPermissionGranted,
+                appVisible = appVisible,
+                mediaWorkspaceVisible = mediaWorkspaceVisible,
+                mediaPlaying = mediaPlaying,
+            ) -> publishSpectrum(AudioSpectrumAvailability.IDLE)
             else -> startVisualizer()
         }
     }
@@ -182,6 +194,13 @@ class AudioMixerRepository(private val context: Context) {
         const val VOLUME_REFRESH_MILLIS = 750L
     }
 }
+
+internal fun shouldRunAudioVisualizer(
+    permissionGranted: Boolean,
+    appVisible: Boolean,
+    mediaWorkspaceVisible: Boolean,
+    mediaPlaying: Boolean,
+): Boolean = permissionGranted && appVisible && mediaWorkspaceVisible && mediaPlaying
 
 internal fun calculateSpectrum(
     fft: ByteArray,
