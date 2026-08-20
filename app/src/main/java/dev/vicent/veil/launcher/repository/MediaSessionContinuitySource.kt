@@ -33,12 +33,13 @@ internal class MediaSessionContinuitySource(
     private val signatures = mutableMapOf<String, String>()
     private val actions = mutableMapOf<String, Long>()
     private val pendingTrackChanges = mutableMapOf<String, PendingTrackChange>()
+    private val appLabels = mutableMapOf<String, String>()
 
     var items: List<ContinuityItem.Media> = emptyList()
         private set
 
     private val sessionListener = MediaSessionManager.OnActiveSessionsChangedListener {
-        refresh()
+        refreshControllers()
     }
 
     fun setEnabled(enabled: Boolean) {
@@ -52,12 +53,14 @@ internal class MediaSessionContinuitySource(
                     handler,
                 )
             }
-            refresh()
+            refreshControllers()
         } else {
             runCatching { sessionManager.removeOnActiveSessionsChangedListener(sessionListener) }
             clearCallbacks()
             controllers = emptyMap()
             items = emptyList()
+            observedAt.clear()
+            signatures.clear()
             actions.clear()
             pendingTrackChanges.clear()
             onItemsChanged()
@@ -104,7 +107,7 @@ internal class MediaSessionContinuitySource(
         return runCatching { controller.transportControls.pause() }.isSuccess
     }
 
-    private fun refresh() {
+    private fun refreshControllers() {
         if (!enabled) return
         val activeControllers = try {
             sessionManager.getActiveSessions(listenerComponent)
@@ -120,26 +123,37 @@ internal class MediaSessionContinuitySource(
             val id = mediaId(controller)
             nextControllers[id] = controller
             val callback = object : MediaController.Callback() {
-                override fun onPlaybackStateChanged(state: PlaybackState?) = refresh()
-                override fun onMetadataChanged(metadata: MediaMetadata?) = refresh()
-                override fun onSessionDestroyed() = refresh()
+                override fun onPlaybackStateChanged(state: PlaybackState?) = publishItems()
+                override fun onMetadataChanged(metadata: MediaMetadata?) = publishItems()
+                override fun onSessionDestroyed() = refreshControllers()
             }
             controller.registerCallback(callback, handler)
             nextCallbacks[controller] = callback
-            controller.playbackState?.actions?.takeIf { it != 0L }?.let { actions[id] = it }
-            val signature = controller.continuitySignature()
-            if (signatures[id] != signature) {
-                signatures[id] = signature
-                observedAt[id] = now
-            }
         }
         val activeIds = nextControllers.keys
         observedAt.keys.retainAll(activeIds)
         signatures.keys.retainAll(activeIds)
         actions.keys.retainAll(activeIds)
         pendingTrackChanges.keys.retainAll(activeIds)
-        activeControllers.forEach { controller ->
-            val id = mediaId(controller)
+        appLabels.keys.retainAll(activeControllers.mapTo(mutableSetOf()) { it.packageName })
+        controllers = nextControllers
+        callbacks = nextCallbacks
+        publishItems(now)
+    }
+
+    /**
+     * Playback and metadata callbacks already identify that the active sessions are unchanged.
+     * Re-project their current public state without another binder query or callback rebuild.
+     */
+    private fun publishItems(now: Long = timeProvider.currentTimeMillis()) {
+        if (!enabled) return
+        controllers.forEach { (id, controller) ->
+            controller.playbackState?.actions?.takeIf { it != 0L }?.let { actions[id] = it }
+            val signature = controller.continuitySignature()
+            if (signatures[id] != signature) {
+                signatures[id] = signature
+                observedAt[id] = now
+            }
             val pending = pendingTrackChanges[id] ?: return@forEach
             val completed = controller.trackSignature() != pending.previousTrackSignature &&
                 controller.playbackState?.state.isPlaybackActive()
@@ -147,10 +161,8 @@ internal class MediaSessionContinuitySource(
                 pendingTrackChanges.remove(id)
             }
         }
-        controllers = nextControllers
-        callbacks = nextCallbacks
-        items = activeControllers.mapNotNull { controller ->
-            controller.toContinuityItem(mediaId(controller), now)
+        items = controllers.mapNotNull { (id, controller) ->
+            controller.toContinuityItem(id, now)
         }
         onItemsChanged()
     }
@@ -236,7 +248,7 @@ internal class MediaSessionContinuitySource(
             {
                 if (pendingTrackChanges[id] === transition) {
                     pendingTrackChanges.remove(id)
-                    refresh()
+                    publishItems()
                 }
             },
             TRACK_CHANGE_GRACE_MILLIS,
@@ -266,10 +278,12 @@ internal class MediaSessionContinuitySource(
         )
     }
 
-    private fun appLabel(packageName: String): String = runCatching {
-        val info = context.packageManager.getApplicationInfo(packageName, 0)
-        context.packageManager.getApplicationLabel(info).toString()
-    }.getOrDefault(packageName)
+    private fun appLabel(packageName: String): String = appLabels.getOrPut(packageName) {
+        runCatching {
+            val info = context.packageManager.getApplicationInfo(packageName, 0)
+            context.packageManager.getApplicationLabel(info).toString()
+        }.getOrDefault(packageName)
+    }
 
     private fun MediaController.continuitySignature(): String = listOf(
         playbackState?.state,

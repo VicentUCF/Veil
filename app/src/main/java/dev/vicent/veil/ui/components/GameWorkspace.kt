@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -417,12 +419,17 @@ private fun GameLibraryDialog(
 ) {
     var query by remember { mutableStateOf("") }
     val normalizedQuery = remember(query) { query.normalizeForSearch() }
-    val visible = remember(library, normalizedQuery) {
+    val searchText = remember(library) {
+        library.associate { app ->
+            app.packageName to "${app.label} ${app.packageName}".normalizeForSearch()
+        }
+    }
+    val visible = remember(library, searchText, normalizedQuery) {
         if (normalizedQuery.isBlank()) {
             library
         } else {
             library.filter { app ->
-                "${app.label} ${app.packageName}".normalizeForSearch().contains(normalizedQuery)
+                searchText[app.packageName]?.contains(normalizedQuery) == true
             }
         }
     }
@@ -442,19 +449,22 @@ private fun GameLibraryDialog(
             ),
             singleLine = true,
         )
-        Column(
-            modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
-        ) {
+        LazyColumn(modifier = Modifier.heightIn(max = 480.dp)) {
             if (visible.isEmpty()) {
-                RofiBody(
-                    if (library.isEmpty()) {
-                        stringResource(R.string.game_library_empty)
-                    } else {
-                        stringResource(R.string.search_no_matches)
-                    },
-                )
+                item(key = "empty") {
+                    RofiBody(
+                        if (library.isEmpty()) {
+                            stringResource(R.string.game_library_empty)
+                        } else {
+                            stringResource(R.string.search_no_matches)
+                        },
+                    )
+                }
             }
-            visible.forEach { app ->
+            items(
+                items = visible,
+                key = { app -> app.componentName.flattenToShortString() },
+            ) { app ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier

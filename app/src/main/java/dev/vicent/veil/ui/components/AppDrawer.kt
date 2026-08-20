@@ -84,7 +84,7 @@ fun AppDrawer(
     val continuitySearchTerms = stringResource(R.string.drawer_continuity_search)
     val settingsSearchPrefix = stringResource(R.string.drawer_settings_search_prefix)
     val normalizedTerms = remember(query) {
-        query.normalizeForSearch().split(Regex("\\s+")).filter(String::isNotBlank)
+        query.normalizeForSearch().split(' ').filter(String::isNotBlank)
     }
     val veilSettingsVisible = remember(query, veilSettingsSearchTerms) {
         veilSettingsMatches(query, veilSettingsSearchTerms)

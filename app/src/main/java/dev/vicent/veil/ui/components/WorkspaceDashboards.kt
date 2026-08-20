@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -72,90 +73,140 @@ fun WorkspaceDashboard(
         // content width corresponds to the product's 360 dp screen breakpoint.
         val compact = maxWidth < WorkspaceLayoutTokens.COMPACT_BREAKPOINT
         when (context.definition.kind) {
-            LauncherContextKind.CURRENT -> CurrentHome(
-                state = state.currentHomeState(),
-                actions = context.quickActions,
-                onAppSelected = onAppSelected,
-                onAppLongPressed = onAppLongPressed,
-                onEmptySlotSelected = { slotIndex ->
-                    onEmptyContextSlotSelected(context.definition.kind, slotIndex)
-                },
-                onLocationPermissionRequested = onLocationPermissionRequested,
-                onClockOpenRequested = onClockOpenRequested,
-                onCalendarOpenRequested = onCalendarOpenRequested,
-                onContinuityAction = onContinuityAction,
-                onMediaDismissed = onHomeMediaDismissed,
-                onQuickButtonTap = onHomeButtonTap,
-                onQuickButtonLongPress = onHomeButtonLongPress,
-                modifier = Modifier.fillMaxSize(),
-            )
-            LauncherContextKind.WORK -> WorkWorkspace(
-                state.workWorkspaceState(),
-                compact,
-                onCalendarPermissionRequested,
-                onCalendarEventSelected,
-                onCalendarEventCreateRequested,
-                onCalendarOpenRequested,
-                onGoogleCalendarConfigureRequested,
-                onContinuityAction,
-                onFocusStart,
-                onFocusPause,
-                onFocusResume,
-                onFocusFinish,
-                onQuickNoteAdded,
-                onQuickNoteUpdated,
-                onQuickNoteDeleted,
-            )
-            LauncherContextKind.FOCUS -> FocusWorkspace(
-                state = state.focusWorkspaceState(),
-                compact = compact,
-                onCalendarPermissionRequested = onCalendarPermissionRequested,
-                onCalendarEventSelected = onCalendarEventSelected,
-                onCalendarEventCreateRequested = onCalendarEventCreateRequested,
-                onCalendarOpenRequested = onCalendarOpenRequested,
-                onGoogleCalendarConfigureRequested = onGoogleCalendarConfigureRequested,
-                onFocusStart = onFocusStart,
-                onFocusPause = onFocusPause,
-                onFocusResume = onFocusResume,
-                onFocusFinish = onFocusFinish,
-                onQuickNoteAdded = onQuickNoteAdded,
-                onQuickNoteUpdated = onQuickNoteUpdated,
-                onQuickNoteDeleted = onQuickNoteDeleted,
-            )
-            LauncherContextKind.MEDIA -> MediaWorkspace(
-                state.mediaWorkspaceState(),
-                compact,
-                onContinuityAccessRequested,
-                onContinuityAction,
-                onAudioVisualizerPermissionRequested,
-                onAudioVolumeChanged,
-                onSettingsSelected = { id -> settingsShortcuts.find { it.id == id }?.let(onSettingsSelected) },
-                onAppSelected = onAppSelected,
-                onMusicProviderSelectionRequested = onMusicProviderSelectionRequested,
-            )
-            LauncherContextKind.GAME -> GameWorkspace(
-                feed = state.gameFeed,
-                library = GameLibraryPolicy.gameLibrary(state.installedApps, context.apps),
-                compact = compact,
-                onExternalLinkSelected = onExternalLinkSelected,
-                onAppSelected = onAppSelected,
-                onAppLongPressed = onAppLongPressed,
-            )
+            LauncherContextKind.CURRENT -> {
+                val currentHomeState = remember(
+                    state.preferences,
+                    state.weather,
+                    state.mediaContinuity,
+                    state.notificationIndicatorPackages,
+                ) { state.currentHomeState() }
+                CurrentHome(
+                    state = currentHomeState,
+                    actions = context.quickActions,
+                    onAppSelected = onAppSelected,
+                    onAppLongPressed = onAppLongPressed,
+                    onEmptySlotSelected = { slotIndex ->
+                        onEmptyContextSlotSelected(context.definition.kind, slotIndex)
+                    },
+                    onLocationPermissionRequested = onLocationPermissionRequested,
+                    onClockOpenRequested = onClockOpenRequested,
+                    onCalendarOpenRequested = onCalendarOpenRequested,
+                    onContinuityAction = onContinuityAction,
+                    onMediaDismissed = onHomeMediaDismissed,
+                    onQuickButtonTap = onHomeButtonTap,
+                    onQuickButtonLongPress = onHomeButtonLongPress,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            LauncherContextKind.WORK -> {
+                val workState = remember(
+                    state.access.calendarGranted,
+                    state.calendarEvents,
+                    state.workProgress,
+                    state.quickNotes,
+                    state.focusTimer,
+                ) { state.workWorkspaceState() }
+                WorkWorkspace(
+                    workState,
+                    compact,
+                    onCalendarPermissionRequested,
+                    onCalendarEventSelected,
+                    onCalendarEventCreateRequested,
+                    onCalendarOpenRequested,
+                    onGoogleCalendarConfigureRequested,
+                    onContinuityAction,
+                    onFocusStart,
+                    onFocusPause,
+                    onFocusResume,
+                    onFocusFinish,
+                    onQuickNoteAdded,
+                    onQuickNoteUpdated,
+                    onQuickNoteDeleted,
+                )
+            }
+            LauncherContextKind.FOCUS -> {
+                val focusState = remember(
+                    state.access.calendarGranted,
+                    state.calendarEvents,
+                    state.quickNotes,
+                    state.focusTimer,
+                ) { state.focusWorkspaceState() }
+                FocusWorkspace(
+                    state = focusState,
+                    compact = compact,
+                    onCalendarPermissionRequested = onCalendarPermissionRequested,
+                    onCalendarEventSelected = onCalendarEventSelected,
+                    onCalendarEventCreateRequested = onCalendarEventCreateRequested,
+                    onCalendarOpenRequested = onCalendarOpenRequested,
+                    onGoogleCalendarConfigureRequested = onGoogleCalendarConfigureRequested,
+                    onFocusStart = onFocusStart,
+                    onFocusPause = onFocusPause,
+                    onFocusResume = onFocusResume,
+                    onFocusFinish = onFocusFinish,
+                    onQuickNoteAdded = onQuickNoteAdded,
+                    onQuickNoteUpdated = onQuickNoteUpdated,
+                    onQuickNoteDeleted = onQuickNoteDeleted,
+                )
+            }
+            LauncherContextKind.MEDIA -> {
+                val mediaState = remember(
+                    state.mediaContinuity,
+                    state.access.continuityGranted,
+                    state.audioMixer,
+                    state.preferences.musicProviderPackage,
+                    state.installedApps,
+                ) { state.mediaWorkspaceState() }
+                MediaWorkspace(
+                    mediaState,
+                    compact,
+                    onContinuityAccessRequested,
+                    onContinuityAction,
+                    onAudioVisualizerPermissionRequested,
+                    onAudioVolumeChanged,
+                    onSettingsSelected = { id ->
+                        settingsShortcuts.find { it.id == id }?.let(onSettingsSelected)
+                    },
+                    onAppSelected = onAppSelected,
+                    onMusicProviderSelectionRequested = onMusicProviderSelectionRequested,
+                )
+            }
+            LauncherContextKind.GAME -> {
+                val library = remember(state.installedApps, context.apps) {
+                    GameLibraryPolicy.gameLibrary(state.installedApps, context.apps)
+                }
+                GameWorkspace(
+                    feed = state.gameFeed,
+                    library = library,
+                    compact = compact,
+                    onExternalLinkSelected = onExternalLinkSelected,
+                    onAppSelected = onAppSelected,
+                    onAppLongPressed = onAppLongPressed,
+                )
+            }
             LauncherContextKind.TOOLS -> ToolsWorkspace(
                 state.toolsWorkspaceState(),
                 compact,
                 onVeilSettingsSelected,
                 onSettingsSelected = { id -> settingsShortcuts.find { it.id == id }?.let(onSettingsSelected) },
             )
-            LauncherContextKind.ON_THE_GO -> OnTheGoWorkspace(
-                state = state.onTheGoWorkspaceState(),
-                compact = compact,
-                onContinuityAccessRequested = onContinuityAccessRequested,
-                onLocationPermissionRequested = onLocationPermissionRequested,
-                onCalendarPermissionRequested = onCalendarPermissionRequested,
-                onCalendarEventSelected = onCalendarEventSelected,
-                onContinuityAction = onContinuityAction,
-            )
+            LauncherContextKind.ON_THE_GO -> {
+                val onTheGoState = remember(
+                    state.access.continuityGranted,
+                    state.access.calendarGranted,
+                    state.currentContinuity,
+                    state.calendarEvents,
+                    state.weather,
+                ) { state.onTheGoWorkspaceState() }
+                OnTheGoWorkspace(
+                    state = onTheGoState,
+                    compact = compact,
+                    onContinuityAccessRequested = onContinuityAccessRequested,
+                    onLocationPermissionRequested = onLocationPermissionRequested,
+                    onCalendarPermissionRequested = onCalendarPermissionRequested,
+                    onCalendarEventSelected = onCalendarEventSelected,
+                    onContinuityAction = onContinuityAction,
+                )
+            }
         }
     }
 }

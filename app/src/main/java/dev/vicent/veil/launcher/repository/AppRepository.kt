@@ -8,6 +8,7 @@ import android.os.Build
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.AppCategory
 import java.text.Collator
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,7 +17,12 @@ import kotlinx.coroutines.withContext
 class AppRepository(context: Context) {
     private val packageManager = context.packageManager
     private val ownPackageName = context.packageName
-    private val iconLoader = AppIconLoader(packageManager)
+    private val iconLoader = AppIconLoader(
+        packageManager = packageManager,
+        iconSizePx = (APP_ICON_SIZE_DP * context.resources.displayMetrics.density)
+            .roundToInt()
+            .coerceIn(MIN_ICON_SIZE_PX, MAX_ICON_SIZE_PX),
+    )
     private val cacheMutex = Mutex()
     private var cachedApps: List<LauncherApp>? = null
 
@@ -28,6 +34,7 @@ class AppRepository(context: Context) {
 
     suspend fun refreshLaunchableApps(): List<LauncherApp> = withContext(Dispatchers.IO) {
         cacheMutex.withLock {
+            iconLoader.clear()
             queryLaunchableApps().also { cachedApps = it }
         }
     }
@@ -100,5 +107,11 @@ class AppRepository(context: Context) {
         -> AppCategory.MEDIA
         android.content.pm.ApplicationInfo.CATEGORY_GAME -> AppCategory.GAME
         else -> AppCategory.GENERAL
+    }
+
+    private companion object {
+        const val APP_ICON_SIZE_DP = 40f
+        const val MIN_ICON_SIZE_PX = 64
+        const val MAX_ICON_SIZE_PX = 160
     }
 }

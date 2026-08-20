@@ -11,6 +11,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -26,10 +29,15 @@ class FocusTimerRepository(
 
     fun startObserving(scope: CoroutineScope) {
         scope.launch {
-            while (isActive) {
-                refreshFromStorage()
-                delay(1_000)
-            }
+            state
+                .map { it.status == FocusTimerStatus.RUNNING }
+                .distinctUntilChanged()
+                .collectLatest { running ->
+                    while (running && isActive) {
+                        delay(1_000)
+                        refreshFromStorage()
+                    }
+                }
         }
     }
 
@@ -82,11 +90,12 @@ class FocusTimerRepository(
     fun restoreScheduledAlarm() = scheduler.restore()
 
     private fun refreshFromStorage() {
-        val current = readState()
+        var current = readState()
         if (current.status == FocusTimerStatus.RUNNING && current.remainingMillis <= 0L) {
             scheduler.complete()
+            current = readState()
         }
-        mutableState.value = readState()
+        mutableState.value = current
     }
 
     private fun readState(): FocusTimerState = store.read(

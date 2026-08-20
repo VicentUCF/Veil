@@ -174,6 +174,9 @@ fun LauncherScreen(
     }
 
     val contextCount = state.contexts.size
+    val contextDefinitions = remember(state.contexts) {
+        state.contexts.map { it.definition }
+    }
     val gesturesEnabled = state.navigation.surface == LauncherSurface.HOME
     val pagerState = if (contextCount > 0) {
         rememberPagerState(
@@ -392,7 +395,7 @@ fun LauncherScreen(
             state.activeContextIndex
         }
         TopBar(
-            contexts = state.contexts.map { it.definition },
+            contexts = contextDefinitions,
             activeContextIndex = visibleContextIndex,
             onContextSelected = { targetContextIndex ->
                 if (pagerState != null && targetContextIndex in 0 until contextCount) {

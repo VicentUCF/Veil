@@ -44,7 +44,6 @@ import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import dev.vicent.veil.launcher.model.HomeButtonGesture
 import dev.vicent.veil.ui.theme.LocalVeilPalette
-import java.text.Normalizer
 import java.util.Locale
 
 @Composable
@@ -59,19 +58,28 @@ internal fun SettingsAppPicker(
 ) {
     val palette = LocalVeilPalette.current
     var query by remember(target) { mutableStateOf("") }
-    val normalizedQuery = remember(query) { query.normalizeAppSearch() }
-    val apps = remember(installedApps, normalizedQuery, target) {
-        installedApps.asSequence()
-            .filter { app ->
-                normalizedQuery.isBlank() ||
-                    "${app.label} ${app.packageName}".normalizeAppSearch().contains(normalizedQuery)
-            }
+    val normalizedQuery = remember(query) { query.normalizeForSearch() }
+    val appSearchText = remember(installedApps) {
+        installedApps.associate { app ->
+            app.packageName to "${app.label} ${app.packageName}".normalizeForSearch()
+        }
+    }
+    val sortedApps = remember(installedApps, target) {
+        installedApps
             .sortedWith(
                 compareBy<LauncherApp> {
                     if (target == SettingsAppTarget.MusicProvider && it.category == AppCategory.MEDIA) 0 else 1
                 }.thenBy { it.label.lowercase(Locale.getDefault()) },
             )
-            .toList()
+    }
+    val apps = remember(sortedApps, appSearchText, normalizedQuery) {
+        if (normalizedQuery.isBlank()) {
+            sortedApps
+        } else {
+            sortedApps.filter { app ->
+                appSearchText[app.packageName]?.contains(normalizedQuery) == true
+            }
+        }
     }
     val title = when (target) {
         SettingsAppTarget.MusicProvider -> stringResource(R.string.picker_music_title)
@@ -88,14 +96,14 @@ internal fun SettingsAppPicker(
     val everythingLabel = stringResource(R.string.home_button_action_everything)
     val veilSettingsLabel = stringResource(R.string.home_button_action_veil_settings)
     val showEverything = normalizedQuery.isBlank() ||
-        everythingLabel.normalizeAppSearch().contains(normalizedQuery)
+        everythingLabel.normalizeForSearch().contains(normalizedQuery)
     val showVeilSettings = normalizedQuery.isBlank() ||
-        veilSettingsLabel.normalizeAppSearch().contains(normalizedQuery)
+        veilSettingsLabel.normalizeForSearch().contains(normalizedQuery)
     val filteredSettingsShortcuts = remember(settingsShortcuts, normalizedQuery) {
         settingsShortcuts.filter { shortcut ->
             normalizedQuery.isBlank() ||
                 "${shortcut.label} ${shortcut.searchTerms}"
-                    .normalizeAppSearch()
+                    .normalizeForSearch()
                     .contains(normalizedQuery)
         }
     }
@@ -388,7 +396,3 @@ internal fun ConfiguredAppRow(
         BasicText(">", style = workspaceMonoStyle(palette.accentActive, 10))
     }
 }
-
-private fun String.normalizeAppSearch(): String = Normalizer
-    .normalize(lowercase(Locale.getDefault()), Normalizer.Form.NFD)
-    .replace("\\p{M}+".toRegex(), "")

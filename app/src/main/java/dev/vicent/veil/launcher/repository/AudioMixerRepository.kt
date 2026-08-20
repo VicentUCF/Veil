@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
@@ -23,6 +24,7 @@ class AudioMixerRepository(private val context: Context) {
     private val audioManager = context.getSystemService(AudioManager::class.java)
     private val mutableState = MutableStateFlow(AudioMixerState(channels = readChannels()))
     val state: StateFlow<AudioMixerState> = mutableState.asStateFlow()
+    private val observeChannels = MutableStateFlow(false)
 
     private var visualizer: Visualizer? = null
     private var visualizerPermissionGranted = false
@@ -33,11 +35,19 @@ class AudioMixerRepository(private val context: Context) {
 
     fun start(scope: CoroutineScope) {
         scope.launch {
-            try {
-                while (isActive) {
+            observeChannels.collectLatest { enabled ->
+                if (enabled) {
                     refreshChannels()
-                    delay(VOLUME_REFRESH_MILLIS)
+                    while (isActive) {
+                        delay(VOLUME_REFRESH_MILLIS)
+                        refreshChannels()
+                    }
                 }
+            }
+        }
+        scope.launch {
+            try {
+                kotlinx.coroutines.awaitCancellation()
             } finally {
                 releaseVisualizer()
             }
@@ -53,6 +63,7 @@ class AudioMixerRepository(private val context: Context) {
     fun setAppVisible(visible: Boolean) {
         if (appVisible == visible) return
         appVisible = visible
+        updateChannelObservation()
         updateVisualizer()
     }
 
@@ -65,6 +76,7 @@ class AudioMixerRepository(private val context: Context) {
     fun setMediaWorkspaceVisible(visible: Boolean) {
         if (mediaWorkspaceVisible == visible) return
         mediaWorkspaceVisible = visible
+        updateChannelObservation()
         updateVisualizer()
     }
 
@@ -84,6 +96,10 @@ class AudioMixerRepository(private val context: Context) {
         if (channels != mutableState.value.channels) {
             mutableState.value = mutableState.value.copy(channels = channels)
         }
+    }
+
+    private fun updateChannelObservation() {
+        observeChannels.value = shouldObserveAudioChannels(appVisible, mediaWorkspaceVisible)
     }
 
     private fun readChannels(): List<AudioChannelLevel> = AudioChannel.entries.map { channel ->
@@ -201,6 +217,11 @@ internal fun shouldRunAudioVisualizer(
     mediaWorkspaceVisible: Boolean,
     mediaPlaying: Boolean,
 ): Boolean = permissionGranted && appVisible && mediaWorkspaceVisible && mediaPlaying
+
+internal fun shouldObserveAudioChannels(
+    appVisible: Boolean,
+    mediaWorkspaceVisible: Boolean,
+): Boolean = appVisible && mediaWorkspaceVisible
 
 internal fun calculateSpectrum(
     fft: ByteArray,

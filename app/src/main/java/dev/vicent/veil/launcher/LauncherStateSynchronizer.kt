@@ -14,6 +14,8 @@ import dev.vicent.veil.launcher.repository.SteamGameRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,6 +37,7 @@ internal class LauncherStateSynchronizer(
     private val timeProvider: TimeProvider,
 ) {
     private var hasStarted = false
+    private var appRefreshJob: Job? = null
 
     fun start(scope: CoroutineScope) {
         if (hasStarted) return
@@ -153,7 +156,11 @@ internal class LauncherStateSynchronizer(
     }
 
     fun refreshApps(scope: CoroutineScope) {
-        scope.launch {
+        appRefreshJob?.cancel()
+        appRefreshJob = scope.launch {
+            // Package installation/removal commonly emits several broadcasts in a burst.
+            // Conflate them so a burst costs one PackageManager scan and one icon refresh.
+            delay(APP_REFRESH_DEBOUNCE_MILLIS)
             val installedApps = appRepository.refreshLaunchableApps()
             if (installedApps.isNotEmpty()) {
                 searchLearningRepository.retainInstalledPackages(
@@ -212,4 +219,8 @@ internal class LauncherStateSynchronizer(
         current: List<LauncherApp>,
         incoming: List<LauncherApp>,
     ): List<LauncherApp> = (current + incoming).distinctBy(LauncherApp::packageName)
+
+    private companion object {
+        const val APP_REFRESH_DEBOUNCE_MILLIS = 250L
+    }
 }

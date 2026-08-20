@@ -9,7 +9,15 @@ internal data class AppSearchCandidate(
     val packageName: String,
     val label: String,
     val sourceIndex: Int,
-)
+) {
+    // Candidates live for the installed-app snapshot, so normalize once instead of once per
+    // app and keystroke.
+    internal val normalizedPackageName = normalizeSearchText(packageName)
+    internal val normalizedLabel = normalizeSearchText(label)
+    internal val normalizedLabelWords = normalizedLabel
+        .split(SEARCH_WORD_BOUNDARIES)
+        .filter(String::isNotBlank)
+}
 
 internal object AppSearchPolicy {
     fun rank(
@@ -22,36 +30,26 @@ internal object AppSearchPolicy {
         if (query.isBlank()) return candidates.sortedBy(AppSearchCandidate::sourceIndex)
 
         val terms = query.split(' ').filter(String::isNotBlank)
-        val activeLearning = learning.filter {
+        val activeLearningByPackage = learning.filter {
             it.lastSelectedAtMillis <= nowMillis &&
                 nowMillis - it.lastSelectedAtMillis <= SearchLearningPolicy.RETENTION_MILLIS
-        }
-        val globalScores = activeLearning.groupBy(AppSearchLearningEntry::packageName)
-            .mapValues { (_, entries) -> entries.sumOf { it.decayedScore(nowMillis) } }
-        val globalRecency = activeLearning.groupBy(AppSearchLearningEntry::packageName)
-            .mapValues { (_, entries) -> entries.maxOf(AppSearchLearningEntry::lastSelectedAtMillis) }
+        }.groupBy(AppSearchLearningEntry::packageName)
 
         return candidates.mapNotNull { candidate ->
-            val label = normalizeSearchText(candidate.label)
-            val packageName = normalizeSearchText(candidate.packageName)
-            val labelWords = label.split(SEARCH_WORD_BOUNDARIES).filter(String::isNotBlank)
-            val directAssociations = activeLearning.filter {
-                it.packageName == candidate.packageName && it.query == query
-            }
-            val compatibleAssociations = activeLearning.filter {
-                it.packageName == candidate.packageName &&
-                    it.query != query &&
-                    queriesAreCompatible(query, it.query)
+            val packageLearning = activeLearningByPackage[candidate.packageName].orEmpty()
+            val directAssociations = packageLearning.filter { it.query == query }
+            val compatibleAssociations = packageLearning.filter {
+                it.query != query && queriesAreCompatible(query, it.query)
             }
             val textRank = textualRank(
                 query = query,
                 terms = terms,
-                label = label,
-                labelWords = labelWords,
-                packageName = packageName,
+                label = candidate.normalizedLabel,
+                labelWords = candidate.normalizedLabelWords,
+                packageName = candidate.normalizedPackageName,
             )
             val primaryRank = when {
-                label == query -> Rank.EXACT_LABEL
+                candidate.normalizedLabel == query -> Rank.EXACT_LABEL
                 directAssociations.isNotEmpty() -> Rank.DIRECT_ASSOCIATION
                 compatibleAssociations.isNotEmpty() -> Rank.COMPATIBLE_ASSOCIATION
                 textRank != null -> textRank
@@ -69,9 +67,11 @@ internal object AppSearchPolicy {
                 associationRecency = relevantAssociations.maxOfOrNull {
                     it.lastSelectedAtMillis
                 } ?: Long.MIN_VALUE,
-                globalScore = globalScores[candidate.packageName] ?: 0.0,
-                globalRecency = globalRecency[candidate.packageName] ?: Long.MIN_VALUE,
-                normalizedLabel = label,
+                globalScore = packageLearning.sumOf { it.decayedScore(nowMillis) },
+                globalRecency = packageLearning.maxOfOrNull {
+                    it.lastSelectedAtMillis
+                } ?: Long.MIN_VALUE,
+                normalizedLabel = candidate.normalizedLabel,
             )
         }.sortedWith(
             compareBy<RankedCandidate> { it.primaryRank }
@@ -177,7 +177,6 @@ internal object AppSearchPolicy {
     private const val MIN_COMPATIBLE_QUERY_LENGTH = 2
     private const val DAY_MILLIS = 24.0 * 60.0 * 60.0 * 1_000.0
     private const val RECENCY_HALF_WEIGHT_DAYS = 14.0
-    private val SEARCH_WORD_BOUNDARIES = Regex("[^\\p{L}\\p{N}]+")
 }
 
 internal fun normalizeSearchText(value: String): String = Normalizer
@@ -189,3 +188,4 @@ internal fun normalizeSearchText(value: String): String = Normalizer
 
 private val COMBINING_MARKS = Regex("\\p{M}+")
 private val WHITESPACE = Regex("\\s+")
+private val SEARCH_WORD_BOUNDARIES = Regex("[^\\p{L}\\p{N}]+")

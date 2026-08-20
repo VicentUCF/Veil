@@ -1,6 +1,7 @@
 package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.repository.calculateSpectrum
+import dev.vicent.veil.launcher.repository.shouldObserveAudioChannels
 import dev.vicent.veil.launcher.repository.shouldRunAudioVisualizer
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -8,6 +9,13 @@ import kotlin.test.assertTrue
 import org.junit.Test
 
 class AudioSpectrumTest {
+    @Test
+    fun audioChannelsArePolledOnlyWhileTheirWorkspaceIsVisible() {
+        assertTrue(shouldObserveAudioChannels(appVisible = true, mediaWorkspaceVisible = true))
+        assertFalse(shouldObserveAudioChannels(appVisible = false, mediaWorkspaceVisible = true))
+        assertFalse(shouldObserveAudioChannels(appVisible = true, mediaWorkspaceVisible = false))
+    }
+
     @Test
     fun visualizerOnlyRunsWithEveryForegroundGateOpen() {
         assertTrue(
