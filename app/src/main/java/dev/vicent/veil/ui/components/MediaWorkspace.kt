@@ -3,7 +3,6 @@ package dev.vicent.veil.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.ContinuityAction
 
@@ -19,7 +18,7 @@ internal fun MediaWorkspace(
     onAppSelected: (dev.vicent.veil.launcher.model.LauncherApp) -> Unit,
     onMusicProviderSelectionRequested: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
         val media = state.mediaContinuity
         if (media != null) {
             MediaPlayerTile(media, onContinuityAction)

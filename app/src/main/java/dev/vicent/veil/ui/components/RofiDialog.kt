@@ -107,6 +107,7 @@ fun RofiAction(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     danger: Boolean = false,
+    accessibilityLabel: String = label,
 ) {
     val palette = LocalVeilPalette.current
     BasicText(
@@ -124,7 +125,7 @@ fun RofiAction(
             .clickable(
                 enabled = enabled,
                 role = Role.Button,
-                onClickLabel = label,
+                onClickLabel = accessibilityLabel,
                 onClick = onClick,
             )
             .padding(horizontal = 7.dp, vertical = 7.dp),

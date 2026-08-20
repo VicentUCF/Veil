@@ -3,6 +3,8 @@ package dev.vicent.veil.launcher.repository
 import android.content.Context
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.launcher.model.WeatherState
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,11 +12,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class WeatherRepository(context: Context) {
+class WeatherRepository(
+    context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val appContext = context.applicationContext
-    private val locationSource = WeatherLocationSource(appContext)
-    private val client = OpenMeteoClient()
-    private val cache = WeatherCache(appContext)
+    private val locationSource = WeatherLocationSource(appContext, timeProvider)
+    private val client = OpenMeteoClient(timeProvider)
+    private val cache = WeatherCache(appContext, timeProvider)
     private val mutableState = MutableStateFlow(cache.load())
     val state: StateFlow<WeatherState> = mutableState.asStateFlow()
     private val refreshMutex = Mutex()
@@ -27,7 +32,7 @@ class WeatherRepository(context: Context) {
             return@withLock
         }
         val cached = mutableState.value
-        val age = cached.observedAtMillis?.let { System.currentTimeMillis() - it }
+        val age = cached.observedAtMillis?.let { timeProvider.currentTimeMillis() - it }
             ?: Long.MAX_VALUE
         if (!force && cached.availability == WeatherAvailability.AVAILABLE &&
             age < REFRESH_MILLIS

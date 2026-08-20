@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -27,11 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 
 @Composable
 internal fun SettingsHeader(
-    title: String = "ajustes_de_veil",
+    title: String? = null,
     onBack: () -> Unit,
 ) {
     val palette = LocalVeilPalette.current
@@ -47,11 +49,15 @@ internal fun SettingsHeader(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(58.dp)
-                .clickable(role = Role.Button, onClickLabel = "Volver", onClick = onBack),
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.action_back),
+                    onClick = onBack,
+                ),
         ) {
             BasicText("<", style = workspaceMonoStyle(palette.accentActive, 14))
         }
-        BasicText("> $title", style = workspaceMonoStyle(palette.contentPrimary, 12))
+        BasicText("> ${title ?: stringResource(R.string.settings_header_title)}", style = workspaceMonoStyle(palette.contentPrimary, 12))
     }
 }
 
@@ -144,7 +150,11 @@ internal fun SettingsActionRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button, onClickLabel = "$status: $title", onClick = onClick)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.action_status_title, status, title),
+                onClick = onClick,
+            )
             .padding(horizontal = 20.dp, vertical = 13.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {

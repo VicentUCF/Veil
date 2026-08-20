@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.ResolvedQuickAction
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.SettingsShortcut
@@ -43,6 +45,8 @@ fun ContextDock(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
+    val emptyLabel = stringResource(R.string.launcher_empty_slot)
+    val notificationState = stringResource(R.string.state_has_notifications)
     Row(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.Top,
@@ -59,7 +63,9 @@ fun ContextDock(
                 settingsShortcuts.firstOrNull { it.id == resolved.id }
             }
             val emptySlot = (action as? ResolvedQuickAction.Empty)?.slotIndex
-            val label = app?.label ?: setting?.label ?: "Vacío"
+            val label = app?.label ?: setting?.label ?: emptyLabel
+            val openLabel = stringResource(R.string.action_open_named, label)
+            val optionsLabel = app?.let { stringResource(R.string.action_options_named, label) }
             val hasNotification = app != null && app.packageName in notificationIndicatorPackages
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -67,8 +73,8 @@ fun ContextDock(
                     .weight(1f)
                     .combinedClickable(
                         role = Role.Button,
-                        onClickLabel = "Abrir $label",
-                        onLongClickLabel = app?.let { "Opciones de $label" },
+                        onClickLabel = openLabel,
+                        onLongClickLabel = optionsLabel,
                         onClick = {
                             if (app != null) onAppSelected(app)
                             else if (setting != null) onSettingSelected(setting)
@@ -79,7 +85,7 @@ fun ContextDock(
                     .then(
                         if (hasNotification) {
                             Modifier.semantics {
-                                stateDescription = "Con notificaciones"
+                                stateDescription = notificationState
                             }
                         } else {
                             Modifier

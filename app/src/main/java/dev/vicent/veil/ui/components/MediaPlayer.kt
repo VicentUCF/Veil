@@ -39,9 +39,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.ui.theme.LocalVeilPalette
@@ -49,7 +51,6 @@ import dev.vicent.veil.ui.theme.VeilMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
-private val MediaPrimaryTileHeight = 220.dp
 private const val MEDIA_PROGRESS_TICK_MILLIS = 1_000L
 
 @Composable
@@ -61,19 +62,24 @@ internal fun EmptyMediaTile(
     onChooseMusicProvider: () -> Unit,
 ) {
     CozyTile(
-        label = "Media",
+        label = stringResource(R.string.media_tile_label),
         prominent = true,
         onClick = onOpenMusicProvider,
-        modifier = Modifier.fillMaxWidth().heightIn(min = MediaPrimaryTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(
+            min = WorkspaceLayoutTokens.PRIMARY_TILE_HEIGHT,
+        ),
     ) {
         EmptyMediaArtwork(musicProviderLabel = musicProviderLabel)
         if (onOpenMusicProvider != null && musicProviderLabel != null) {
-            TileAction("Abrir $musicProviderLabel", onOpenMusicProvider)
+            TileAction(
+                stringResource(R.string.action_open_named, musicProviderLabel),
+                onOpenMusicProvider,
+            )
         } else {
-            TileAction("Elegir proveedor de música", onChooseMusicProvider)
+            TileAction(stringResource(R.string.media_choose_provider), onChooseMusicProvider)
         }
         if (!continuityEnabled) {
-            TileAction("Activar continuidad", onContinuityAccessRequested)
+            TileAction(stringResource(R.string.media_enable_continuity), onContinuityAccessRequested)
         }
     }
 }
@@ -81,15 +87,16 @@ internal fun EmptyMediaTile(
 @Composable
 private fun EmptyMediaArtwork(musicProviderLabel: String?) {
     val palette = LocalVeilPalette.current
+    val description = if (musicProviderLabel != null) {
+        stringResource(R.string.action_open_named, musicProviderLabel)
+    } else {
+        stringResource(R.string.media_no_playback)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = if (musicProviderLabel != null) {
-                    "Abrir $musicProviderLabel"
-                } else {
-                    "Sin reproducción activa"
-                }
+                contentDescription = description
             },
     ) {
         Row(
@@ -127,7 +134,7 @@ private fun EmptyMediaArtwork(musicProviderLabel: String?) {
         }
         SeekLine(progress = 0f, onSeek = {}, enabled = false, showPosition = false)
         BasicText(
-            text = "--:--  /  --:--",
+            text = stringResource(R.string.media_unknown_timeline),
             style = workspaceMonoStyle(palette.contentMuted, 9),
             modifier = Modifier.padding(top = 5.dp),
         )
@@ -135,7 +142,11 @@ private fun EmptyMediaArtwork(musicProviderLabel: String?) {
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             modifier = Modifier.padding(top = 6.dp),
         ) {
-            listOf("ANTERIOR", "REPRODUCIR", "SIGUIENTE").forEach { label ->
+            listOf(
+                stringResource(R.string.media_previous).uppercase(),
+                stringResource(R.string.media_play).uppercase(),
+                stringResource(R.string.media_next).uppercase(),
+            ).forEach { label ->
                 BasicText(
                     text = label,
                     style = workspaceMonoStyle(palette.contentMuted, 10),
@@ -170,9 +181,11 @@ internal fun MediaPlayerTile(
         trackTransitionDirection = 1
     }
     CozyTile(
-        label = "Ahora suena",
+        label = stringResource(R.string.media_now_playing),
         prominent = true,
-        modifier = Modifier.fillMaxWidth().heightIn(min = MediaPrimaryTileHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(
+            min = WorkspaceLayoutTokens.PRIMARY_TILE_HEIGHT,
+        ),
     ) {
         AnimatedContent(
             targetState = track,
@@ -220,7 +233,9 @@ internal fun MediaPlayerTile(
                     TileTitle(displayedTrack.title, prominent = true)
                     TileBody(
                         displayedTrack.subtitle
-                            ?.let { "$it · ${displayedTrack.appLabel}" }
+                            ?.let {
+                                stringResource(R.string.media_artist_app, it, displayedTrack.appLabel)
+                            }
                             ?: displayedTrack.appLabel,
                     )
                 }
@@ -255,9 +270,13 @@ internal fun MediaPlayerTile(
         )
         BasicText(
             text = if (duration != null) {
-                "${formatDuration(position)}  /  ${formatDuration(duration)}"
+                stringResource(
+                    R.string.media_timeline,
+                    formatDuration(position),
+                    formatDuration(duration),
+                )
             } else {
-                "--:--  /  --:--"
+                stringResource(R.string.media_unknown_timeline)
             },
             style = workspaceMonoStyle(palette.contentMuted, 9),
             modifier = Modifier.padding(top = 5.dp),
@@ -267,18 +286,24 @@ internal fun MediaPlayerTile(
             modifier = Modifier.padding(top = 6.dp),
         ) {
             if (ContinuityAction.SKIP_PREVIOUS in media.supportedActions) {
-                TileAction("Anterior") {
+                TileAction(stringResource(R.string.media_previous)) {
                     trackTransitionDirection = -1
                     onAction(media.id, ContinuityAction.SKIP_PREVIOUS, null)
                 }
             }
             if (ContinuityAction.TOGGLE_PLAYBACK in media.supportedActions) {
-                TileAction(if (media.isPlaying) "Pausa" else "Reproducir") {
+                TileAction(
+                    if (media.isPlaying) {
+                        stringResource(R.string.media_pause)
+                    } else {
+                        stringResource(R.string.media_play)
+                    },
+                ) {
                     onAction(media.id, ContinuityAction.TOGGLE_PLAYBACK, null)
                 }
             }
             if (ContinuityAction.SKIP_NEXT in media.supportedActions) {
-                TileAction("Siguiente") {
+                TileAction(stringResource(R.string.media_next)) {
                     trackTransitionDirection = 1
                     onAction(media.id, ContinuityAction.SKIP_NEXT, null)
                 }

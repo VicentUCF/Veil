@@ -17,15 +17,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.AgendaPolicy
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
 import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.ui.theme.LocalVeilPalette
-
-private val PrimaryTileHeight = 220.dp
 
 @Composable
 internal fun WorkWorkspace(
@@ -49,18 +49,20 @@ internal fun WorkWorkspace(
         AgendaPolicy.workEvents(state.calendarEvents, System.currentTimeMillis())
     }
     var agendaDialog by remember { mutableStateOf<AgendaDialogMode?>(null) }
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
         CozyTile(
-            label = "Agenda",
+            label = stringResource(R.string.agenda_tile_label),
             prominent = true,
             onClick = { agendaDialog = AgendaDialogMode.ACTIONS },
-            modifier = Modifier.fillMaxWidth().heightIn(min = PrimaryTileHeight),
+            modifier = Modifier.fillMaxWidth().heightIn(
+                min = WorkspaceLayoutTokens.PRIMARY_TILE_HEIGHT,
+            ),
         ) {
             if (!state.calendarAccessGranted) {
-                TileAction("Conectar calendario", onCalendarPermissionRequested)
+                TileAction(stringResource(R.string.agenda_connect), onCalendarPermissionRequested)
             } else if (workEvents.isEmpty()) {
-                TileTitle("Sin compromisos próximos")
-                TileBody("El espacio queda libre para trabajar.")
+                TileTitle(stringResource(R.string.agenda_empty_title))
+                TileBody(stringResource(R.string.agenda_empty_body))
             } else {
                 workEvents.forEach { event -> EventRow(event, onCalendarEventSelected) }
             }
@@ -133,7 +135,11 @@ private fun WorkProgressSummary(
             .background(palette.divider),
     )
     BasicText(
-        text = if (progress.isComplete) "COMPLETADO" else "EN CURSO",
+        text = if (progress.isComplete) {
+            stringResource(R.string.work_progress_completed)
+        } else {
+            stringResource(R.string.work_progress_running)
+        },
         style = workspaceMonoStyle(palette.accentActive, 9),
         modifier = Modifier.padding(top = 8.dp),
     )
@@ -146,7 +152,7 @@ private fun WorkProgressSummary(
     )
     progress.progress?.let { value -> SimpleProgress(value) }
     if (ContinuityAction.OPEN in progress.supportedActions) {
-        TileAction("Retomar") {
+        TileAction(stringResource(R.string.work_resume)) {
             onContinuityAction(progress.id, ContinuityAction.OPEN, null)
         }
     }
@@ -159,12 +165,12 @@ private fun WorkSecondaryRow(
     pomodoro: @Composable () -> Unit,
 ) {
     if (compact) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
             notes()
             pomodoro()
         }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
             Column(modifier = Modifier.weight(2f)) { notes() }
             Column(modifier = Modifier.weight(1f)) { pomodoro() }
         }

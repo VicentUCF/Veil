@@ -50,7 +50,6 @@ object LauncherConfig {
     val contexts = listOf(
         LauncherContext(
             id = "home",
-            label = "CURRENT",
             kind = LauncherContextKind.CURRENT,
             quickActions = listOf(
                 appSlot(
@@ -80,7 +79,6 @@ object LauncherConfig {
         ),
         LauncherContext(
             id = "work",
-            label = "WORK",
             kind = LauncherContextKind.WORK,
             quickActions = listOf(
                 appSlot("com.github.android", "com.gitlab.android"),
@@ -100,7 +98,6 @@ object LauncherConfig {
         ),
         LauncherContext(
             id = "media",
-            label = "MEDIA",
             kind = LauncherContextKind.MEDIA,
             quickActions = listOf(
                 appSlot(
@@ -125,13 +122,11 @@ object LauncherConfig {
         ),
         LauncherContext(
             id = "game",
-            label = "GAME",
             kind = LauncherContextKind.GAME,
             quickActions = automaticSlots(),
         ),
         LauncherContext(
             id = "tools",
-            label = "TOOLS",
             kind = LauncherContextKind.TOOLS,
             quickActions = listOf(
                 appSlot("com.android.settings"),

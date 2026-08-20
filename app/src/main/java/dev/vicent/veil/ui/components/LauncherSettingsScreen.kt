@@ -19,10 +19,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.dp
+import dev.vicent.veil.R
 import dev.vicent.veil.config.AccentPalette
-import dev.vicent.veil.BuildConfig
 import dev.vicent.veil.launcher.model.AccentMode
 import dev.vicent.veil.launcher.model.LauncherAccessState
 import dev.vicent.veil.launcher.model.LauncherApp
@@ -41,7 +42,15 @@ fun LauncherSettingsScreen(
     accessActions: SettingsAccessActions,
     modifier: Modifier = Modifier,
 ) {
-    val (preferences, access, installedApps, appTarget, showFontSettings, systemAccent) = state
+    val (
+        preferences,
+        access,
+        installedApps,
+        appTarget,
+        showFontSettings,
+        systemAccent,
+        publisherInfo,
+    ) = state
     val (onBack, onOpenFontSettings) = navigationActions
     val (
         onAccentSelected,
@@ -109,9 +118,11 @@ fun LauncherSettingsScreen(
     ) {
         SettingsHeader(onBack = onBack)
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item(key = "appearance-label") { SettingsSectionLabel("APARIENCIA") }
+            item(key = "appearance-label") {
+                SettingsSectionLabel(stringResource(R.string.settings_section_appearance))
+            }
             item(key = "accent-intro") {
-                SettingsDescription("Color de acento")
+                SettingsDescription(stringResource(R.string.settings_accent_description))
             }
             items(
                 count = AccentPalette.presets.size,
@@ -119,7 +130,7 @@ fun LauncherSettingsScreen(
             ) { index ->
                 val preset = AccentPalette.presets[index]
                 AccentChoiceRow(
-                    label = preset.label,
+                    label = stringResource(preset.mode.labelResource()),
                     color = preset.color,
                     selected = preferences.accentMode == preset.mode,
                     enabled = true,
@@ -130,45 +141,50 @@ fun LauncherSettingsScreen(
             item(key = "accent-system") {
                 val available = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && systemAccent != null
                 AccentChoiceRow(
-                    label = "Sistema / wallpaper",
+                    label = stringResource(R.string.settings_system_accent),
                     color = systemAccent ?: palette.contentMuted,
                     selected = preferences.accentMode == AccentMode.SYSTEM,
                     enabled = available,
                     detail = if (available) {
-                        "Color dinámico de Android"
+                        stringResource(R.string.settings_dynamic_color)
                     } else {
-                        "Disponible desde Android 12"
+                        stringResource(R.string.settings_dynamic_color_unavailable)
                     },
                     onClick = { onAccentSelected(AccentMode.SYSTEM) },
                 )
             }
             item(key = "wallpaper") {
                 SettingsActionRow(
-                    title = "Fondo de pantalla",
-                    detail = "Gestionado por Android; Veil no guarda la imagen",
-                    status = "CAMBIAR",
+                    title = stringResource(R.string.settings_wallpaper_title),
+                    detail = stringResource(R.string.settings_wallpaper_detail),
+                    status = stringResource(R.string.state_change),
                     onClick = { launch(onWallpaperSelected) },
                 )
             }
             item(key = "home-font") {
                 SettingsActionRow(
-                    title = "Fuente de CURRENT",
-                    detail = "Texto e iconos ${preferences.homeTextTone.label().lowercase()}s · " +
+                    title = stringResource(R.string.settings_current_font_title),
+                    detail = stringResource(
+                        R.string.settings_current_font_detail,
+                        preferences.homeTextTone.pluralLabel(),
                         preferences.homeTextWeight.label(),
-                    status = "ABRIR",
+                    ),
+                    status = stringResource(R.string.state_open),
                     onClick = onOpenFontSettings,
                 )
             }
 
-            item(key = "apps-label") { SettingsSectionLabel("APLICACIONES") }
+            item(key = "apps-label") {
+                SettingsSectionLabel(stringResource(R.string.settings_section_apps))
+            }
             item(key = "music-provider") {
                 val provider = preferences.musicProviderPackage?.let { packageName ->
                     installedApps.firstOrNull { it.packageName == packageName }
                 }
                 ConfiguredAppRow(
-                    slotLabel = "Proveedor de música",
+                    slotLabel = stringResource(R.string.settings_music_provider),
                     app = provider,
-                    emptyDetail = "Elige qué app abre el estado vacío de MEDIA",
+                    emptyDetail = stringResource(R.string.settings_music_provider_empty),
                     onClick = onOpenMusicProviderPicker,
                     onClear = if (preferences.musicProviderPackage != null) {
                         onMusicProviderCleared
@@ -177,55 +193,57 @@ fun LauncherSettingsScreen(
             }
             item(key = "context-edit-hint") {
                 SettingsDescription(
-                    "Para cambiar las apps de una página, mantén pulsada su app en el workspace. Los huecos vacíos muestran +.",
+                    stringResource(R.string.settings_context_edit_hint),
                 )
             }
 
-            item(key = "access-label") { SettingsSectionLabel("ACCESOS Y PRIVACIDAD") }
+            item(key = "access-label") {
+                SettingsSectionLabel(stringResource(R.string.settings_section_access_privacy))
+            }
             item(key = "continuity") {
                 SettingsActionRow(
-                    title = "Señales y Ambient Continuity",
-                    detail = "Continuidad y puntos de actividad sin contenido",
+                    title = stringResource(R.string.settings_continuity_title),
+                    detail = stringResource(R.string.settings_continuity_detail),
                     status = access.continuityGranted.statusLabel(),
                     onClick = { launch(onContinuitySelected) },
                 )
             }
             item(key = "calendar") {
                 SettingsActionRow(
-                    title = "Calendario",
-                    detail = "Próximos eventos visibles en Android",
+                    title = stringResource(R.string.settings_calendar_title),
+                    detail = stringResource(R.string.settings_calendar_detail),
                     status = access.calendarGranted.statusLabel(),
                     onClick = { launch(onCalendarSelected) },
                 )
             }
             item(key = "location") {
                 SettingsActionRow(
-                    title = "Ubicación aproximada",
-                    detail = "Tiempo local mediante Open-Meteo",
+                    title = stringResource(R.string.settings_location_title),
+                    detail = stringResource(R.string.settings_location_detail),
                     status = access.approximateLocationGranted.statusLabel(),
                     onClick = { launch(onLocationSelected) },
                 )
             }
             item(key = "audio") {
                 SettingsActionRow(
-                    title = "Espectro de audio",
-                    detail = "FFT de baja calidad solo mientras MEDIA está visible",
+                    title = stringResource(R.string.settings_audio_title),
+                    detail = stringResource(R.string.settings_audio_detail),
                     status = access.audioVisualizerGranted.statusLabel(),
                     onClick = { launch(onAudioVisualizerSelected) },
                 )
             }
             item(key = "privacy-policy") {
                 SettingsActionRow(
-                    title = "Política de privacidad",
-                    detail = "Qué procesa Veil, dónde y durante cuánto tiempo",
-                    status = "LEER",
+                    title = stringResource(R.string.settings_privacy_title),
+                    detail = stringResource(R.string.settings_privacy_detail),
+                    status = stringResource(R.string.state_read),
                     onClick = { showPrivacyPolicy = true },
                 )
             }
             item(key = "focus-notifications") {
                 SettingsActionRow(
-                    title = "Notificaciones de Focus",
-                    detail = "Aviso cuando termina un temporizador",
+                    title = stringResource(R.string.settings_focus_notifications_title),
+                    detail = stringResource(R.string.settings_focus_notifications_detail),
                     status = access.focusNotificationsGranted.statusLabel(),
                     onClick = { launch(onFocusNotificationsSelected) },
                 )
@@ -233,46 +251,58 @@ fun LauncherSettingsScreen(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 item(key = "exact-alarms") {
                     SettingsActionRow(
-                        title = "Alarmas exactas de Focus",
+                        title = stringResource(R.string.settings_exact_alarms_title),
                         detail = if (access.exactAlarmsGranted) {
-                            "Android permite alertas puntuales"
+                            stringResource(R.string.settings_exact_alarms_allowed)
                         } else {
-                            "Focus degradará a una alerta aproximada"
+                            stringResource(R.string.settings_exact_alarms_fallback)
                         },
-                        status = if (access.exactAlarmsGranted) "EXACTAS" else "APROXIMADAS",
+                        status = if (access.exactAlarmsGranted) {
+                            stringResource(R.string.settings_exact)
+                        } else {
+                            stringResource(R.string.settings_approximate)
+                        },
                         onClick = { launch(onExactAlarmsSelected) },
                     )
                 }
             }
 
-            item(key = "system-label") { SettingsSectionLabel("SISTEMA") }
+            item(key = "system-label") {
+                SettingsSectionLabel(stringResource(R.string.settings_section_system))
+            }
             item(key = "default-home") {
                 SettingsActionRow(
-                    title = "Launcher predeterminado",
+                    title = stringResource(R.string.settings_default_home_title),
                     detail = if (access.isDefaultHome) {
-                        "Veil es la aplicación Home activa"
+                        stringResource(R.string.settings_default_home_active)
                     } else {
-                        "Android aún no usa Veil como Home"
+                        stringResource(R.string.settings_default_home_inactive)
                     },
-                    status = if (access.isDefaultHome) "ACTIVO" else "ELEGIR",
+                    status = if (access.isDefaultHome) {
+                        stringResource(R.string.state_active)
+                    } else {
+                        stringResource(R.string.state_choose)
+                    },
                     onClick = { launch(onDefaultHomeSelected) },
                 )
             }
             item(key = "android-settings") {
                 SettingsActionRow(
-                    title = "Ajustes de Android",
-                    detail = "Configuración completa del dispositivo",
-                    status = "ABRIR",
+                    title = stringResource(R.string.settings_android_title),
+                    detail = stringResource(R.string.settings_android_detail),
+                    status = stringResource(R.string.state_open),
                     onClick = { launch(onAndroidSettingsSelected) },
                 )
             }
 
-            item(key = "reset-label") { SettingsSectionLabel("RESTABLECER") }
+            item(key = "reset-label") {
+                SettingsSectionLabel(stringResource(R.string.settings_section_reset))
+            }
             item(key = "reset") {
                 SettingsActionRow(
-                    title = "Restaurar apariencia de Veil",
-                    detail = "Restaura acento y legibilidad de CURRENT",
-                    status = "RESTAURAR",
+                    title = stringResource(R.string.settings_reset_title),
+                    detail = stringResource(R.string.settings_reset_detail),
+                    status = stringResource(R.string.state_restore),
                     danger = true,
                     onClick = { showResetConfirmation = true },
                 )
@@ -283,12 +313,12 @@ fun LauncherSettingsScreen(
 
     if (showResetConfirmation) {
         RofiDialog(
-            title = "restaurar apariencia",
+            title = stringResource(R.string.settings_reset_dialog_title),
             onDismiss = { showResetConfirmation = false },
             actions = {
-                RofiAction("cancelar", { showResetConfirmation = false })
+                RofiAction(stringResource(R.string.action_cancel), { showResetConfirmation = false })
                 RofiAction(
-                    label = "restaurar",
+                    label = stringResource(R.string.action_restore),
                     danger = true,
                     onClick = {
                         showResetConfirmation = false
@@ -297,56 +327,68 @@ fun LauncherSettingsScreen(
                 )
             },
         ) {
-            RofiBody(
-                "El acento volverá al coral; el texto y los iconos de CURRENT, a claros y finos. " +
-                    "El filtro suave se activará. El wallpaper y los accesos de Android no cambiarán.",
-            )
+            RofiBody(stringResource(R.string.settings_reset_dialog_body))
         }
     }
 
     if (showPrivacyPolicy) {
         RofiDialog(
-            title = "política de privacidad",
+            title = stringResource(R.string.settings_privacy_dialog_title),
             onDismiss = { showPrivacyPolicy = false },
             actions = {
-                if (BuildConfig.PRIVACY_POLICY_URL.isNotBlank()) {
-                    RofiAction("abrir web", { launch(onPrivacyPolicySelected) })
+                if (publisherInfo.privacyPolicyUrl.isNotBlank()) {
+                    RofiAction(
+                        stringResource(R.string.settings_privacy_open_web),
+                        { launch(onPrivacyPolicySelected) },
+                    )
                 }
-                RofiAction("cerrar", { showPrivacyPolicy = false })
+                RofiAction(stringResource(R.string.action_close), { showPrivacyPolicy = false })
             },
         ) {
-            RofiBody(
-                "Veil no tiene cuentas, publicidad, analítica ni backend propio. " +
-                    "Las apps instaladas, calendario, preferencias y notas se procesan en el dispositivo.\n\n" +
-                    "Con permiso opcional, las señales de notificación se mantienen solo en memoria y " +
-                    "sin contenido; el espectro de audio es transitorio y solo funciona con Veil visible, " +
-                    "MEDIA visible y audio reproduciéndose.\n\n" +
-                    "El tiempo envía ubicación aproximada a Open-Meteo por HTTPS. GAME consulta datos " +
-                    "públicos de Steam por HTTPS. Estos proveedores reciben la IP necesaria para la conexión.\n\n" +
-                    "Puedes revocar los accesos desde Android. Las notas rápidas se excluyen de copias y " +
-                    "transferencias del dispositivo. La política pública y el contacto del editor se " +
-                    "publican también en la ficha de distribución." +
-                    if (BuildConfig.PRIVACY_CONTACT.isNotBlank()) {
-                        "\n\nContacto: ${BuildConfig.PRIVACY_CONTACT}"
-                    } else {
-                        ""
-                    },
-            )
-            if (BuildConfig.PRIVACY_POLICY_URL.isNotBlank()) {
-                RofiBody(BuildConfig.PRIVACY_POLICY_URL)
+            val privacyBody = buildString {
+                append(stringResource(R.string.settings_privacy_body))
+                if (publisherInfo.privacyContact.isNotBlank()) {
+                    append("\n\n")
+                    append(
+                        stringResource(
+                            R.string.settings_privacy_contact,
+                            publisherInfo.privacyContact,
+                        ),
+                    )
+                }
+            }
+            RofiBody(privacyBody)
+            if (publisherInfo.privacyPolicyUrl.isNotBlank()) {
+                RofiBody(publisherInfo.privacyPolicyUrl)
             }
         }
     }
 
     if (showExternalError) {
         RofiDialog(
-            title = "ajuste no disponible",
+            title = stringResource(R.string.settings_external_error_title),
             onDismiss = { showExternalError = false },
-            actions = { RofiAction("cerrar", { showExternalError = false }) },
+            actions = {
+                RofiAction(stringResource(R.string.action_close), { showExternalError = false })
+            },
         ) {
-            RofiBody("Android no ofrece una pantalla compatible para este ajuste en el dispositivo.")
+            RofiBody(stringResource(R.string.settings_external_error_body))
         }
     }
 }
 
-private fun Boolean.statusLabel(): String = if (this) "REVISAR" else "ACTIVAR"
+private fun AccentMode.labelResource(): Int = when (this) {
+    AccentMode.VEIL -> R.string.accent_veil
+    AccentMode.AMBER -> R.string.accent_amber
+    AccentMode.SAGE -> R.string.accent_sage
+    AccentMode.SKY -> R.string.accent_sky
+    AccentMode.LILAC -> R.string.accent_lilac
+    AccentMode.SYSTEM -> R.string.settings_system_accent
+}
+
+@Composable
+private fun Boolean.statusLabel(): String = if (this) {
+    stringResource(R.string.state_review)
+} else {
+    stringResource(R.string.state_activate)
+}

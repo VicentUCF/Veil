@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -71,16 +72,20 @@ fun AppDrawer(
     val palette = LocalVeilPalette.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var query by remember { mutableStateOf("") }
+    val veilSettingsSearchTerms = stringResource(R.string.drawer_veil_settings_search)
+    val settingsSearchPrefix = stringResource(R.string.drawer_settings_search_prefix)
     val normalizedTerms = remember(query) {
         query.normalizeForSearch().split(Regex("\\s+")).filter(String::isNotBlank)
     }
-    val veilSettingsVisible = remember(query) { veilSettingsMatches(query) }
-    val visibleSettings = remember(settingsShortcuts, normalizedTerms) {
+    val veilSettingsVisible = remember(query, veilSettingsSearchTerms) {
+        veilSettingsMatches(query, veilSettingsSearchTerms)
+    }
+    val visibleSettings = remember(settingsShortcuts, normalizedTerms, settingsSearchPrefix) {
         if (normalizedTerms.isEmpty()) {
             settingsShortcuts.take(1)
         } else {
             settingsShortcuts.filter { shortcut ->
-                val searchable = "ajustes configuracion sistema ${shortcut.label} " +
+                val searchable = "$settingsSearchPrefix ${shortcut.label} " +
                     shortcut.searchTerms
                 val normalizedSearchable = searchable.normalizeForSearch()
                 normalizedTerms.all(normalizedSearchable::contains)
@@ -126,9 +131,17 @@ fun AppDrawer(
                 item(key = "apps-header") {
                     DrawerSectionLabel(
                         text = if (normalizedTerms.isEmpty()) {
-                            "APLICACIONES  ${visibleApps.size}"
+                            pluralStringResource(
+                                R.plurals.drawer_apps_count,
+                                visibleApps.size,
+                                visibleApps.size,
+                            )
                         } else {
-                            "RESULTADOS  ${visibleApps.size}"
+                            pluralStringResource(
+                                R.plurals.drawer_results_count,
+                                visibleApps.size,
+                                visibleApps.size,
+                            )
                         },
                     )
                 }
@@ -148,7 +161,7 @@ fun AppDrawer(
             }
 
             item(key = "system-header") {
-                DrawerSectionLabel(text = "SISTEMA")
+                DrawerSectionLabel(text = stringResource(R.string.drawer_system))
             }
             if (veilSettingsVisible) {
                 item(key = "veil-settings") {
@@ -178,7 +191,7 @@ fun AppDrawer(
 
             if (isLoading) {
                 item(key = "loading") {
-                    DrawerSectionLabel(text = "BUSCANDO APLICACIONES…")
+                    DrawerSectionLabel(text = stringResource(R.string.drawer_loading_apps))
                 }
             }
 
@@ -189,11 +202,11 @@ fun AppDrawer(
 
 private data object VeilSettingsResult
 
-internal fun veilSettingsMatches(query: String): Boolean {
+internal fun veilSettingsMatches(query: String, searchable: String): Boolean {
     val terms = query.normalizeForSearch().split(Regex("\\s+")).filter(String::isNotBlank)
     if (terms.isEmpty()) return true
-    val searchable = "ajustes configuracion preferencias veil tema color acento fondo wallpaper permisos privacidad launcher"
-    return terms.all(searchable::contains)
+    val normalizedSearchable = searchable.normalizeForSearch()
+    return terms.all(normalizedSearchable::contains)
 }
 
 @Composable
@@ -242,7 +255,7 @@ private fun VeilSettingsRow(onClick: () -> Unit) {
             .height(58.dp)
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Abrir Ajustes de Veil",
+                onClickLabel = stringResource(R.string.drawer_open_veil_settings),
                 onClick = onClick,
             )
             .padding(horizontal = 24.dp),
@@ -257,7 +270,7 @@ private fun VeilSettingsRow(onClick: () -> Unit) {
             drawCircle(color = palette.accentActive, radius = 3.dp.toPx())
         }
         BasicText(
-            text = "Ajustes de Veil",
+            text = stringResource(R.string.drawer_veil_settings),
             style = TextStyle(
                 color = palette.contentPrimary,
                 fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
@@ -284,7 +297,7 @@ private fun DrawerHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(
-            text = "VEIL / APPS",
+            text = stringResource(R.string.drawer_header),
             style = TextStyle(
                 color = palette.contentSecondary,
                 fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
@@ -293,7 +306,7 @@ private fun DrawerHeader(
             ),
         )
         BasicText(
-            text = "CERRAR  ×",
+            text = stringResource(R.string.drawer_close),
             style = TextStyle(
                 color = palette.contentSecondary,
                 fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
@@ -301,7 +314,10 @@ private fun DrawerHeader(
                 letterSpacing = 1.2.sp,
             ),
             modifier = Modifier
-                .clickable(role = Role.Button, onClickLabel = "Cerrar aplicaciones") {
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.drawer_close_action),
+                ) {
                     onClose()
                 }
                 .padding(horizontal = 8.dp, vertical = 12.dp),
@@ -365,7 +381,7 @@ private fun SearchField(
                 Box(contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) {
                         BasicText(
-                            text = "Buscar apps y ajustes",
+                            text = stringResource(R.string.drawer_search_hint),
                             style = TextStyle(
                                 color = palette.contentMuted,
                                 fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
@@ -390,7 +406,10 @@ private fun SearchField(
                     fontSize = 22.sp,
                 ),
                 modifier = Modifier
-                    .clickable(role = Role.Button, onClickLabel = "Borrar búsqueda") {
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(R.string.drawer_clear_search),
+                    ) {
                         onClear()
                     }
                     .padding(8.dp),
@@ -427,8 +446,8 @@ private fun DrawerAppRow(
             .height(58.dp)
             .combinedClickable(
                 role = Role.Button,
-                onClickLabel = "Abrir ${app.label}",
-                onLongClickLabel = "Opciones de ${app.label}",
+                onClickLabel = stringResource(R.string.action_open_named, app.label),
+                onLongClickLabel = stringResource(R.string.action_options_named, app.label),
                 onLongClick = onLongClick,
                 onClick = onClick,
             )
@@ -473,7 +492,7 @@ private fun SettingsRow(
             .height(58.dp)
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Abrir ${shortcut.label}",
+                onClickLabel = stringResource(R.string.action_open_named, shortcut.label),
                 onClick = onClick,
             )
             .padding(horizontal = 24.dp),
@@ -507,7 +526,7 @@ private fun EmptyResult(query: String) {
     val palette = LocalVeilPalette.current
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 40.dp)) {
         BasicText(
-            text = "SIN RESULTADOS",
+            text = stringResource(R.string.drawer_no_results),
             style = TextStyle(
                 color = palette.contentSecondary,
                 fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
@@ -516,7 +535,7 @@ private fun EmptyResult(query: String) {
             ),
         )
         BasicText(
-            text = "No hay apps ni ajustes que coincidan con “$query”.",
+            text = stringResource(R.string.drawer_no_results_detail, query),
             style = TextStyle(
                 color = palette.contentMuted,
                 fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,

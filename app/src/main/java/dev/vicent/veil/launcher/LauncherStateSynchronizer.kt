@@ -30,6 +30,7 @@ internal class LauncherStateSynchronizer(
     private val preferencesRepository: LauncherPreferencesRepository,
     private val contextResolver: LauncherContextResolver,
     private val state: MutableStateFlow<LauncherUiState>,
+    private val timeProvider: TimeProvider,
 ) {
     private var hasStarted = false
 
@@ -56,7 +57,7 @@ internal class LauncherStateSynchronizer(
         }
         scope.launch {
             continuityRepository.items.collect { items ->
-                val now = System.currentTimeMillis()
+                val now = timeProvider.currentTimeMillis()
                 state.update { currentState ->
                     val selectedMedia = ContinuityRanker.selectMedia(items, now)
                     audioMixerRepository.setMediaPlaying(selectedMedia?.isPlaying == true)
@@ -177,7 +178,7 @@ internal class LauncherStateSynchronizer(
                     ?.apps
                     ?.mapTo(mutableSetOf(), LauncherApp::packageName)
                     .orEmpty(),
-                System.currentTimeMillis(),
+                timeProvider.currentTimeMillis(),
             ),
         )
     }

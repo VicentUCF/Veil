@@ -25,11 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.QuickNotesPolicy
 import dev.vicent.veil.launcher.model.QuickNote
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
@@ -47,11 +49,13 @@ internal fun WorkQuickNotesTile(
     var editingNote by remember { mutableStateOf<QuickNote?>(null) }
     var creatingNote by remember { mutableStateOf(false) }
     CozyTile(
-        label = "Notas rápidas",
-        modifier = Modifier.fillMaxWidth().heightIn(min = SecondaryTileHeight),
+        label = stringResource(R.string.notes_tile_label),
+        modifier = Modifier.fillMaxWidth().heightIn(
+            min = WorkspaceLayoutTokens.SECONDARY_TILE_HEIGHT,
+        ),
     ) {
         if (notes.isEmpty()) {
-            TileBody("Captura una idea sin salir de WORK.")
+            TileBody(stringResource(R.string.notes_empty))
         } else {
             notes.forEach { note ->
                 Row(
@@ -60,7 +64,7 @@ internal fun WorkQuickNotesTile(
                         .fillMaxWidth()
                         .clickable(
                             role = Role.Button,
-                            onClickLabel = "Editar ${note.title}",
+                            onClickLabel = stringResource(R.string.notes_edit_named, note.title),
                         ) { editingNote = note }
                         .padding(vertical = 5.dp),
                 ) {
@@ -78,7 +82,9 @@ internal fun WorkQuickNotesTile(
                 }
             }
         }
-        if (notes.size < 3) TileAction("Añadir") { creatingNote = true }
+        if (notes.size < 3) {
+            TileAction(stringResource(R.string.notes_add)) { creatingNote = true }
+        }
     }
 
     if (creatingNote) {
@@ -118,14 +124,20 @@ private fun QuickNoteEditorDialog(
     var checklist by remember(note?.id) { mutableStateOf(note?.checklist.orEmpty()) }
     val validTitle = QuickNotesPolicy.sanitizeTitle(title)
     RofiDialog(
-        title = if (note == null) "nueva nota" else "editar nota",
+        title = if (note == null) {
+            stringResource(R.string.notes_new_title)
+        } else {
+            stringResource(R.string.notes_edit_title)
+        },
         onDismiss = onDismiss,
         actions = {
-            if (onDelete != null) RofiAction("eliminar", onDelete, danger = true)
+            if (onDelete != null) {
+                RofiAction(stringResource(R.string.action_delete), onDelete, danger = true)
+            }
             Spacer(Modifier.weight(1f))
-            RofiAction("cancelar", onDismiss)
+            RofiAction(stringResource(R.string.action_cancel), onDismiss)
             RofiAction(
-                label = "guardar",
+                label = stringResource(R.string.action_save),
                 enabled = validTitle != null,
                 onClick = {
                     validTitle?.let { cleanTitle ->
@@ -142,9 +154,13 @@ private fun QuickNoteEditorDialog(
                 .verticalScroll(rememberScrollState()),
         ) {
             RofiEditorField(
-                label = "title",
+                label = stringResource(R.string.notes_title_field),
                 value = title,
-                hint = "visible en WORK · ${title.length}/${QuickNotesPolicy.MAX_TITLE_LENGTH}",
+                hint = stringResource(
+                    R.string.notes_title_hint,
+                    title.length,
+                    QuickNotesPolicy.MAX_TITLE_LENGTH,
+                ),
                 singleLine = true,
                 onValueChange = { value ->
                     title = value.replace('\n', ' ').replace('\r', ' ')
@@ -154,9 +170,13 @@ private fun QuickNoteEditorDialog(
             RofiNoteTypeSelector(selected = type, onSelected = { type = it })
             when (type) {
                 QuickNoteType.TEXT -> RofiEditorField(
-                    label = "content",
+                    label = stringResource(R.string.notes_content_field),
                     value = body,
-                    hint = "texto libre · ${body.length}/${QuickNotesPolicy.MAX_BODY_LENGTH}",
+                    hint = stringResource(
+                        R.string.notes_content_hint,
+                        body.length,
+                        QuickNotesPolicy.MAX_BODY_LENGTH,
+                    ),
                     minHeight = 170.dp,
                     onValueChange = { body = it.take(QuickNotesPolicy.MAX_BODY_LENGTH) },
                 )
@@ -185,7 +205,7 @@ private fun QuickNoteEditorDialog(
                     }
                     if (checklist.size < QuickNotesPolicy.MAX_CHECKLIST_ITEMS) {
                         RofiAction(
-                            label = "+ item",
+                            label = stringResource(R.string.notes_add_item),
                             onClick = {
                                 val nextId =
                                     (checklist.maxOfOrNull(QuickNoteChecklistItem::id) ?: 0L) + 1L
@@ -238,14 +258,17 @@ private fun RofiNoteTypeSelector(
 ) {
     val palette = LocalVeilPalette.current
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        BasicText("mode:", style = workspaceMonoStyle(palette.accentActive, 9))
+        BasicText(
+            stringResource(R.string.notes_mode),
+            style = workspaceMonoStyle(palette.accentActive, 9),
+        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
             listOf(
-                QuickNoteType.TEXT to "texto",
-                QuickNoteType.CHECKLIST to "checklist",
+                QuickNoteType.TEXT to stringResource(R.string.notes_mode_text),
+                QuickNoteType.CHECKLIST to stringResource(R.string.notes_mode_checklist),
             ).forEach { (type, label) ->
                 val active = selected == type
                 Row(
@@ -296,7 +319,10 @@ private fun RofiChecklistEditorRow(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(42.dp)
-                .clickable(role = Role.Checkbox) { onCheckedChange(!item.checked) },
+                .clickable(
+                    role = Role.Checkbox,
+                    onClickLabel = stringResource(R.string.notes_toggle_item),
+                ) { onCheckedChange(!item.checked) },
         ) {
             BasicText(
                 if (item.checked) "[x]" else "[ ]",
@@ -320,7 +346,11 @@ private fun RofiChecklistEditorRow(
                 .border(1.dp, palette.divider, RoundedCornerShape(3.dp))
                 .padding(horizontal = 10.dp, vertical = 10.dp),
         )
-        RofiAction("x", onDelete, danger = true)
+        RofiAction(
+            label = "×",
+            onClick = onDelete,
+            danger = true,
+            accessibilityLabel = stringResource(R.string.notes_delete_item),
+        )
     }
 }
-

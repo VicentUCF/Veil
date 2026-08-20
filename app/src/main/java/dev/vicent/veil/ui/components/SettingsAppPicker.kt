@@ -29,12 +29,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.AppCategory
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.SettingsAppTarget
@@ -67,9 +69,12 @@ internal fun SettingsAppPicker(
             .toList()
     }
     val title = when (target) {
-        SettingsAppTarget.MusicProvider -> "elegir_proveedor_de_musica"
-        is SettingsAppTarget.ContextSlot ->
-            "${target.kind.name.lowercase()}_slot_${target.slotIndex + 1}"
+        SettingsAppTarget.MusicProvider -> stringResource(R.string.picker_music_title)
+        is SettingsAppTarget.ContextSlot -> stringResource(
+            R.string.picker_context_slot_title,
+            target.kind.name.lowercase(),
+            target.slotIndex + 1,
+        )
     }
 
     Column(
@@ -102,7 +107,7 @@ internal fun SettingsAppPicker(
                 ) {
                     if (query.isBlank()) {
                         BasicText(
-                            "Buscar aplicación",
+                            stringResource(R.string.picker_search_hint),
                             style = workspaceMonoStyle(palette.contentMuted, 11),
                         )
                     }
@@ -112,7 +117,7 @@ internal fun SettingsAppPicker(
         )
         if (target == SettingsAppTarget.MusicProvider) {
             SettingsDescription(
-                "Las apps de audio y vídeo aparecen primero. La reproducción activa seguirá cualquier MediaSession compatible.",
+                stringResource(R.string.picker_music_description),
             )
         }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -123,7 +128,7 @@ internal fun SettingsAppPicker(
                         .fillMaxWidth()
                         .clickable(
                             role = Role.Button,
-                            onClickLabel = "Elegir ${app.label}",
+                            onClickLabel = stringResource(R.string.action_choose_named, app.label),
                         ) { onSelected(app.packageName) }
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                 ) {
@@ -152,7 +157,7 @@ internal fun SettingsAppPicker(
             }
             if (apps.isEmpty()) {
                 item(key = "empty") {
-                    SettingsDescription("No hay aplicaciones que coincidan con la búsqueda.")
+                    SettingsDescription(stringResource(R.string.picker_no_matches))
                 }
             }
             item(key = "bottom-space") { Spacer(modifier = Modifier.height(24.dp)) }
@@ -175,7 +180,11 @@ internal fun ConfiguredAppRow(
             .fillMaxWidth()
             .clickable(
                 role = Role.Button,
-                onClickLabel = if (app == null) "Elegir aplicación" else "Cambiar ${app.label}",
+                onClickLabel = if (app == null) {
+                    stringResource(R.string.action_choose_app)
+                } else {
+                    stringResource(R.string.action_change_named, app.label)
+                },
                 onClick = onClick,
             )
             .padding(start = 20.dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
@@ -199,7 +208,7 @@ internal fun ConfiguredAppRow(
         Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
             BasicText(slotLabel, style = workspaceMonoStyle(palette.contentMuted, 8))
             BasicText(
-                text = app?.label ?: "Sin aplicación",
+                text = app?.label ?: stringResource(R.string.picker_no_app),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
@@ -223,7 +232,7 @@ internal fun ConfiguredAppRow(
                     .size(48.dp)
                     .clickable(
                         role = Role.Button,
-                        onClickLabel = "Vaciar $slotLabel",
+                        onClickLabel = stringResource(R.string.action_clear_named, slotLabel),
                         onClick = clear,
                     ),
             ) {

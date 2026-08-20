@@ -1,8 +1,11 @@
 package dev.vicent.veil.launcher.repository
 
 import android.content.Context
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.GameFeedCachePolicy
 import dev.vicent.veil.launcher.GameFeedPolicy
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import dev.vicent.veil.launcher.model.GameFeedAvailability
 import dev.vicent.veil.launcher.model.GameFeedState
 import dev.vicent.veil.launcher.model.SteamChartEntry
@@ -17,15 +20,19 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-class SteamGameRepository(context: Context) {
-    private val cache = SteamGameCache(context.applicationContext)
+class SteamGameRepository(
+    context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
+    private val applicationContext = context.applicationContext
+    private val cache = SteamGameCache(applicationContext, timeProvider)
     private val remote = SteamRemoteClient()
     private val refreshMutex = Mutex()
     private val mutableState = MutableStateFlow(cache.load())
     val state: StateFlow<GameFeedState> = mutableState.asStateFlow()
 
     suspend fun refresh(force: Boolean = false) = refreshMutex.withLock {
-        val now = System.currentTimeMillis()
+        val now = timeProvider.currentTimeMillis()
         val current = mutableState.value
         if (!force && current.chart.isNotEmpty() && GameFeedCachePolicy.isFresh(current.fetchedAtMillis, now)) {
             mutableState.value = current.copy(
@@ -74,7 +81,8 @@ class SteamGameRepository(context: Context) {
                     rank = rank.rank,
                     previousRank = rank.previousRank,
                     peakPlayers = rank.peakPlayers,
-                    title = appMetadata?.title ?: "Steam App ${rank.appId}",
+                    title = appMetadata?.title
+                        ?: applicationContext.getString(R.string.steam_unknown_app, rank.appId),
                     artworkUrl = appMetadata?.artworkUrl,
                     storeUrl = "$STORE_APP_BASE${rank.appId}/",
                 )

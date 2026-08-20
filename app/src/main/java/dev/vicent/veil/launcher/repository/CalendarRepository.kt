@@ -9,7 +9,10 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.CalendarContract
 import android.provider.Settings
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.CalendarEventSummary
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +25,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class CalendarRepository(private val context: Context) {
+class CalendarRepository(
+    private val context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val mutableEvents = MutableStateFlow<List<CalendarEventSummary>>(emptyList())
     val events: StateFlow<List<CalendarEventSummary>> = mutableEvents.asStateFlow()
     private var observer: ContentObserver? = null
@@ -61,7 +67,7 @@ class CalendarRepository(private val context: Context) {
     fun openCalendar(): Boolean {
         val uri = ContentUris.withAppendedId(
             CalendarContract.CONTENT_URI.buildUpon().appendPath("time").build(),
-            System.currentTimeMillis(),
+            timeProvider.currentTimeMillis(),
         )
         val viewCalendar = Intent(Intent.ACTION_VIEW, uri)
         val defaultPackage = context.packageManager
@@ -122,7 +128,7 @@ class CalendarRepository(private val context: Context) {
     }
 
     private suspend fun queryEvents(): List<CalendarEventSummary> = withContext(Dispatchers.IO) {
-        val begin = System.currentTimeMillis()
+        val begin = timeProvider.currentTimeMillis()
         val end = Calendar.getInstance().apply { timeInMillis = begin; add(Calendar.DAY_OF_YEAR, 7) }.timeInMillis
         val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
         ContentUris.appendId(builder, begin)
@@ -146,7 +152,9 @@ class CalendarRepository(private val context: Context) {
                         add(
                             CalendarEventSummary(
                                 id = cursor.getLong(0),
-                                title = cursor.getString(1)?.trim().orEmpty().ifBlank { "Evento" },
+                                title = cursor.getString(1)?.trim().orEmpty().ifBlank {
+                                    context.getString(R.string.calendar_untitled_event)
+                                },
                                 startMillis = cursor.getLong(2),
                                 endMillis = cursor.getLong(3),
                             ),

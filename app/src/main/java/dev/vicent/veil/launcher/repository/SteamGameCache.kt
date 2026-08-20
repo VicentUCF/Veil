@@ -6,13 +6,18 @@ import android.graphics.BitmapFactory
 import androidx.core.content.edit
 import dev.vicent.veil.launcher.ExternalLinkPolicy
 import dev.vicent.veil.launcher.GameFeedCachePolicy
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import dev.vicent.veil.launcher.model.GameFeedAvailability
 import dev.vicent.veil.launcher.model.GameFeedState
 import dev.vicent.veil.launcher.model.SteamChartEntry
 import dev.vicent.veil.launcher.model.SteamNewsItem
 import java.io.File
 
-internal class SteamGameCache(context: Context) {
+internal class SteamGameCache(
+    context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
     private val artworkFile = File(context.cacheDir, ARTWORK_FILE)
 
@@ -102,7 +107,7 @@ internal class SteamGameCache(context: Context) {
         ) {
             runCatching { BitmapFactory.decodeFile(artworkFile.absolutePath) }.getOrNull()
         } else null
-        val now = System.currentTimeMillis()
+        val now = timeProvider.currentTimeMillis()
         return GameFeedState(
             availability = GameFeedAvailability.AVAILABLE,
             chart = chart,

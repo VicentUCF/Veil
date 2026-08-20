@@ -4,5 +4,4 @@ data class SettingsShortcut(
     val id: String,
     val label: String,
     val searchTerms: String,
-    val action: String,
 )

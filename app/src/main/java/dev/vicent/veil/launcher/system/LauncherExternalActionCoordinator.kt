@@ -1,6 +1,5 @@
 package dev.vicent.veil.launcher.system
 
-import dev.vicent.veil.BuildConfig
 import dev.vicent.veil.launcher.LauncherController
 import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.model.HomeButtonActionSpec
@@ -14,6 +13,7 @@ class LauncherExternalActionCoordinator(
     private val settingsLauncher: () -> AndroidSettingsLauncher,
     private val webLauncher: () -> AndroidWebLauncher,
     private val clockLauncher: () -> AndroidClockLauncher,
+    private val privacyPolicyUrl: String,
     private val onExternalSurfaceLaunched: () -> Unit,
 ) {
     fun openApp(app: LauncherApp) {
@@ -51,7 +51,7 @@ class LauncherExternalActionCoordinator(
     }
 
     fun openPrivacyPolicy(): Boolean = launchExternal {
-        webLauncher().openPrivacyPolicy(BuildConfig.PRIVACY_POLICY_URL)
+        webLauncher().openPrivacyPolicy(privacyPolicyUrl)
     }
 
     fun openClock() {

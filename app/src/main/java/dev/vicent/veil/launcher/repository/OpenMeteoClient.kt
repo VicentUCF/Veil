@@ -2,6 +2,8 @@ package dev.vicent.veil.launcher.repository
 
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.launcher.model.WeatherState
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import java.io.Reader
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -9,7 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-internal class OpenMeteoClient {
+internal class OpenMeteoClient(
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     suspend fun fetch(latitude: Double, longitude: Double): WeatherState =
         withContext(Dispatchers.IO) {
             require(latitude.isFinite() && latitude in -90.0..90.0)
@@ -34,7 +38,7 @@ internal class OpenMeteoClient {
                     connection.inputStream.bufferedReader(Charsets.UTF_8).use {
                         it.readBounded(MAX_RESPONSE_CHARS)
                     },
-                    System.currentTimeMillis(),
+                    timeProvider.currentTimeMillis(),
                 )
             } finally {
                 connection.disconnect()

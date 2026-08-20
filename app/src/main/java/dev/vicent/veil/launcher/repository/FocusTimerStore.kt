@@ -3,11 +3,16 @@ package dev.vicent.veil.launcher.repository
 import android.content.Context
 import androidx.core.content.edit
 import dev.vicent.veil.launcher.FocusTimerPolicy
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import dev.vicent.veil.launcher.model.FocusTimerState
 import dev.vicent.veil.launcher.model.FocusTimerStatus
 
-internal class FocusTimerStore(context: Context) {
-    private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+internal class FocusTimerStore(
+    context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
+    private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     fun read(exactAlarmAvailable: Boolean, notificationsAvailable: Boolean): FocusTimerState {
         val status = runCatching {
@@ -21,7 +26,7 @@ internal class FocusTimerStore(context: Context) {
             status = status,
             endAtMillis = preferences.getLong(KEY_END_AT, 0L),
             storedRemainingMillis = preferences.getLong(KEY_REMAINING, duration),
-            nowMillis = System.currentTimeMillis(),
+            nowMillis = timeProvider.currentTimeMillis(),
         )
         return FocusTimerState(
             status = status,
@@ -50,7 +55,7 @@ internal class FocusTimerStore(context: Context) {
 
     companion object {
         const val DEFAULT_DURATION = 25 * 60_000L
-        private const val PREFERENCES = "veil_focus"
+        const val PREFERENCES_NAME = "veil_focus"
         private const val KEY_STATUS = "status"
         private const val KEY_DURATION = "duration"
         private const val KEY_REMAINING = "remaining"

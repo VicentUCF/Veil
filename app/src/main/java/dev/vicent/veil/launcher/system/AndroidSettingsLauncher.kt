@@ -6,86 +6,55 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.core.net.toUri
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.SettingsShortcut
 
 class AndroidSettingsLauncher(private val context: Context) {
+    private val actionsById = mapOf(
+        "settings" to Settings.ACTION_SETTINGS,
+        "network" to Settings.ACTION_WIRELESS_SETTINGS,
+        "bluetooth" to Settings.ACTION_BLUETOOTH_SETTINGS,
+        "display" to Settings.ACTION_DISPLAY_SETTINGS,
+        "sound" to Settings.ACTION_SOUND_SETTINGS,
+        "applications" to Settings.ACTION_APPLICATION_SETTINGS,
+        "storage" to Settings.ACTION_INTERNAL_STORAGE_SETTINGS,
+        "battery" to Settings.ACTION_BATTERY_SAVER_SETTINGS,
+        "security" to Settings.ACTION_SECURITY_SETTINGS,
+        "device_info" to Settings.ACTION_DEVICE_INFO_SETTINGS,
+        "language" to Settings.ACTION_LOCALE_SETTINGS,
+        "accessibility" to Settings.ACTION_ACCESSIBILITY_SETTINGS,
+    )
     val shortcuts = listOf(
-        SettingsShortcut(
-            id = "settings",
-            label = "Ajustes",
-            searchTerms = "configuracion preferencias sistema telefono settings",
-            action = Settings.ACTION_SETTINGS,
+        shortcut("settings", R.string.shortcut_settings, R.string.shortcut_settings_search),
+        shortcut("network", R.string.shortcut_network, R.string.shortcut_network_search),
+        shortcut("bluetooth", R.string.shortcut_bluetooth, R.string.shortcut_bluetooth_search),
+        shortcut("display", R.string.shortcut_display, R.string.shortcut_display_search),
+        shortcut("sound", R.string.shortcut_sound, R.string.shortcut_sound_search),
+        shortcut(
+            "applications",
+            R.string.shortcut_applications,
+            R.string.shortcut_applications_search,
         ),
-        SettingsShortcut(
-            id = "network",
-            label = "Wi-Fi e Internet",
-            searchTerms = "wifi red redes conexion conexiones datos movil internet",
-            action = Settings.ACTION_WIRELESS_SETTINGS,
+        shortcut("storage", R.string.shortcut_storage, R.string.shortcut_storage_search),
+        shortcut("battery", R.string.shortcut_battery, R.string.shortcut_battery_search),
+        shortcut("security", R.string.shortcut_security, R.string.shortcut_security_search),
+        shortcut(
+            "device_info",
+            R.string.shortcut_device_info,
+            R.string.shortcut_device_info_search,
         ),
-        SettingsShortcut(
-            id = "bluetooth",
-            label = "Bluetooth",
-            searchTerms = "dispositivos vinculados conexion auriculares",
-            action = Settings.ACTION_BLUETOOTH_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "display",
-            label = "Pantalla",
-            searchTerms = "brillo fondo tema oscuro display",
-            action = Settings.ACTION_DISPLAY_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "sound",
-            label = "Sonido",
-            searchTerms = "audio volumen tono vibracion silencio",
-            action = Settings.ACTION_SOUND_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "applications",
-            label = "Aplicaciones",
-            searchTerms = "apps permisos predeterminadas desinstalar almacenamiento",
-            action = Settings.ACTION_APPLICATION_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "storage",
-            label = "Almacenamiento",
-            searchTerms = "almacenamiento espacio memoria archivos storage",
-            action = Settings.ACTION_INTERNAL_STORAGE_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "battery",
-            label = "Batería",
-            searchTerms = "bateria energia ahorro consumo",
-            action = Settings.ACTION_BATTERY_SAVER_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "security",
-            label = "Seguridad",
-            searchTerms = "privacidad bloqueo pantalla pin huella contrasena",
-            action = Settings.ACTION_SECURITY_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "device_info",
-            label = "Información del dispositivo",
-            searchTerms = "telefono dispositivo modelo android version parche informacion",
-            action = Settings.ACTION_DEVICE_INFO_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "language",
-            label = "Idioma y teclado",
-            searchTerms = "idiomas teclado entrada region locale",
-            action = Settings.ACTION_LOCALE_SETTINGS,
-        ),
-        SettingsShortcut(
-            id = "accessibility",
-            label = "Accesibilidad",
-            searchTerms = "lector pantalla tamaño texto contraste asistencia",
-            action = Settings.ACTION_ACCESSIBILITY_SETTINGS,
+        shortcut("language", R.string.shortcut_language, R.string.shortcut_language_search),
+        shortcut(
+            "accessibility",
+            R.string.shortcut_accessibility,
+            R.string.shortcut_accessibility_search,
         ),
     )
 
-    fun launch(shortcut: SettingsShortcut): Boolean =
-        start(Intent(shortcut.action)) || start(Intent(Settings.ACTION_SETTINGS))
+    fun launch(shortcut: SettingsShortcut): Boolean {
+        val action = actionsById[shortcut.id] ?: return false
+        return start(Intent(action)) || start(Intent(Settings.ACTION_SETTINGS))
+    }
 
     fun openWallpaperChooser(): Boolean =
         start(Intent(Intent.ACTION_SET_WALLPAPER)) ||
@@ -124,6 +93,12 @@ class AndroidSettingsLauncher(private val context: Context) {
     }
 
     fun openGeneralSettings(): Boolean = start(Intent(Settings.ACTION_SETTINGS))
+
+    private fun shortcut(id: String, label: Int, searchTerms: Int) = SettingsShortcut(
+        id = id,
+        label = context.getString(label),
+        searchTerms = context.getString(searchTerms),
+    )
 
     private fun start(intent: Intent): Boolean {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

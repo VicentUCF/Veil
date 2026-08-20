@@ -37,7 +37,7 @@ fun VeilGlyph(
 fun VeilWordmark(
     color: Color,
     modifier: Modifier = Modifier,
-    contentDescription: String? = "Veil",
+    contentDescription: String? = null,
 ) {
     Canvas(
         modifier = modifier.then(

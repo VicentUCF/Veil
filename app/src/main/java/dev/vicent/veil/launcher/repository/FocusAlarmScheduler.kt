@@ -14,12 +14,17 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dev.vicent.veil.MainActivity
 import dev.vicent.veil.R
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import dev.vicent.veil.launcher.model.FocusTimerStatus
 import dev.vicent.veil.launcher.system.FocusAlarmReceiver
 
-internal class FocusAlarmScheduler(private val context: Context) {
+internal class FocusAlarmScheduler(
+    private val context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
-    private val store = FocusTimerStore(context)
+    private val store = FocusTimerStore(context, timeProvider)
 
     fun schedule(endAt: Long) {
         val pendingIntent = alarmPendingIntent()
@@ -38,7 +43,7 @@ internal class FocusAlarmScheduler(private val context: Context) {
     fun restore() {
         if (store.persistedStatus() != FocusTimerStatus.RUNNING) return
         val endAt = store.persistedEndAt()
-        if (endAt <= System.currentTimeMillis()) {
+        if (endAt <= timeProvider.currentTimeMillis()) {
             complete()
         } else {
             schedule(endAt)
@@ -62,7 +67,11 @@ internal class FocusAlarmScheduler(private val context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Focus", NotificationManager.IMPORTANCE_HIGH),
+                NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(R.string.focus_notification_channel),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ),
             )
         }
         val contentIntent = PendingIntent.getActivity(
@@ -73,8 +82,8 @@ internal class FocusAlarmScheduler(private val context: Context) {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher)
-            .setContentTitle("Focus completado")
-            .setContentText("Tu sesión ha terminado.")
+            .setContentTitle(context.getString(R.string.focus_notification_title))
+            .setContentText(context.getString(R.string.focus_completed_notice))
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

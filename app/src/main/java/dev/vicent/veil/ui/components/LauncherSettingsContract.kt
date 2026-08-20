@@ -16,6 +16,12 @@ data class LauncherSettingsUiState(
     val appTarget: SettingsAppTarget?,
     val showFontSettings: Boolean,
     val systemAccent: Color?,
+    val publisherInfo: LauncherPublisherInfo,
+)
+
+data class LauncherPublisherInfo(
+    val privacyPolicyUrl: String,
+    val privacyContact: String,
 )
 
 data class SettingsNavigationActions(

@@ -32,8 +32,6 @@ import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 
-internal val SecondaryTileHeight = 154.dp
-
 @Composable
 fun WorkspaceDashboard(
     state: LauncherUiState,
@@ -72,7 +70,7 @@ fun WorkspaceDashboard(
     BoxWithConstraints(modifier = modifier) {
         // The outer 16 dp gutters are already consumed by LauncherScreen. A 328 dp
         // content width corresponds to the product's 360 dp screen breakpoint.
-        val compact = maxWidth < 328.dp
+        val compact = maxWidth < WorkspaceLayoutTokens.COMPACT_BREAKPOINT
         when (context.definition.kind) {
             LauncherContextKind.CURRENT -> CurrentHome(
                 state = state.currentHomeState(),
@@ -153,12 +151,12 @@ internal fun ResponsivePair(
     right: @Composable () -> Unit,
 ) {
     if (compact) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
             left()
             right()
         }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
             Column(modifier = Modifier.weight(1f)) { left() }
             Column(modifier = Modifier.weight(1f)) { right() }
         }
@@ -199,11 +197,4 @@ internal fun SimpleProgress(progress: Float) {
         drawRect(palette.divider)
         drawRect(palette.accentActive, size = size.copy(width = size.width * progress.coerceIn(0f, 1f)))
     }
-}
-
-
-
-internal fun formatDuration(millis: Long): String {
-    val totalSeconds = (millis / 1000).coerceAtLeast(0)
-    return "%02d:%02d".format(totalSeconds / 60, totalSeconds % 60)
 }

@@ -15,7 +15,7 @@ class AccentPaletteTest {
         AccentPalette.presets.forEach { preset ->
             assertTrue(
                 contrastRatio(preset.color, surface) >= 4.5f,
-                "${preset.label} does not meet WCAG AA contrast",
+                "${preset.mode.persistedValue} does not meet WCAG AA contrast",
             )
         }
     }

@@ -1,6 +1,7 @@
 package dev.vicent.veil.ui.components
 
 import android.text.format.DateFormat
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -21,10 +22,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import java.text.SimpleDateFormat
@@ -48,6 +51,8 @@ internal fun HomeClockAndWeather(
     val locale = Locale.forLanguageTag(LocalLocale.current.toLanguageTag())
     val now by rememberCurrentTime()
     val weather = state.weather
+    val openClockLabel = stringResource(R.string.action_open_clock)
+    val openCalendarLabel = stringResource(R.string.action_open_calendar)
 
     BasicText(
         DateFormat.getTimeFormat(context).format(now),
@@ -60,12 +65,12 @@ internal fun HomeClockAndWeather(
         ),
         modifier = Modifier.clickable(
             role = Role.Button,
-            onClickLabel = "Abrir Reloj",
+            onClickLabel = openClockLabel,
             onClick = onClockOpenRequested,
         ),
     )
     BasicText(
-        SimpleDateFormat("EEEE, d MMMM yyyy", locale).format(now),
+        SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, "EEEEdMMMMyyyy"), locale).format(now),
         style = TextStyle(
             color = appearance.secondary,
             fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
@@ -76,7 +81,7 @@ internal fun HomeClockAndWeather(
         modifier = Modifier
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Abrir Calendario",
+                onClickLabel = openCalendarLabel,
                 onClick = onCalendarOpenRequested,
             )
             .padding(top = 1.dp, bottom = 4.dp),
@@ -95,7 +100,11 @@ internal fun HomeClockAndWeather(
             when (weather.availability) {
                 WeatherAvailability.AVAILABLE -> {
                     BasicText(
-                        "${weather.temperatureCelsius?.roundToInt() ?: "—"}° ${weatherDescription(weather.weatherCode)}",
+                        stringResource(
+                            R.string.current_weather_value,
+                            weather.temperatureCelsius?.roundToInt()?.toString() ?: "—",
+                            stringResource(weatherDescriptionResource(weather.weatherCode)),
+                        ),
                         style = TextStyle(
                             color = appearance.primary,
                             fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
@@ -103,14 +112,14 @@ internal fun HomeClockAndWeather(
                             fontWeight = appearance.contentWeight,
                         ),
                     )
-                    if (weather.isStale) HomeWeatherLabel("DESACTUALIZADO")
+                    if (weather.isStale) HomeWeatherLabel(stringResource(R.string.current_weather_stale))
                 }
                 WeatherAvailability.NEEDS_PERMISSION -> HomeWeatherAction(
-                    "ACTIVAR TIEMPO",
+                    stringResource(R.string.current_weather_enable),
                     onLocationPermissionRequested,
                 )
-                WeatherAvailability.LOADING -> HomeWeatherLabel("ACTUALIZANDO…")
-                WeatherAvailability.UNAVAILABLE -> HomeWeatherLabel("TIEMPO NO DISPONIBLE")
+                WeatherAvailability.LOADING -> HomeWeatherLabel(stringResource(R.string.current_weather_loading))
+                WeatherAvailability.UNAVAILABLE -> HomeWeatherLabel(stringResource(R.string.current_weather_unavailable))
             }
         }
     }
@@ -223,15 +232,16 @@ private fun rememberCurrentTime(): androidx.compose.runtime.State<Date> =
         }
     }
 
-internal fun weatherDescription(code: Int?): String = when (code) {
-    0 -> "Despejado"
-    1, 2 -> "Algo nublado"
-    3 -> "Cubierto"
-    45, 48 -> "Niebla"
-    in 51..57 -> "Llovizna"
-    in 61..67 -> "Lluvia"
-    in 71..77, 85, 86 -> "Nieve"
-    in 80..82 -> "Chubascos"
-    in 95..99 -> "Tormenta"
-    else -> "Variable"
+@StringRes
+internal fun weatherDescriptionResource(code: Int?): Int = when (code) {
+    0 -> R.string.weather_clear
+    1, 2 -> R.string.weather_partly_cloudy
+    3 -> R.string.weather_overcast
+    45, 48 -> R.string.weather_fog
+    in 51..57 -> R.string.weather_drizzle
+    in 61..67 -> R.string.weather_rain
+    in 71..77, 85, 86 -> R.string.weather_snow
+    in 80..82 -> R.string.weather_showers
+    in 95..99 -> R.string.weather_thunderstorm
+    else -> R.string.weather_variable
 }

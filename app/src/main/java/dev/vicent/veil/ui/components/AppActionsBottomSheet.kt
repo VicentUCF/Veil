@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 
@@ -37,31 +39,31 @@ fun AppActionsBottomSheet(
     onRemoveFromContext: (() -> Unit)? = null,
 ) {
     RofiDialog(
-        title = "app actions",
+        title = stringResource(R.string.app_actions_title),
         onDismiss = onDismiss,
-        actions = { RofiAction("cerrar", onDismiss) },
+        actions = { RofiAction(stringResource(R.string.action_close), onDismiss) },
     ) {
         AppSheetHeader(app = app)
         SheetDivider()
-        AppSheetAction(marker = ">", label = "Abrir", onClick = onOpen)
+        AppSheetAction(marker = ">", label = stringResource(R.string.action_open), onClick = onOpen)
         if (contextLabel != null && onReplaceInContext != null && onRemoveFromContext != null) {
             AppSheetAction(
                 marker = "↺",
-                label = "Cambiar en $contextLabel",
+                label = stringResource(R.string.app_change_in_context, contextLabel),
                 onClick = onReplaceInContext,
             )
             AppSheetAction(
                 marker = "−",
-                label = "Quitar de $contextLabel",
+                label = stringResource(R.string.app_remove_from_context, contextLabel),
                 labelColor = LocalVeilPalette.current.error,
                 onClick = onRemoveFromContext,
             )
             SheetDivider()
         }
-        AppSheetAction(marker = "i", label = "Información de la aplicación", onClick = onAppInfo)
+        AppSheetAction(marker = "i", label = stringResource(R.string.app_info), onClick = onAppInfo)
         AppSheetAction(
             marker = "x",
-            label = "Desinstalar",
+            label = stringResource(R.string.app_uninstall),
             labelColor = LocalVeilPalette.current.error,
             onClick = onUninstall,
         )

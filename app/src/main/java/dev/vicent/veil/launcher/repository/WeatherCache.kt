@@ -4,8 +4,13 @@ import android.content.Context
 import androidx.core.content.edit
 import dev.vicent.veil.launcher.model.WeatherAvailability
 import dev.vicent.veil.launcher.model.WeatherState
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 
-internal class WeatherCache(context: Context) {
+internal class WeatherCache(
+    context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
     fun save(value: WeatherState) {
@@ -30,7 +35,7 @@ internal class WeatherCache(context: Context) {
             maximumCelsius = Double.fromBits(preferences.getLong(KEY_MAX, 0L)),
             weatherCode = preferences.getInt(KEY_CODE, -1).takeIf { it >= 0 },
             observedAtMillis = observed,
-            isStale = System.currentTimeMillis() - observed > STALE_MILLIS,
+            isStale = timeProvider.currentTimeMillis() - observed > STALE_MILLIS,
         )
     }
 

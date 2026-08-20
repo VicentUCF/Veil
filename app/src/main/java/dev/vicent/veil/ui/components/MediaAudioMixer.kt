@@ -16,19 +16,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.dp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.AudioChannelLevel
 import dev.vicent.veil.launcher.model.AudioMixerState
 import dev.vicent.veil.launcher.model.AudioSpectrumAvailability
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import kotlin.math.roundToInt
-
-private val AudioMixerTileHeight = 154.dp
 
 @Composable
 internal fun AudioMixerTile(
@@ -40,9 +40,9 @@ internal fun AudioMixerTile(
     onOpenSoundSettings: () -> Unit,
 ) {
     CozyTile(
-        label = "Mezclador",
+        label = stringResource(R.string.media_mixer),
         modifier = Modifier.fillMaxWidth().heightIn(
-            min = if (compact) 268.dp else AudioMixerTileHeight,
+            min = if (compact) 268.dp else WorkspaceLayoutTokens.SECONDARY_TILE_HEIGHT,
         ),
     ) {
         if (compact) {
@@ -101,15 +101,15 @@ private fun AudioVolumeSlider(
 ) {
     val palette = LocalVeilPalette.current
     val label = when (level.channel) {
-        AudioChannel.MEDIA -> "MULTIMEDIA"
-        AudioChannel.RING -> "TONO"
-        AudioChannel.ALARM -> "ALARMA"
+        AudioChannel.MEDIA -> stringResource(R.string.media_channel_media)
+        AudioChannel.RING -> stringResource(R.string.media_channel_ring)
+        AudioChannel.ALARM -> stringResource(R.string.media_channel_alarm)
     }
     Column {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             BasicText(text = label, style = workspaceMonoStyle(palette.contentSecondary, 8))
             BasicText(
-                text = "${(level.fraction * 100).roundToInt()}%",
+                text = stringResource(R.string.percentage_value, (level.fraction * 100).roundToInt()),
                 style = workspaceMonoStyle(palette.contentMuted, 8),
             )
         }
@@ -161,9 +161,16 @@ private fun AudioSpectrumPanel(
     val palette = LocalVeilPalette.current
     Column(modifier = modifier) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BasicText(text = "ESPECTRO", style = workspaceMonoStyle(palette.contentSecondary, 8))
             BasicText(
-                text = if (state.spectrumAvailability == AudioSpectrumAvailability.ACTIVE) "FFT · 50–10K" else "SALIDA",
+                text = stringResource(R.string.media_spectrum),
+                style = workspaceMonoStyle(palette.contentSecondary, 8),
+            )
+            BasicText(
+                text = if (state.spectrumAvailability == AudioSpectrumAvailability.ACTIVE) {
+                    stringResource(R.string.media_spectrum_active)
+                } else {
+                    stringResource(R.string.media_output)
+                },
                 style = workspaceMonoStyle(palette.contentMuted, 8),
             )
         }
@@ -190,17 +197,30 @@ private fun AudioSpectrumPanel(
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BasicText("GRAVES", style = workspaceMonoStyle(palette.contentMuted, 7))
-            BasicText("MEDIOS", style = workspaceMonoStyle(palette.contentMuted, 7))
-            BasicText("AGUDOS", style = workspaceMonoStyle(palette.contentMuted, 7))
+            BasicText(
+                stringResource(R.string.media_bass),
+                style = workspaceMonoStyle(palette.contentMuted, 7),
+            )
+            BasicText(
+                stringResource(R.string.media_mids),
+                style = workspaceMonoStyle(palette.contentMuted, 7),
+            )
+            BasicText(
+                stringResource(R.string.media_treble),
+                style = workspaceMonoStyle(palette.contentMuted, 7),
+            )
         }
         when (state.spectrumAvailability) {
             AudioSpectrumAvailability.NEEDS_PERMISSION ->
-                TileAction("Activar espectro", onPermissionRequested)
+                TileAction(stringResource(R.string.media_enable_spectrum), onPermissionRequested)
             AudioSpectrumAvailability.UNAVAILABLE ->
-                TileAction("Abrir sonido", onOpenSoundSettings)
+                TileAction(stringResource(R.string.media_open_sound), onOpenSoundSettings)
             AudioSpectrumAvailability.IDLE -> BasicText(
-                text = if (isPlaying) "Preparando señal…" else "En espera de reproducción",
+                text = if (isPlaying) {
+                    stringResource(R.string.media_preparing_signal)
+                } else {
+                    stringResource(R.string.media_waiting_playback)
+                },
                 style = workspaceMonoStyle(palette.contentMuted, 8),
                 modifier = Modifier.padding(top = 8.dp),
             )

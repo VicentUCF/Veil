@@ -72,6 +72,7 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(
             "String",
             "PRIVACY_POLICY_URL",
@@ -152,29 +153,6 @@ dependencyLocking {
     lockAllConfigurations()
 }
 
-configurations.configureEach {
-    resolutionStrategy.eachDependency {
-        val secureVersion = when {
-            requested.group == "io.netty" &&
-                requested.name.startsWith("netty-") &&
-                requested.version?.startsWith("4.1.") == true -> "4.1.137.Final"
-            requested.group == "org.apache.commons" &&
-                requested.name == "commons-lang3" -> "3.20.0"
-            requested.group == "org.apache.httpcomponents" &&
-                requested.name in setOf("httpclient", "httpmime") -> "4.5.14"
-            requested.group == "org.bouncycastle" &&
-                requested.name in setOf("bcpkix-jdk18on", "bcutil-jdk18on") -> "1.85"
-            requested.group == "org.bouncycastle" &&
-                requested.name == "bcprov-jdk18on" -> "1.85.2"
-            else -> null
-        }
-        if (secureVersion != null) {
-            useVersion(secureVersion)
-            because("Avoid known vulnerabilities in Android build-tool transitive dependencies")
-        }
-    }
-}
-
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -187,4 +165,9 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.test.core.ktx)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

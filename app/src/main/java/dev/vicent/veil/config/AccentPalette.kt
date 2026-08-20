@@ -6,17 +6,16 @@ import dev.vicent.veil.ui.theme.VeilPalette
 
 data class AccentPreset(
     val mode: AccentMode,
-    val label: String,
     val color: Color,
 )
 
 object AccentPalette {
     val presets = listOf(
-        AccentPreset(AccentMode.VEIL, "Veil", Color(0xFFF09B8D)),
-        AccentPreset(AccentMode.AMBER, "Ámbar", Color(0xFFE4B96A)),
-        AccentPreset(AccentMode.SAGE, "Salvia", Color(0xFF91C69A)),
-        AccentPreset(AccentMode.SKY, "Cielo", Color(0xFF83B9E6)),
-        AccentPreset(AccentMode.LILAC, "Lila", Color(0xFFBAA5E5)),
+        AccentPreset(AccentMode.VEIL, Color(0xFFF09B8D)),
+        AccentPreset(AccentMode.AMBER, Color(0xFFE4B96A)),
+        AccentPreset(AccentMode.SAGE, Color(0xFF91C69A)),
+        AccentPreset(AccentMode.SKY, Color(0xFF83B9E6)),
+        AccentPreset(AccentMode.LILAC, Color(0xFFBAA5E5)),
     )
 
     fun resolveColor(

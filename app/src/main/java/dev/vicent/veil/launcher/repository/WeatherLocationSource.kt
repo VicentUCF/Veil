@@ -7,10 +7,15 @@ import android.location.LocationManager
 import android.os.CancellationSignal
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-internal class WeatherLocationSource(private val context: Context) {
+internal class WeatherLocationSource(
+    private val context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val locationManager = context.getSystemService(LocationManager::class.java)
 
     @SuppressLint("MissingPermission")
@@ -19,7 +24,7 @@ internal class WeatherLocationSource(private val context: Context) {
         val cached = providers.mapNotNull { provider ->
             runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
         }.maxByOrNull(Location::getTime)
-        if (cached != null && System.currentTimeMillis() - cached.time < MAX_AGE_MILLIS) {
+        if (cached != null && timeProvider.currentTimeMillis() - cached.time < MAX_AGE_MILLIS) {
             return cached
         }
         val provider = when {

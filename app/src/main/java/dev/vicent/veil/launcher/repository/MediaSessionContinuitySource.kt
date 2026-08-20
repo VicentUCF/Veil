@@ -15,10 +15,12 @@ import android.os.Looper
 import android.os.SystemClock
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
+import dev.vicent.veil.launcher.TimeProvider
 import dev.vicent.veil.launcher.system.ContinuityNotificationService
 
 internal class MediaSessionContinuitySource(
     private val context: Context,
+    private val timeProvider: TimeProvider,
     private val onItemsChanged: () -> Unit,
 ) {
     private val sessionManager = context.getSystemService(MediaSessionManager::class.java)
@@ -110,7 +112,7 @@ internal class MediaSessionContinuitySource(
             emptyList()
         }
         clearCallbacks()
-        val now = System.currentTimeMillis()
+        val now = timeProvider.currentTimeMillis()
         val nextControllers = mutableMapOf<String, MediaController>()
         val nextCallbacks = mutableMapOf<MediaController, MediaController.Callback>()
 

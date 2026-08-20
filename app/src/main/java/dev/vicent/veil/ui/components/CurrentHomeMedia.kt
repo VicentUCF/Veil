@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.ui.theme.LocalVeilPalette
@@ -53,6 +55,7 @@ internal fun CompactMediaPlayer(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
+    val openAppLabel = stringResource(R.string.action_open_named, media.appLabel)
     var horizontalOffset by remember(media.id) { mutableFloatStateOf(0f) }
     val shape = RoundedCornerShape(10.dp)
 
@@ -89,7 +92,7 @@ internal fun CompactMediaPlayer(
                 .clickable(
                     enabled = ContinuityAction.OPEN in media.supportedActions,
                     role = Role.Button,
-                    onClickLabel = "Abrir ${media.appLabel}",
+                    onClickLabel = openAppLabel,
                 ) { onAction(media.id, ContinuityAction.OPEN, null) },
         ) {
             if (media.artwork != null) {
@@ -138,19 +141,19 @@ internal fun CompactMediaPlayer(
             if (ContinuityAction.SKIP_PREVIOUS in media.supportedActions) {
                 CompactMediaControl(
                     CompactMediaControlKind.PREVIOUS,
-                    "Canción anterior",
+                    stringResource(R.string.media_previous_track),
                 ) { onAction(media.id, ContinuityAction.SKIP_PREVIOUS, null) }
             }
             if (ContinuityAction.TOGGLE_PLAYBACK in media.supportedActions) {
                 CompactMediaControl(
                     if (media.isPlaying) CompactMediaControlKind.PAUSE else CompactMediaControlKind.PLAY,
-                    if (media.isPlaying) "Pausar" else "Reproducir",
+                    stringResource(if (media.isPlaying) R.string.focus_pause else R.string.media_play),
                 ) { onAction(media.id, ContinuityAction.TOGGLE_PLAYBACK, null) }
             }
             if (ContinuityAction.SKIP_NEXT in media.supportedActions) {
                 CompactMediaControl(
                     CompactMediaControlKind.NEXT,
-                    "Canción siguiente",
+                    stringResource(R.string.media_next_track),
                 ) { onAction(media.id, ContinuityAction.SKIP_NEXT, null) }
             }
         }

@@ -3,6 +3,8 @@ package dev.vicent.veil.launcher.repository
 import android.content.Context
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.ContinuityItem
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import dev.vicent.veil.launcher.system.ContinuityNotificationService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.awaitCancellation
@@ -14,14 +16,17 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class AmbientContinuityRepository(private val context: Context) {
+class AmbientContinuityRepository(
+    private val context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val mutableItems = MutableStateFlow<List<ContinuityItem>>(emptyList())
     val items: StateFlow<List<ContinuityItem>> = mutableItems.asStateFlow()
     private val mutableNotificationIndicatorPackages = MutableStateFlow<Set<String>>(emptySet())
     val notificationIndicatorPackages: StateFlow<Set<String>> =
         mutableNotificationIndicatorPackages.asStateFlow()
     private val onboardingStore = ContinuityOnboardingStore(context)
-    private val mediaSource = MediaSessionContinuitySource(context, ::publish)
+    private val mediaSource = MediaSessionContinuitySource(context, timeProvider, ::publish)
 
     private var scope: CoroutineScope? = null
     private var accessEnabled = false
@@ -107,7 +112,7 @@ class AmbientContinuityRepository(private val context: Context) {
 
 
     private fun publish() {
-        val now = System.currentTimeMillis()
+        val now = timeProvider.currentTimeMillis()
         mutableItems.value = (notificationItems + mediaSource.items).filter { item ->
             val expiresAt = item.expiresAtMillis
             item.id !in dismissedIds &&

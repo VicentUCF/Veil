@@ -31,6 +31,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.ConnectionType
 import dev.vicent.veil.launcher.model.LauncherContext
 import dev.vicent.veil.launcher.model.SystemStatus
@@ -57,6 +60,7 @@ fun TopBar(
 ) {
     val palette = LocalVeilPalette.current
     val time by rememberSystemTime()
+    val openClockLabel = stringResource(R.string.action_open_clock)
 
     Row(
         modifier = modifier
@@ -80,7 +84,7 @@ fun TopBar(
             contexts.forEachIndexed { index, context ->
                 ContextIndicator(
                     kind = context.kind,
-                    label = context.label,
+                    label = launcherContextLabel(context.kind),
                     isActive = index == activeContextIndex,
                     onClick = { onContextSelected(index) },
                 )
@@ -99,7 +103,7 @@ fun TopBar(
                 modifier = Modifier
                     .clickable(
                         role = Role.Button,
-                        onClickLabel = "Abrir Reloj",
+                        onClickLabel = openClockLabel,
                         onClick = onClockOpenRequested,
                     )
                     .padding(horizontal = 4.dp, vertical = 10.dp),
@@ -119,7 +123,9 @@ fun TopBar(
                 modifier = Modifier.size(width = 21.dp, height = 11.dp),
             )
             BasicText(
-                text = systemStatus.batteryPercent?.let { "$it%" } ?: "—",
+                text = systemStatus.batteryPercent?.let {
+                    stringResource(R.string.tools_battery_percent, it)
+                } ?: "—",
                 style = TextStyle(
                     color = if (systemStatus.isCharging) palette.accentActive else palette.contentSecondary,
                     fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
@@ -148,11 +154,15 @@ private fun ConnectionGlyph(
     val palette = LocalVeilPalette.current
     val level = signalLevel?.coerceIn(0, 4)
     val description = when (type) {
-        ConnectionType.NONE -> "Sin conexión"
-        ConnectionType.WIFI -> "Wi‑Fi${level?.let { ", intensidad $it de 4" } ?: ", intensidad no disponible"}"
-        ConnectionType.CELLULAR -> "Datos móviles${level?.let { ", intensidad $it de 4" } ?: ", intensidad no disponible"}"
-        ConnectionType.ETHERNET -> "Ethernet conectado"
-        ConnectionType.OTHER -> "Red conectada"
+        ConnectionType.NONE -> stringResource(R.string.connection_none)
+        ConnectionType.WIFI -> level?.let {
+            stringResource(R.string.connection_wifi_signal, it)
+        } ?: stringResource(R.string.connection_wifi_signal_unknown)
+        ConnectionType.CELLULAR -> level?.let {
+            stringResource(R.string.connection_cellular_signal, it)
+        } ?: stringResource(R.string.connection_cellular_signal_unknown)
+        ConnectionType.ETHERNET -> stringResource(R.string.connection_ethernet_connected)
+        ConnectionType.OTHER -> stringResource(R.string.connection_network_connected)
     }
     Canvas(modifier.semantics { contentDescription = description }) {
         val strokeWidth = 1.dp.toPx()
@@ -246,10 +256,14 @@ private fun ConnectionGlyph(
 private fun BatteryGlyph(percent: Int?, charging: Boolean, modifier: Modifier = Modifier) {
     val palette = LocalVeilPalette.current
     val description = when {
-        percent == null && charging -> "Batería cargando, nivel no disponible"
-        percent == null -> "Nivel de batería no disponible"
-        charging -> "Batería al $percent por ciento, cargando"
-        else -> "Batería al $percent por ciento"
+        percent == null && charging -> stringResource(R.string.battery_charging_unknown)
+        percent == null -> stringResource(R.string.battery_level_unknown)
+        charging -> pluralStringResource(
+            R.plurals.battery_charging_percent,
+            percent,
+            percent,
+        )
+        else -> pluralStringResource(R.plurals.battery_level_percent, percent, percent)
     }
     Canvas(modifier.semantics { contentDescription = description }) {
         val stroke = Stroke(1.dp.toPx())

@@ -1,5 +1,6 @@
 package dev.vicent.veil.ui.components
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,9 +37,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.GameFeedAvailability
 import dev.vicent.veil.launcher.model.GameFeedState
 import dev.vicent.veil.launcher.model.LauncherApp
@@ -66,7 +71,7 @@ internal fun GameWorkspace(
     var showNews by remember { mutableStateOf(false) }
     var showLibrary by remember { mutableStateOf(false) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
         SteamChartTile(
             feed = feed,
             onEntrySelected = onExternalLinkSelected,
@@ -117,7 +122,7 @@ private fun SteamChartTile(
 ) {
     val top = feed.chart.firstOrNull()
     CozyTile(
-        label = "Steam · Más jugados",
+        label = stringResource(R.string.game_chart_label),
         prominent = true,
         onClick = onFullChartSelected,
         modifier = modifier,
@@ -151,7 +156,10 @@ private fun SteamChartTile(
                             )
                             top.peakPlayers?.let { peak ->
                                 BasicText(
-                                    text = "PICO  ${formatPlayers(peak)}",
+                                    text = stringResource(
+                                        R.string.game_peak_compact,
+                                        formatPlayers(peak),
+                                    ),
                                     style = workspaceMonoStyle(Color.White.copy(alpha = .76f), 8),
                                 )
                             }
@@ -171,30 +179,34 @@ private fun SteamChartTile(
                             .clickable(role = Role.Button) { onEntrySelected(top.storeUrl) }
                             .padding(vertical = 4.dp),
                     )
-                    top.peakPlayers?.let { TileBody("Pico de ${formatPlayers(it)} jugadores") }
+                    top.peakPlayers?.let {
+                        TileBody(
+                            stringResource(R.string.game_peak_players, formatPlayers(it)),
+                        )
+                    }
                 }
                 feed.chart.drop(1).take(4).forEach { entry ->
                     SteamCompactRank(entry) { onEntrySelected(entry.storeUrl) }
                 }
                 if (feed.isStale) {
                     BasicText(
-                        "DATOS GUARDADOS · SIN ACTUALIZAR",
+                        stringResource(R.string.game_cached_stale),
                         style = workspaceMonoStyle(LocalVeilPalette.current.contentMuted, 8),
                         modifier = Modifier.padding(top = 5.dp),
                     )
                 }
             }
             feed.availability == GameFeedAvailability.LOADING -> {
-                TileTitle("Consultando Steam", prominent = true)
-                TileBody("Cargando el ranking público y las noticias oficiales.")
+                TileTitle(stringResource(R.string.game_loading_title), prominent = true)
+                TileBody(stringResource(R.string.game_loading_body))
             }
             feed.availability == GameFeedAvailability.UNAVAILABLE -> {
-                TileTitle("Steam no está disponible", prominent = true)
-                TileBody("La biblioteca local sigue accesible. Se reintentará al volver a GAME.")
+                TileTitle(stringResource(R.string.game_unavailable_title), prominent = true)
+                TileBody(stringResource(R.string.game_unavailable_body))
             }
             else -> {
-                TileTitle("Steam Charts", prominent = true)
-                TileBody("El ranking se carga únicamente al entrar en GAME.")
+                TileTitle(stringResource(R.string.game_idle_title), prominent = true)
+                TileBody(stringResource(R.string.game_idle_body))
             }
         }
     }
@@ -233,7 +245,7 @@ private fun SteamNewsTile(
     onMore: () -> Unit,
 ) {
     CozyTile(
-        label = "Noticias oficiales",
+        label = stringResource(R.string.game_news_label),
         modifier = Modifier.fillMaxWidth().height(GameSecondaryTileHeight),
     ) {
         if (feed.news.isNotEmpty()) {
@@ -241,15 +253,19 @@ private fun SteamNewsTile(
                 SteamNewsCompactRow(item) { onSelected(item.url) }
             }
             BasicText(
-                "VER MÁS  →",
+                stringResource(R.string.game_news_more),
                 style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 9),
                 modifier = Modifier
-                    .clickable(role = Role.Button, onClickLabel = "Ver más", onClick = onMore)
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(R.string.game_news_more_action),
+                        onClick = onMore,
+                    )
                     .padding(top = 4.dp, bottom = 1.dp),
             )
         } else {
-            TileTitle("Sin titulares disponibles")
-            TileBody("Las noticias no bloquean el ranking ni tu biblioteca.")
+            TileTitle(stringResource(R.string.game_news_empty_title))
+            TileBody(stringResource(R.string.game_news_empty_body))
         }
     }
 }
@@ -257,7 +273,7 @@ private fun SteamNewsTile(
 @Composable
 private fun GameLibraryTile(library: List<LauncherApp>, onOpen: () -> Unit) {
     CozyTile(
-        label = "Biblioteca local",
+        label = stringResource(R.string.game_library_label),
         onClick = onOpen,
         modifier = Modifier.fillMaxWidth().height(GameSecondaryTileHeight),
     ) {
@@ -267,7 +283,7 @@ private fun GameLibraryTile(library: List<LauncherApp>, onOpen: () -> Unit) {
         ) {
             GameFolderGlyph(modifier = Modifier.size(62.dp))
             BasicText(
-                if (library.size == 1) "1 JUEGO" else "${library.size} JUEGOS",
+                pluralStringResource(R.plurals.game_count, library.size, library.size),
                 style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 10),
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -282,9 +298,9 @@ private fun SteamNewsDialog(
     onSelected: (String) -> Unit,
 ) {
     RofiDialog(
-        title = "noticias Steam",
+        title = stringResource(R.string.game_news_dialog_title),
         onDismiss = onDismiss,
-        actions = { RofiAction("cerrar", onDismiss) },
+        actions = { RofiAction(stringResource(R.string.action_close), onDismiss) },
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -300,7 +316,11 @@ private fun SteamNewsDialog(
                         .padding(11.dp),
                 ) {
                     BasicText(
-                        "${item.gameTitle.uppercase()} · ${formatNewsDate(item.publishedAtMillis).uppercase()}",
+                        stringResource(
+                            R.string.game_news_metadata,
+                            item.gameTitle.uppercase(),
+                            formatNewsDate(item.publishedAtMillis).uppercase(),
+                        ),
                         style = workspaceMonoStyle(LocalVeilPalette.current.accentActive, 8),
                     )
                     BasicText(
@@ -329,7 +349,11 @@ private fun SteamNewsCompactRow(item: SteamNewsItem, onClick: () -> Unit) {
             style = workspaceBodyStyle(LocalVeilPalette.current.contentPrimary),
         )
         BasicText(
-            "${item.gameTitle.uppercase()} · ${formatNewsDate(item.publishedAtMillis).uppercase()}",
+            stringResource(
+                R.string.game_news_metadata,
+                item.gameTitle.uppercase(),
+                formatNewsDate(item.publishedAtMillis).uppercase(),
+            ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = workspaceMonoStyle(LocalVeilPalette.current.contentMuted, 7),
@@ -372,12 +396,12 @@ private fun GameSecondaryRow(
     library: @Composable () -> Unit,
 ) {
     if (compact) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
             news()
             library()
         }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(WorkspaceLayoutTokens.SECTION_SPACING)) {
             Box(modifier = Modifier.weight(1.55f)) { news() }
             Box(modifier = Modifier.weight(.85f)) { library() }
         }
@@ -403,15 +427,19 @@ private fun GameLibraryDialog(
         }
     }
     RofiDialog(
-        title = "biblioteca · ${library.size}",
+        title = stringResource(R.string.game_library_dialog_title, library.size),
         onDismiss = onDismiss,
-        actions = { RofiAction("cerrar", onDismiss) },
+        actions = { RofiAction(stringResource(R.string.action_close), onDismiss) },
     ) {
         RofiEditorField(
-            label = "buscar",
+            label = stringResource(R.string.game_library_search),
             value = query,
             onValueChange = { query = it.take(80) },
-            hint = "${visible.size} resultados",
+            hint = pluralStringResource(
+                R.plurals.search_results_count,
+                visible.size,
+                visible.size,
+            ),
             singleLine = true,
         )
         Column(
@@ -420,9 +448,9 @@ private fun GameLibraryDialog(
             if (visible.isEmpty()) {
                 RofiBody(
                     if (library.isEmpty()) {
-                        "No hay juegos locales detectados."
+                        stringResource(R.string.game_library_empty)
                     } else {
-                        "No hay coincidencias."
+                        stringResource(R.string.search_no_matches)
                     },
                 )
             }
@@ -433,6 +461,11 @@ private fun GameLibraryDialog(
                         .fillMaxWidth()
                         .combinedClickable(
                             role = Role.Button,
+                            onClickLabel = stringResource(R.string.action_open_named, app.label),
+                            onLongClickLabel = stringResource(
+                                R.string.action_options_named,
+                                app.label,
+                            ),
                             onClick = {
                                 onDismiss()
                                 onAppSelected(app)
@@ -465,8 +498,9 @@ private fun GameLibraryDialog(
     }
 }
 
+@Composable
 private fun rankMovement(entry: SteamChartEntry): String {
-    val previous = entry.previousRank ?: return "NUEVO"
+    val previous = entry.previousRank ?: return stringResource(R.string.game_rank_new)
     val movement = previous - entry.rank
     return when {
         movement > 0 -> "▲$movement"
@@ -477,5 +511,11 @@ private fun rankMovement(entry: SteamChartEntry): String {
 
 private fun formatPlayers(value: Int): String = NumberFormat.getIntegerInstance().format(value)
 
-private fun formatNewsDate(value: Long): String =
-    SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(value))
+@Composable
+private fun formatNewsDate(value: Long): String {
+    val locale = Locale.forLanguageTag(LocalLocale.current.toLanguageTag())
+    val pattern = remember(locale) { DateFormat.getBestDateTimePattern(locale, "dMMM") }
+    return remember(value, locale, pattern) {
+        SimpleDateFormat(pattern, locale).format(Date(value))
+    }
+}

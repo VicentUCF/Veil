@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.ResolvedQuickAction
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.LauncherApp
@@ -133,6 +135,7 @@ internal fun CurrentHome(
 @Composable
 private fun EmptyHomeAppRow(onClick: () -> Unit) {
     val homeAppearance = LocalCurrentHomeAppearance.current
+    val chooseAppLabel = stringResource(R.string.current_choose_empty_app)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -140,7 +143,7 @@ private fun EmptyHomeAppRow(onClick: () -> Unit) {
             .height(49.dp)
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Elegir aplicación para el slot vacío",
+                onClickLabel = chooseAppLabel,
                 onClick = onClick,
             ),
     ) {
@@ -148,7 +151,7 @@ private fun EmptyHomeAppRow(onClick: () -> Unit) {
             BasicText("+", style = homeSmallMonoStyle(homeAppearance.muted))
         }
         BasicText(
-            text = "ELEGIR APP",
+            text = stringResource(R.string.current_choose_app),
             style = TextStyle(
                 color = homeAppearance.muted,
                 fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
@@ -170,6 +173,9 @@ private fun HomeAppRow(
     onLongClick: () -> Unit,
 ) {
     val homeAppearance = LocalCurrentHomeAppearance.current
+    val openLabel = stringResource(R.string.action_open_named, app.label)
+    val optionsLabel = stringResource(R.string.action_options_named, app.label)
+    val notificationState = stringResource(R.string.state_has_notifications)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -177,15 +183,15 @@ private fun HomeAppRow(
             .height(49.dp)
             .combinedClickable(
                 role = Role.Button,
-                onClickLabel = "Abrir ${app.label}",
-                onLongClickLabel = "Opciones de ${app.label}",
+                onClickLabel = openLabel,
+                onLongClickLabel = optionsLabel,
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
             .then(
                 if (hasNotification) {
                     Modifier.semantics {
-                        stateDescription = "Con notificaciones"
+                        stateDescription = notificationState
                     }
                 } else {
                     Modifier
@@ -229,6 +235,8 @@ private fun HomeQuickButton(
 ) {
     val palette = LocalVeilPalette.current
     val homeAppearance = LocalCurrentHomeAppearance.current
+    val quickActionLabel = stringResource(R.string.current_quick_action)
+    val secondaryQuickActionLabel = stringResource(R.string.current_secondary_quick_action)
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -238,8 +246,8 @@ private fun HomeQuickButton(
             .border(1.dp, homeAppearance.secondary, CircleShape)
             .combinedClickable(
                 role = Role.Button,
-                onClickLabel = "Acción rápida",
-                onLongClickLabel = "Acción rápida secundaria",
+                onClickLabel = quickActionLabel,
+                onLongClickLabel = secondaryQuickActionLabel,
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
@@ -250,4 +258,3 @@ private fun HomeQuickButton(
         )
     }
 }
-

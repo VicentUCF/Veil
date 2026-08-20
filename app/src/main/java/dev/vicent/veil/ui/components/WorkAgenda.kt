@@ -21,10 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.CalendarEventSummary
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import java.text.SimpleDateFormat
@@ -58,41 +60,40 @@ internal fun AgendaRofiDialog(
         return
     }
     RofiDialog(
-        title = "agenda",
+        title = stringResource(R.string.agenda_dialog_title),
         onDismiss = onDismiss,
-        actions = { RofiAction("cerrar", onDismiss) },
+        actions = { RofiAction(stringResource(R.string.action_close), onDismiss) },
     ) {
         if (!accessGranted) {
             AgendaCommand(
-                command = "conectar_calendario",
-                detail = "Permitir que Veil lea los calendarios visibles de Android",
+                command = stringResource(R.string.agenda_connect_command),
+                detail = stringResource(R.string.agenda_connect_detail),
                 onClick = onPermissionRequested,
             )
         } else {
             AgendaCommand(
-                command = "resumen_semana",
-                detail = "Ver los próximos siete días",
+                command = stringResource(R.string.agenda_week_command),
+                detail = stringResource(R.string.agenda_week_detail),
                 onClick = onShowWeek,
             )
             AgendaCommand(
-                command = "nuevo_evento",
-                detail = "Abrir el compositor del calendario instalado",
+                command = stringResource(R.string.agenda_new_command),
+                detail = stringResource(R.string.agenda_new_detail),
                 onClick = onCreateEvent,
             )
             AgendaCommand(
-                command = "abrir_calendario",
-                detail = "Continuar en tu aplicación de calendario",
+                command = stringResource(R.string.agenda_open_command),
+                detail = stringResource(R.string.agenda_open_detail),
                 onClick = onOpenCalendar,
             )
         }
         AgendaCommand(
-            command = "configurar_google",
-            detail = "Abrir Google Calendar para cuenta y sincronización",
+            command = stringResource(R.string.agenda_google_command),
+            detail = stringResource(R.string.agenda_google_detail),
             onClick = onConfigureGoogle,
         )
         RofiBody(
-            "Veil combina todos los calendarios visibles sincronizados por Android, " +
-                "incluidos los eventos de Google Calendar.",
+            stringResource(R.string.agenda_source_detail),
             modifier = Modifier.padding(top = 4.dp),
         )
     }
@@ -131,17 +132,23 @@ private fun WeekSummaryDialog(
     onEventSelected: (Long) -> Unit,
 ) {
     val locale = Locale.forLanguageTag(LocalLocale.current.toLanguageTag())
-    val dayKey = remember(locale) { SimpleDateFormat("yyyyMMdd", locale) }
-    val dayLabel = remember(locale) { SimpleDateFormat("EEEE, d MMM", locale) }
+    val dayPattern = remember(locale) {
+        DateFormat.getBestDateTimePattern(locale, "EEEEdMMM")
+    }
+    val dayLabel = remember(locale, dayPattern) { SimpleDateFormat(dayPattern, locale) }
     val groupedEvents = remember(events, locale) {
-        events.groupBy { event -> dayKey.format(Date(event.startMillis)) }
+        events.groupBy { event ->
+            Calendar.getInstance(locale).apply { timeInMillis = event.startMillis }.let { calendar ->
+                calendar.get(Calendar.YEAR) to calendar.get(Calendar.DAY_OF_YEAR)
+            }
+        }
     }
     RofiDialog(
-        title = "resumen semana",
+        title = stringResource(R.string.agenda_week_title),
         onDismiss = onDismiss,
         actions = {
-            RofiAction("volver", onBack)
-            RofiAction("cerrar", onDismiss)
+            RofiAction(stringResource(R.string.action_back), onBack)
+            RofiAction(stringResource(R.string.action_close), onDismiss)
         },
     ) {
         Column(
@@ -151,7 +158,7 @@ private fun WeekSummaryDialog(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (groupedEvents.isEmpty()) {
-                RofiBody("No hay eventos visibles en los próximos siete días.")
+                RofiBody(stringResource(R.string.agenda_week_empty))
             } else {
                 groupedEvents.values.forEach { dayEvents ->
                     BasicText(
@@ -175,7 +182,7 @@ private fun WeekEventRow(event: CalendarEventSummary, onSelected: (Long) -> Unit
             .fillMaxWidth()
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Abrir ${event.title}",
+                onClickLabel = stringResource(R.string.action_open_named, event.title),
             ) { onSelected(event.id) }
             .padding(vertical = 7.dp),
     ) {
@@ -199,7 +206,10 @@ internal fun EventRow(event: CalendarEventSummary, onSelected: (Long) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button, onClickLabel = "Abrir ${event.title}") { onSelected(event.id) }
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.action_open_named, event.title),
+            ) { onSelected(event.id) }
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

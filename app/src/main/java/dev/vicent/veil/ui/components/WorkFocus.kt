@@ -29,11 +29,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.FocusTimerState
 import dev.vicent.veil.launcher.model.FocusTimerStatus
 import dev.vicent.veil.ui.theme.LocalVeilPalette
@@ -52,10 +55,10 @@ internal fun WorkPomodoroTile(
     var customMinutes by remember { mutableIntStateOf(25) }
     var showDialog by remember { mutableStateOf(false) }
     CozyTile(
-        label = "Pomodoro",
+        label = stringResource(R.string.focus_tile_label),
         onClick = { showDialog = true },
         modifier = Modifier.fillMaxWidth().heightIn(
-            min = if (compact) 112.dp else SecondaryTileHeight,
+            min = if (compact) 112.dp else WorkspaceLayoutTokens.SECONDARY_TILE_HEIGHT,
         ),
     ) {
         PomodoroDial(focus)
@@ -85,15 +88,15 @@ private fun PomodoroDial(focus: dev.vicent.veil.launcher.model.FocusTimerState) 
         } else 0f
     }
     val time = when (focus.status) {
-        FocusTimerStatus.IDLE -> "25m"
-        FocusTimerStatus.COMPLETED -> "00:00"
+        FocusTimerStatus.IDLE -> stringResource(R.string.focus_default_short)
+        FocusTimerStatus.COMPLETED -> stringResource(R.string.focus_zero_time)
         else -> formatDuration(focus.remainingMillis)
     }
     val status = when (focus.status) {
-        FocusTimerStatus.IDLE -> "Elegir"
-        FocusTimerStatus.RUNNING -> "En curso"
-        FocusTimerStatus.PAUSED -> "En pausa"
-        FocusTimerStatus.COMPLETED -> "Completado"
+        FocusTimerStatus.IDLE -> stringResource(R.string.focus_status_choose)
+        FocusTimerStatus.RUNNING -> stringResource(R.string.focus_status_running)
+        FocusTimerStatus.PAUSED -> stringResource(R.string.focus_status_paused)
+        FocusTimerStatus.COMPLETED -> stringResource(R.string.focus_status_completed)
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -227,10 +230,10 @@ private fun PomodoroDialog(
     onFinish: () -> Unit,
 ) {
     val title = when (focus.status) {
-        FocusTimerStatus.IDLE -> "nuevo pomodoro"
-        FocusTimerStatus.RUNNING -> "pomodoro en curso"
-        FocusTimerStatus.PAUSED -> "pomodoro en pausa"
-        FocusTimerStatus.COMPLETED -> "sesión completada"
+        FocusTimerStatus.IDLE -> stringResource(R.string.focus_dialog_new)
+        FocusTimerStatus.RUNNING -> stringResource(R.string.focus_dialog_running)
+        FocusTimerStatus.PAUSED -> stringResource(R.string.focus_dialog_paused)
+        FocusTimerStatus.COMPLETED -> stringResource(R.string.focus_dialog_completed)
     }
     RofiDialog(
         title = title,
@@ -239,41 +242,60 @@ private fun PomodoroDialog(
             if (focus.status == FocusTimerStatus.RUNNING ||
                 focus.status == FocusTimerStatus.PAUSED
             ) {
-                RofiAction("finalizar", onFinish, danger = true)
+                RofiAction(stringResource(R.string.focus_finish), onFinish, danger = true)
             }
             Spacer(Modifier.weight(1f))
-            RofiAction("cancelar", onDismiss)
+            RofiAction(stringResource(R.string.action_cancel), onDismiss)
             when (focus.status) {
-                FocusTimerStatus.IDLE -> RofiAction("iniciar", { onStart(customMinutes) })
-                FocusTimerStatus.RUNNING -> RofiAction("pausar", onPause)
-                FocusTimerStatus.PAUSED -> RofiAction("reanudar", onResume)
-                FocusTimerStatus.COMPLETED -> RofiAction("cerrar", onFinish)
+                FocusTimerStatus.IDLE -> RofiAction(
+                    stringResource(R.string.focus_start),
+                    { onStart(customMinutes) },
+                )
+                FocusTimerStatus.RUNNING ->
+                    RofiAction(stringResource(R.string.focus_pause), onPause)
+                FocusTimerStatus.PAUSED ->
+                    RofiAction(stringResource(R.string.focus_resume), onResume)
+                FocusTimerStatus.COMPLETED ->
+                    RofiAction(stringResource(R.string.action_close), onFinish)
             }
         },
     ) {
         when (focus.status) {
             FocusTimerStatus.IDLE -> {
                 BasicText(
-                    "duration:",
+                    stringResource(R.string.focus_duration),
                     style = workspaceMonoStyle(LocalVeilPalette.current.accentActive, 9),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RofiAction("25 min", { onCustomMinutesChanged(25) })
-                    RofiAction("50 min", { onCustomMinutesChanged(50) })
+                    RofiAction(
+                        pluralStringResource(R.plurals.focus_minutes, 25, 25),
+                        { onCustomMinutesChanged(25) },
+                    )
+                    RofiAction(
+                        pluralStringResource(R.plurals.focus_minutes, 50, 50),
+                        { onCustomMinutesChanged(50) },
+                    )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RofiAction("-5", { onCustomMinutesChanged(customMinutes - 5) })
+                    RofiAction(
+                        stringResource(R.string.focus_decrease_five),
+                        { onCustomMinutesChanged(customMinutes - 5) },
+                    )
                     BasicText(
-                        "$customMinutes min",
+                        pluralStringResource(
+                            R.plurals.focus_minutes,
+                            customMinutes,
+                            customMinutes,
+                        ),
                         style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 18),
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
-                    RofiAction("+5", { onCustomMinutesChanged(customMinutes + 5) })
+                    RofiAction(
+                        stringResource(R.string.focus_increase_five),
+                        { onCustomMinutesChanged(customMinutes + 5) },
+                    )
                 }
-                RofiBody(
-                    "Veil puede solicitar notificaciones y alarmas exactas para avisarte " +
-                        "incluso con la pantalla apagada.",
-                )
+                RofiBody(stringResource(R.string.focus_permission_explanation))
             }
             FocusTimerStatus.RUNNING, FocusTimerStatus.PAUSED -> {
                 BasicText(
@@ -281,10 +303,12 @@ private fun PomodoroDialog(
                     style = workspaceMonoStyle(LocalVeilPalette.current.contentPrimary, 28),
                 )
                 if (!focus.exactAlarmAvailable || !focus.notificationsAvailable) {
-                    RofiBody("El aviso externo está limitado por los permisos actuales.")
+                    RofiBody(stringResource(R.string.focus_limited_notice))
                 }
             }
-            FocusTimerStatus.COMPLETED -> RofiBody("Tu sesión ha terminado.")
+            FocusTimerStatus.COMPLETED -> RofiBody(
+                stringResource(R.string.focus_completed_notice),
+            )
         }
     }
 }

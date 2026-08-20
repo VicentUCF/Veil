@@ -45,6 +45,7 @@ class LauncherController(
     contexts: List<LauncherContext>,
     private val quickActionCount: Int,
     private val scope: CoroutineScope,
+    timeProvider: TimeProvider = SystemTimeProvider,
 ) {
     private val contextResolver = LauncherContextResolver(contexts, quickActionCount)
 
@@ -72,6 +73,7 @@ class LauncherController(
         preferencesRepository = preferencesRepository,
         contextResolver = contextResolver,
         state = mutableState,
+        timeProvider = timeProvider,
     )
     private val navigationCoordinator = LauncherNavigationCoordinator(
         state = mutableState,

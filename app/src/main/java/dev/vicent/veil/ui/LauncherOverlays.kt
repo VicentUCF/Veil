@@ -6,6 +6,7 @@ import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.ui.components.AppActionsBottomSheet
+import dev.vicent.veil.ui.components.launcherContextLabel
 import dev.vicent.veil.ui.components.RofiAction
 import dev.vicent.veil.ui.components.RofiBody
 import dev.vicent.veil.ui.components.RofiDialog
@@ -47,8 +48,8 @@ internal fun LauncherOverlays(
             title = stringResource(R.string.continuity_onboarding_title),
             onDismiss = ::closeContinuityDisclosure,
             actions = {
-                RofiAction("ahora no", ::closeContinuityDisclosure)
-                RofiAction("revisar ajustes", {
+                RofiAction(stringResource(R.string.action_not_now), ::closeContinuityDisclosure)
+                RofiAction(stringResource(R.string.action_review_settings), {
                     closeContinuityDisclosure()
                     accessActions.onContinuityAccessRequested()
                 })
@@ -60,41 +61,33 @@ internal fun LauncherOverlays(
 
     if (activeDisclosure == LauncherDisclosure.LOCATION) {
         RofiDialog(
-            title = "tiempo local",
+            title = stringResource(R.string.location_disclosure_title),
             onDismiss = onDisclosureDismissed,
             actions = {
-                RofiAction("cancelar", onDisclosureDismissed)
-                RofiAction("continuar", {
+                RofiAction(stringResource(R.string.action_cancel), onDisclosureDismissed)
+                RofiAction(stringResource(R.string.action_continue), {
                     onDisclosureDismissed()
                     accessActions.onLocationPermissionRequested()
                 })
             },
         ) {
-            RofiBody(
-                "Veil usará únicamente ubicación aproximada mientras Home esté visible. " +
-                    "Las coordenadas aproximadas y tu IP se enviarán a Open‑Meteo; " +
-                    "Veil guardará sólo el último resultado durante la caché.",
-            )
+            RofiBody(stringResource(R.string.location_disclosure_body))
         }
     }
 
     if (activeDisclosure == LauncherDisclosure.AUDIO_VISUALIZER) {
         RofiDialog(
-            title = "espectro de audio",
+            title = stringResource(R.string.audio_disclosure_title),
             onDismiss = onDisclosureDismissed,
             actions = {
-                RofiAction("ahora no", onDisclosureDismissed)
-                RofiAction("activar", {
+                RofiAction(stringResource(R.string.action_not_now), onDisclosureDismissed)
+                RofiAction(stringResource(R.string.action_activate), {
                     onDisclosureDismissed()
                     accessActions.onAudioVisualizerPermissionRequested()
                 })
             },
         ) {
-            RofiBody(
-                "Android exige permiso de micrófono para analizar la mezcla de salida. " +
-                    "Veil sólo recibe una señal FFT de baja calidad mientras MEDIA está visible; " +
-                    "no graba, guarda ni transmite audio.",
-            )
+            RofiBody(stringResource(R.string.audio_disclosure_body))
         }
     }
 
@@ -115,7 +108,7 @@ internal fun LauncherOverlays(
                 onAppActionsDismissed()
                 appActions.onAppUninstallSelected(app)
             },
-            contextLabel = target.contextKind?.name,
+            contextLabel = target.contextKind?.let { launcherContextLabel(it) },
             onReplaceInContext = target.contextKind?.let { kind ->
                 target.slotIndex?.let { slotIndex ->
                     {

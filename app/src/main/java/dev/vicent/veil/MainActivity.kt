@@ -47,10 +47,15 @@ import dev.vicent.veil.ui.LauncherAppearanceActions
 import dev.vicent.veil.ui.LauncherNavigationActions
 import dev.vicent.veil.ui.LauncherScreen
 import dev.vicent.veil.ui.LauncherWorkspaceActions
+import dev.vicent.veil.ui.components.LauncherPublisherInfo
 import dev.vicent.veil.ui.theme.VeilTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
+    private val publisherInfo = LauncherPublisherInfo(
+        privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL,
+        privacyContact = BuildConfig.PRIVACY_CONTACT,
+    )
     private val preferencesRepository by lazy { LauncherPreferencesRepository(applicationContext) }
     private val accessMonitor by lazy { LauncherAccessMonitor(applicationContext) }
     private val controller by lazy {
@@ -80,7 +85,6 @@ class MainActivity : ComponentActivity() {
     private var hasCompletedFirstResume = false
     private var wasStoppedSinceLastResume = false
     private var isPackageReceiverRegistered = false
-    private var isWallpaperReceiverRegistered = false
     private val wallpaperRefreshRevision = MutableStateFlow(0)
 
     private val packageReceiver = object : BroadcastReceiver() {
@@ -91,12 +95,6 @@ class MainActivity : ComponentActivity() {
                 return
             }
             controller.refreshApps()
-        }
-    }
-
-    private val wallpaperReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            wallpaperRefreshRevision.value += 1
         }
     }
 
@@ -112,6 +110,7 @@ class MainActivity : ComponentActivity() {
         settingsLauncher = { settingsLauncher },
         webLauncher = { webLauncher },
         clockLauncher = { clockLauncher },
+        privacyPolicyUrl = publisherInfo.privacyPolicyUrl,
         onExternalSurfaceLaunched = { externalSurfaceLaunched = true },
     )
 
@@ -127,7 +126,6 @@ class MainActivity : ComponentActivity() {
 
         controller.load()
         registerPackageReceiver()
-        registerWallpaperReceiver()
         controller.refreshAccessState()
 
         setContent {
@@ -152,6 +150,7 @@ class MainActivity : ComponentActivity() {
                 LauncherScreen(
                     state = state,
                     systemAccent = systemAccent,
+                    publisherInfo = publisherInfo,
                     settingsShortcuts = settingsLauncher.shortcuts,
                     navigationActions = LauncherNavigationActions(
                         onContextSelected = { index ->
@@ -280,7 +279,6 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         controller.setAppVisible(false)
         if (isPackageReceiverRegistered) unregisterReceiver(packageReceiver)
-        if (isWallpaperReceiverRegistered) unregisterReceiver(wallpaperReceiver)
         super.onDestroy()
     }
 
@@ -311,16 +309,6 @@ class MainActivity : ComponentActivity() {
             ContextCompat.RECEIVER_EXPORTED,
         )
         isPackageReceiverRegistered = true
-    }
-
-    private fun registerWallpaperReceiver() {
-        ContextCompat.registerReceiver(
-            this,
-            wallpaperReceiver,
-            IntentFilter(Intent.ACTION_WALLPAPER_CHANGED),
-            ContextCompat.RECEIVER_EXPORTED,
-        )
-        isWallpaperReceiverRegistered = true
     }
 
 }

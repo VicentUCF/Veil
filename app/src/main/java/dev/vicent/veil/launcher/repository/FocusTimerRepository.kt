@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.core.app.NotificationManagerCompat
 import dev.vicent.veil.launcher.model.FocusTimerState
 import dev.vicent.veil.launcher.model.FocusTimerStatus
+import dev.vicent.veil.launcher.SystemTimeProvider
+import dev.vicent.veil.launcher.TimeProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,10 +14,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class FocusTimerRepository(context: Context) {
+class FocusTimerRepository(
+    context: Context,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
+) {
     private val appContext = context.applicationContext
-    private val store = FocusTimerStore(appContext)
-    private val scheduler = FocusAlarmScheduler(appContext)
+    private val store = FocusTimerStore(appContext, timeProvider)
+    private val scheduler = FocusAlarmScheduler(appContext, timeProvider)
     private val mutableState = MutableStateFlow(readState())
     val state: StateFlow<FocusTimerState> = mutableState.asStateFlow()
 
@@ -30,7 +35,7 @@ class FocusTimerRepository(context: Context) {
 
     fun start(durationMinutes: Int) {
         val duration = durationMinutes.coerceIn(5, 180) * 60_000L
-        val endAt = System.currentTimeMillis() + duration
+        val endAt = timeProvider.currentTimeMillis() + duration
         store.write(FocusTimerStatus.RUNNING, duration, duration, endAt)
         scheduler.schedule(endAt)
         refreshFromStorage()
@@ -52,7 +57,7 @@ class FocusTimerRepository(context: Context) {
     fun resume() {
         val current = readState()
         if (current.status != FocusTimerStatus.PAUSED) return
-        val endAt = System.currentTimeMillis() + current.remainingMillis
+        val endAt = timeProvider.currentTimeMillis() + current.remainingMillis
         store.write(
             FocusTimerStatus.RUNNING,
             current.durationMillis,

@@ -1,11 +1,6 @@
 package dev.vicent.veil.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.background
@@ -43,17 +38,10 @@ import dev.vicent.veil.launcher.LauncherUiState
 import dev.vicent.veil.launcher.WorkspaceLayoutPolicy
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.WallpaperScrimPolicy
-import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherSurface
 import dev.vicent.veil.launcher.model.SettingsShortcut
-import dev.vicent.veil.ui.components.AppDrawer
 import dev.vicent.veil.ui.components.ContextDock
-import dev.vicent.veil.ui.components.LauncherSettingsScreen
-import dev.vicent.veil.ui.components.LauncherSettingsUiState
-import dev.vicent.veil.ui.components.SettingsAccessActions
-import dev.vicent.veil.ui.components.SettingsAppActions
-import dev.vicent.veil.ui.components.SettingsAppearanceActions
-import dev.vicent.veil.ui.components.SettingsNavigationActions
+import dev.vicent.veil.ui.components.LauncherPublisherInfo
 import dev.vicent.veil.ui.components.TopBar
 import dev.vicent.veil.ui.components.WorkspaceDashboard
 import dev.vicent.veil.ui.theme.VeilMotion
@@ -83,6 +71,7 @@ internal fun launcherBackAction(
 fun LauncherScreen(
     state: LauncherUiState,
     systemAccent: Color?,
+    publisherInfo: LauncherPublisherInfo,
     settingsShortcuts: List<SettingsShortcut>,
     navigationActions: LauncherNavigationActions,
     appActions: LauncherAppActions,
@@ -105,26 +94,26 @@ fun LauncherScreen(
     val (
         onAppSelected,
         onSettingsSelected,
-        onAppInfoSelected,
-        onAppUninstallSelected,
+        _,
+        _,
         onExternalLinkSelected,
-        onPrivacyPolicySelected,
-        onSettingsAppSelected,
-        onMusicProviderCleared,
-        onContextSlotCleared,
+        _,
+        _,
+        _,
+        _,
     ) = appActions
     val (
         onContinuityAccessRequested,
-        onContinuityOnboardingDismissed,
+        _,
         onCalendarPermissionRequested,
-        onLocationPermissionRequested,
-        onAudioVisualizerPermissionRequested,
-        onWallpaperSelected,
-        onAppPermissionSettingsRequested,
-        onFocusNotificationsSelected,
-        onExactAlarmsSelected,
-        onDefaultHomeSelected,
-        onAndroidSettingsSelected,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
     ) = accessActions
     val (
         onClockOpenRequested,
@@ -143,14 +132,6 @@ fun LauncherScreen(
         onQuickNoteUpdated,
         onQuickNoteDeleted,
     ) = workspaceActions
-    val (
-        onAccentSelected,
-        onHomeTextToneSelected,
-        onHomeTextWeightSelected,
-        onWallpaperScrimEnabledChanged,
-        onWallpaperScrimIntensityChanged,
-        onResetAppearance,
-    ) = appearanceActions
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var appWithOpenActions by remember { mutableStateOf<AppActionsTarget?>(null) }
@@ -427,143 +408,29 @@ fun LauncherScreen(
             modifier = Modifier.align(Alignment.TopCenter),
         )
 
-        AnimatedVisibility(
-            visible = state.isDrawerOpen,
-            enter = fadeIn(
-                animationSpec = tween(
-                    VeilMotion.STANDARD_DURATION_MILLIS,
-                    easing = VeilMotion.enterEasing,
-                ),
-                initialAlpha = 0.72f,
-            ) + slideInVertically(
-                animationSpec = tween(
-                    VeilMotion.EMPHASIZED_DURATION_MILLIS,
-                    easing = VeilMotion.standardEasing,
-                ),
-                initialOffsetY = { it / 6 },
-            ),
-            exit = fadeOut(
-                animationSpec = tween(
-                    VeilMotion.QUICK_DURATION_MILLIS,
-                    easing = VeilMotion.exitEasing,
-                ),
-            ) + slideOutVertically(
-                animationSpec = tween(
-                    VeilMotion.STANDARD_DURATION_MILLIS,
-                    easing = VeilMotion.exitEasing,
-                ),
-                targetOffsetY = { it / 8 },
-            ),
-            label = "app drawer",
-        ) {
-            AppDrawer(
-                installedApps = state.installedApps,
-                settingsShortcuts = settingsShortcuts,
-                isLoading = state.isLoading,
-                onAppSelected = onAppSelected,
-                onAppLongPressed = { appWithOpenActions = AppActionsTarget(it) },
-                onSettingsSelected = onSettingsSelected,
-                onVeilSettingsSelected = onOpenSettings,
-                continuityAccessGranted = state.continuityAccessGranted,
-                onContinuityAccessSelected = {
-                    activeDisclosure = LauncherDisclosure.CONTINUITY
-                },
-                onClose = onCloseDrawer,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-
-        AnimatedVisibility(
-            visible = state.isSettingsOpen,
-            enter = fadeIn(
-                animationSpec = tween(
-                    VeilMotion.STANDARD_DURATION_MILLIS,
-                    easing = VeilMotion.enterEasing,
-                ),
-            ) + slideInVertically(
-                animationSpec = tween(
-                    VeilMotion.EMPHASIZED_DURATION_MILLIS,
-                    easing = VeilMotion.standardEasing,
-                ),
-                initialOffsetY = { it / 8 },
-            ),
-            exit = fadeOut(
-                animationSpec = tween(
-                    VeilMotion.QUICK_DURATION_MILLIS,
-                    easing = VeilMotion.exitEasing,
-                ),
-            ),
-            label = "launcher settings",
-        ) {
-            LauncherSettingsScreen(
-                state = LauncherSettingsUiState(
-                    preferences = state.preferences,
-                    access = state.access,
-                    installedApps = state.installedApps,
-                    appTarget = state.settingsAppTarget,
-                    showFontSettings = showFontSettings,
-                    systemAccent = systemAccent,
-                ),
-                navigationActions = SettingsNavigationActions(
-                    onBack = handleSettingsBack,
-                    onOpenFontSettings = { showFontSettings = true },
-                ),
-                appearanceActions = SettingsAppearanceActions(
-                    onAccentSelected = onAccentSelected,
-                    onHomeTextToneSelected = onHomeTextToneSelected,
-                    onHomeTextWeightSelected = onHomeTextWeightSelected,
-                    onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
-                    onWallpaperScrimIntensityChanged = onWallpaperScrimIntensityChanged,
-                    onWallpaperSelected = onWallpaperSelected,
-                    onResetAppearance = onResetAppearance,
-                ),
-                appActions = SettingsAppActions(
-                    onOpenMusicProviderPicker = onOpenMusicProviderPicker,
-                    onSettingsAppSelected = onSettingsAppSelected,
-                    onMusicProviderCleared = onMusicProviderCleared,
-                ),
-                accessActions = SettingsAccessActions(
-                    onContinuitySelected = {
-                        if (state.access.continuityGranted) {
-                            onContinuityAccessRequested()
-                        } else {
-                            activeDisclosure = LauncherDisclosure.CONTINUITY
-                            true
-                        }
-                    },
-                    onCalendarSelected = {
-                        if (state.access.calendarGranted) {
-                            onAppPermissionSettingsRequested()
-                        } else {
-                            onCalendarPermissionRequested()
-                            true
-                        }
-                    },
-                    onLocationSelected = {
-                        if (state.access.approximateLocationGranted) {
-                            onAppPermissionSettingsRequested()
-                        } else {
-                            activeDisclosure = LauncherDisclosure.LOCATION
-                            true
-                        }
-                    },
-                    onAudioVisualizerSelected = {
-                        if (state.access.audioVisualizerGranted) {
-                            onAppPermissionSettingsRequested()
-                        } else {
-                            activeDisclosure = LauncherDisclosure.AUDIO_VISUALIZER
-                            true
-                        }
-                    },
-                    onPrivacyPolicySelected = onPrivacyPolicySelected,
-                    onFocusNotificationsSelected = onFocusNotificationsSelected,
-                    onExactAlarmsSelected = onExactAlarmsSelected,
-                    onDefaultHomeSelected = onDefaultHomeSelected,
-                    onAndroidSettingsSelected = onAndroidSettingsSelected,
-                ),
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+        LauncherDrawerLayer(
+            state = state,
+            settingsShortcuts = settingsShortcuts,
+            navigationActions = navigationActions,
+            appActions = appActions,
+            onAppActionsRequested = { appWithOpenActions = it },
+            onContinuityDisclosureRequested = {
+                activeDisclosure = LauncherDisclosure.CONTINUITY
+            },
+        )
+        LauncherSettingsLayer(
+            state = state,
+            showFontSettings = showFontSettings,
+            systemAccent = systemAccent,
+            publisherInfo = publisherInfo,
+            navigationActions = navigationActions,
+            appActions = appActions,
+            accessActions = accessActions,
+            appearanceActions = appearanceActions,
+            onBack = handleSettingsBack,
+            onFontSettingsRequested = { showFontSettings = true },
+            onDisclosureRequested = { activeDisclosure = it },
+        )
     }
 
     BackHandler {

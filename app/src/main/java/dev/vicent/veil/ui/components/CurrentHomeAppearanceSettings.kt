@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.LauncherPreferences
@@ -56,26 +58,41 @@ internal fun CurrentHomeAppearanceSettings(
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
+    val weightOptions = listOf(
+        Triple(
+            HomeTextWeight.LIGHT,
+            stringResource(R.string.appearance_weight_light),
+            FontWeight.Light,
+        ),
+        Triple(
+            HomeTextWeight.REGULAR,
+            stringResource(R.string.appearance_weight_regular),
+            FontWeight.Normal,
+        ),
+        Triple(
+            HomeTextWeight.SEMIBOLD,
+            stringResource(R.string.appearance_weight_semibold),
+            FontWeight.SemiBold,
+        ),
+    )
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(palette.drawerBackground)
             .windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
-        SettingsHeader(title = "fuente_current", onBack = onBack)
+        SettingsHeader(title = stringResource(R.string.appearance_header), onBack = onBack)
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item(key = "font-intro") {
-                SettingsDescription(
-                    "Ajusta el texto y los iconos que CURRENT dibuja sobre el wallpaper. " +
-                        "El filtro suave asociado se aplica a todas las vistas. " +
-                        "Los cambios se guardan al tocarlos.",
-                )
+                SettingsDescription(stringResource(R.string.appearance_intro))
             }
-            item(key = "font-color-label") { SettingsSectionLabel("COLOR") }
+            item(key = "font-color-label") {
+                SettingsSectionLabel(stringResource(R.string.appearance_section_color))
+            }
             item(key = "home-text-tone-light") {
                 AppearanceChoiceRow(
-                    label = "Claro",
-                    detail = "Texto marfil · filtro negro suave",
+                    label = stringResource(R.string.appearance_tone_light),
+                    detail = stringResource(R.string.appearance_tone_light_detail),
                     selected = preferences.homeTextTone == HomeTextTone.LIGHT,
                     previewColor = Color(0xFFE8E9E7),
                     previewBackground = Color(0xFF20262A),
@@ -85,8 +102,8 @@ internal fun CurrentHomeAppearanceSettings(
             }
             item(key = "home-text-tone-dark") {
                 AppearanceChoiceRow(
-                    label = "Oscuro",
-                    detail = "Texto carbón · filtro blanco suave",
+                    label = stringResource(R.string.appearance_tone_dark),
+                    detail = stringResource(R.string.appearance_tone_dark_detail),
                     selected = preferences.homeTextTone == HomeTextTone.DARK,
                     previewColor = Color(0xFF171A1C),
                     previewBackground = Color(0xFFE9E6DF),
@@ -94,13 +111,11 @@ internal fun CurrentHomeAppearanceSettings(
                     onClick = { onHomeTextToneSelected(HomeTextTone.DARK) },
                 )
             }
-            item(key = "font-weight-label") { SettingsSectionLabel("GROSOR") }
+            item(key = "font-weight-label") {
+                SettingsSectionLabel(stringResource(R.string.appearance_section_weight))
+            }
             items(
-                items = listOf(
-                    Triple(HomeTextWeight.LIGHT, "Fino", FontWeight.Light),
-                    Triple(HomeTextWeight.REGULAR, "Normal", FontWeight.Normal),
-                    Triple(HomeTextWeight.SEMIBOLD, "Seminegrita", FontWeight.SemiBold),
-                ),
+                items = weightOptions,
                 key = { "home-weight-${it.first.persistedValue}" },
             ) { (mode, label, weight) ->
                 AppearanceChoiceRow(
@@ -113,16 +128,24 @@ internal fun CurrentHomeAppearanceSettings(
                     onClick = { onHomeTextWeightSelected(mode) },
                 )
             }
-            item(key = "filter-label") { SettingsSectionLabel("FILTRO DEL WALLPAPER") }
+            item(key = "filter-label") {
+                SettingsSectionLabel(
+                    stringResource(R.string.appearance_section_wallpaper_filter),
+                )
+            }
             item(key = "wallpaper-filter") {
                 SettingsActionRow(
-                    title = "Filtro suave",
+                    title = stringResource(R.string.appearance_filter_title),
                     detail = if (preferences.wallpaperScrimEnabled) {
-                        "Activo en todas las vistas; el tono sigue el color elegido"
+                        stringResource(R.string.appearance_filter_active_detail)
                     } else {
-                        "El wallpaper se muestra sin velo adicional"
+                        stringResource(R.string.appearance_filter_inactive_detail)
                     },
-                    status = if (preferences.wallpaperScrimEnabled) "ACTIVO" else "INACTIVO",
+                    status = if (preferences.wallpaperScrimEnabled) {
+                        stringResource(R.string.state_active)
+                    } else {
+                        stringResource(R.string.state_inactive)
+                    },
                     onClick = {
                         onWallpaperScrimEnabledChanged(!preferences.wallpaperScrimEnabled)
                     },
@@ -151,9 +174,12 @@ private fun WallpaperFilterIntensitySlider(
     val activeColor = if (enabled) palette.accentActive else palette.contentMuted
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BasicText("INTENSIDAD", style = workspaceMonoStyle(palette.contentSecondary, 8))
             BasicText(
-                text = "${(normalized * 100).roundToInt()}%",
+                stringResource(R.string.appearance_intensity),
+                style = workspaceMonoStyle(palette.contentSecondary, 8),
+            )
+            BasicText(
+                text = stringResource(R.string.percentage_value, (normalized * 100).roundToInt()),
                 style = workspaceMonoStyle(palette.contentMuted, 8),
             )
         }
@@ -193,9 +219,9 @@ private fun WallpaperFilterIntensitySlider(
         }
         BasicText(
             text = if (enabled) {
-                "La intensidad aumenta progresivamente en el tramo alto"
+                stringResource(R.string.appearance_intensity_active_detail)
             } else {
-                "Se conservará para cuando actives el filtro"
+                stringResource(R.string.appearance_intensity_inactive_detail)
             },
             style = workspaceMonoStyle(palette.contentMuted, 8),
         )
@@ -235,7 +261,7 @@ private fun AppearanceChoiceRow(
                 ),
         ) {
             BasicText(
-                "Aa",
+                stringResource(R.string.appearance_sample),
                 style = TextStyle(
                     color = previewColor,
                     fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
@@ -260,13 +286,21 @@ private fun AppearanceChoiceRow(
     }
 }
 
+@Composable
 internal fun HomeTextTone.label(): String = when (this) {
-    HomeTextTone.LIGHT -> "Claro"
-    HomeTextTone.DARK -> "Oscuro"
+    HomeTextTone.LIGHT -> stringResource(R.string.appearance_tone_light)
+    HomeTextTone.DARK -> stringResource(R.string.appearance_tone_dark)
 }
 
+@Composable
+internal fun HomeTextTone.pluralLabel(): String = when (this) {
+    HomeTextTone.LIGHT -> stringResource(R.string.appearance_tone_light_plural)
+    HomeTextTone.DARK -> stringResource(R.string.appearance_tone_dark_plural)
+}
+
+@Composable
 internal fun HomeTextWeight.label(): String = when (this) {
-    HomeTextWeight.LIGHT -> "Fino"
-    HomeTextWeight.REGULAR -> "Normal"
-    HomeTextWeight.SEMIBOLD -> "Seminegrita"
+    HomeTextWeight.LIGHT -> stringResource(R.string.appearance_weight_light)
+    HomeTextWeight.REGULAR -> stringResource(R.string.appearance_weight_regular)
+    HomeTextWeight.SEMIBOLD -> stringResource(R.string.appearance_weight_semibold)
 }
