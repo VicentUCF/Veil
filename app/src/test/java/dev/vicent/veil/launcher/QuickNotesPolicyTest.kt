@@ -74,4 +74,42 @@ class QuickNotesPolicyTest {
         assertEquals("", checklistNote?.body)
         assertEquals(checklist, checklistNote?.checklist)
     }
+
+    @Test
+    fun `draft title falls back to its first meaningful content`() {
+        assertEquals(
+            "Primera línea",
+            QuickNotesPolicy.resolveDraftTitle(
+                title = " ",
+                type = QuickNoteType.TEXT,
+                body = "\n Primera línea\nSegunda línea",
+                checklist = emptyList(),
+            ),
+        )
+        assertEquals(
+            "Comprar pan",
+            QuickNotesPolicy.resolveDraftTitle(
+                title = "",
+                type = QuickNoteType.CHECKLIST,
+                body = "",
+                checklist = listOf(
+                    QuickNoteChecklistItem(1L, ""),
+                    QuickNoteChecklistItem(2L, " Comprar pan "),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `empty draft has no automatic title`() {
+        assertEquals(
+            null,
+            QuickNotesPolicy.resolveDraftTitle(
+                title = "",
+                type = QuickNoteType.TEXT,
+                body = "\n ",
+                checklist = emptyList(),
+            ),
+        )
+    }
 }

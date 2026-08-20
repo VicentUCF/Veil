@@ -24,6 +24,7 @@ import dev.vicent.veil.launcher.repository.WeatherRepository
 import dev.vicent.veil.launcher.system.LauncherAccessMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -160,6 +161,16 @@ class LauncherController(
         }
     }
 
+    fun refreshCalendarAfterExternalChange() {
+        calendarRefreshJob?.cancel()
+        calendarRefreshJob = scope.launch {
+            val accessGranted = mutableState.value.calendarAccessGranted
+            calendarRepository.refresh(accessGranted)
+            delay(CALENDAR_PROVIDER_SETTLE_DELAY_MILLIS)
+            calendarRepository.refresh(mutableState.value.calendarAccessGranted)
+        }
+    }
+
     fun openCalendarEvent(eventId: Long) = calendarRepository.open(eventId)
     fun createCalendarEvent() = calendarRepository.createEvent()
     fun openCalendar() = calendarRepository.openCalendar()
@@ -280,5 +291,9 @@ class LauncherController(
     private fun refreshWeather(accessGranted: Boolean) {
         weatherRefreshJob?.cancel()
         weatherRefreshJob = scope.launch { weatherRepository.refresh(accessGranted) }
+    }
+
+    private companion object {
+        const val CALENDAR_PROVIDER_SETTLE_DELAY_MILLIS = 750L
     }
 }

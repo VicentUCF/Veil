@@ -329,7 +329,6 @@
     <string name="media_enable_spectrum">Activar espectro</string>
     <string name="media_open_sound">Abrir sonido</string>
     <string name="media_preparing_signal">Preparando señal…</string>
-    <string name="media_waiting_playback">En espera de reproducción</string>
     <string name="media_artist_app">%1$s · %2$s</string>
     <string name="media_timeline">%1$s  /  %2$s</string>
 

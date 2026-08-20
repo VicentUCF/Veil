@@ -215,15 +215,13 @@ private fun AudioSpectrumPanel(
                 TileAction(stringResource(R.string.media_enable_spectrum), onPermissionRequested)
             AudioSpectrumAvailability.UNAVAILABLE ->
                 TileAction(stringResource(R.string.media_open_sound), onOpenSoundSettings)
-            AudioSpectrumAvailability.IDLE -> BasicText(
-                text = if (isPlaying) {
-                    stringResource(R.string.media_preparing_signal)
-                } else {
-                    stringResource(R.string.media_waiting_playback)
-                },
-                style = workspaceMonoStyle(palette.contentMuted, 8),
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            AudioSpectrumAvailability.IDLE -> if (isPlaying) {
+                BasicText(
+                    text = stringResource(R.string.media_preparing_signal),
+                    style = workspaceMonoStyle(palette.contentMuted, 8),
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
             AudioSpectrumAvailability.ACTIVE -> Unit
         }
     }

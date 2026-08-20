@@ -122,14 +122,18 @@ private fun QuickNoteEditorDialog(
     var type by remember(note?.id) { mutableStateOf(note?.type ?: QuickNoteType.TEXT) }
     var body by remember(note?.id) { mutableStateOf(note?.body.orEmpty()) }
     var checklist by remember(note?.id) { mutableStateOf(note?.checklist.orEmpty()) }
-    val validTitle = QuickNotesPolicy.sanitizeTitle(title)
+    val resolvedTitle = QuickNotesPolicy.resolveDraftTitle(title, type, body, checklist)
+    fun saveDraft() {
+        resolvedTitle?.let { cleanTitle -> onSave(cleanTitle, type, body, checklist) }
+            ?: onDismiss()
+    }
     RofiDialog(
         title = if (note == null) {
             stringResource(R.string.notes_new_title)
         } else {
             stringResource(R.string.notes_edit_title)
         },
-        onDismiss = onDismiss,
+        onDismiss = ::saveDraft,
         actions = {
             if (onDelete != null) {
                 RofiAction(stringResource(R.string.action_delete), onDelete, danger = true)
@@ -138,12 +142,8 @@ private fun QuickNoteEditorDialog(
             RofiAction(stringResource(R.string.action_cancel), onDismiss)
             RofiAction(
                 label = stringResource(R.string.action_save),
-                enabled = validTitle != null,
-                onClick = {
-                    validTitle?.let { cleanTitle ->
-                        onSave(cleanTitle, type, body, checklist)
-                    }
-                },
+                enabled = resolvedTitle != null,
+                onClick = ::saveDraft,
             )
         },
     ) {
@@ -335,7 +335,7 @@ private fun RofiChecklistEditorRow(
         BasicTextField(
             value = item.text,
             onValueChange = onTextChange,
-            singleLine = true,
+            singleLine = false,
             textStyle = workspaceMonoStyle(palette.contentPrimary, 10),
             cursorBrush = SolidColor(palette.accentActive),
             modifier = Modifier

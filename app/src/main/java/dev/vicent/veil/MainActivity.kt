@@ -85,6 +85,8 @@ class MainActivity : ComponentActivity() {
     private var hasCompletedFirstResume = false
     private var wasStoppedSinceLastResume = false
     private var isPackageReceiverRegistered = false
+    private var shouldRefreshAppsOnResume = false
+    private var shouldRefreshCalendarOnResume = false
     private val wallpaperRefreshRevision = MutableStateFlow(0)
 
     private val packageReceiver = object : BroadcastReceiver() {
@@ -93,6 +95,9 @@ class MainActivity : ComponentActivity() {
                 intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
             ) {
                 return
+            }
+            if (intent.action == Intent.ACTION_PACKAGE_REMOVED) {
+                intent.data?.schemeSpecificPart?.let(controller::removeUnavailableApp)
             }
             controller.refreshApps()
         }
@@ -112,6 +117,8 @@ class MainActivity : ComponentActivity() {
         clockLauncher = { clockLauncher },
         privacyPolicyUrl = publisherInfo.privacyPolicyUrl,
         onExternalSurfaceLaunched = { externalSurfaceLaunched = true },
+        onPackageInventoryMayChange = { shouldRefreshAppsOnResume = true },
+        onCalendarMayChange = { shouldRefreshCalendarOnResume = true },
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -238,14 +245,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        val refreshApps = shouldRefreshAppsOnResume
+        val refreshCalendarAfterExternalChange = shouldRefreshCalendarOnResume
         hasCompletedFirstResume = true
         wasStoppedSinceLastResume = false
         controller.setAppVisible(true)
         externalSurfaceLaunched = false
+        shouldRefreshAppsOnResume = false
+        shouldRefreshCalendarOnResume = false
         wallpaperRefreshRevision.value += 1
         controller.refreshAccessState()
         controller.restoreFocusAlarm()
         controller.refreshVisibleData()
+        if (refreshApps) controller.refreshApps()
+        if (refreshCalendarAfterExternalChange) {
+            controller.refreshCalendarAfterExternalChange()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

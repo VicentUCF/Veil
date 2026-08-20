@@ -70,12 +70,7 @@ internal fun EmptyMediaTile(
         ),
     ) {
         EmptyMediaArtwork(musicProviderLabel = musicProviderLabel)
-        if (onOpenMusicProvider != null && musicProviderLabel != null) {
-            TileAction(
-                stringResource(R.string.action_open_named, musicProviderLabel),
-                onOpenMusicProvider,
-            )
-        } else {
+        if (onOpenMusicProvider == null || musicProviderLabel == null) {
             TileAction(stringResource(R.string.media_choose_provider), onChooseMusicProvider)
         }
         if (!continuityEnabled) {

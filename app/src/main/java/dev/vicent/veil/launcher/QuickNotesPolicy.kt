@@ -1,6 +1,7 @@
 package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.QuickNote
+import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
 import dev.vicent.veil.launcher.model.QuickNoteType
 
 object QuickNotesPolicy {
@@ -48,4 +49,16 @@ object QuickNotesPolicy {
         .trim()
         .take(MAX_TITLE_LENGTH)
         .takeIf(String::isNotEmpty)
+
+    fun resolveDraftTitle(
+        title: String,
+        type: QuickNoteType,
+        body: String,
+        checklist: List<QuickNoteChecklistItem>,
+    ): String? = sanitizeTitle(title) ?: sanitizeTitle(
+        when (type) {
+            QuickNoteType.TEXT -> body.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty()
+            QuickNoteType.CHECKLIST -> checklist.firstOrNull { it.text.isNotBlank() }?.text.orEmpty()
+        },
+    )
 }

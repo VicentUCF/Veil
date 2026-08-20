@@ -15,6 +15,8 @@ class LauncherExternalActionCoordinator(
     private val clockLauncher: () -> AndroidClockLauncher,
     private val privacyPolicyUrl: String,
     private val onExternalSurfaceLaunched: () -> Unit,
+    private val onPackageInventoryMayChange: () -> Unit,
+    private val onCalendarMayChange: () -> Unit,
 ) {
     fun openApp(app: LauncherApp) {
         if (appLauncher().launch(app)) {
@@ -34,6 +36,7 @@ class LauncherExternalActionCoordinator(
 
     fun openAppInfo(app: LauncherApp) {
         if (appLauncher().openAppInfo(app)) {
+            onPackageInventoryMayChange()
             markLaunched()
             controller().closeDrawer()
         }
@@ -41,6 +44,7 @@ class LauncherExternalActionCoordinator(
 
     fun requestUninstall(app: LauncherApp) {
         if (appLauncher().requestUninstall(app)) {
+            onPackageInventoryMayChange()
             markLaunched()
             controller().closeDrawer()
         }
@@ -64,7 +68,7 @@ class LauncherExternalActionCoordinator(
     }
 
     fun createCalendarEvent() {
-        launchExternal(controller()::createCalendarEvent)
+        if (launchExternal(controller()::createCalendarEvent)) onCalendarMayChange()
     }
 
     fun openCalendar() {
