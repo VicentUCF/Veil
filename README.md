@@ -1,8 +1,120 @@
-# Veil
+<div align="center">
+  <h1>Veil</h1>
+  <p><strong>Un launcher Android tranquilo, contextual y construido alrededor de tu fondo de pantalla.</strong></p>
+  <p><sub>Android 6.0+ · Kotlin · Jetpack Compose · v0.1.0</sub></p>
+</div>
 
-## Release de producción
+> La filosofía de Qtile llevada a una interfaz táctil, no una copia del escritorio.
 
-Las releases están cerradas por defecto: `assembleRelease` y `bundleRelease` fallan si no hay firma o datos editoriales de privacidad. Configura estas variables únicamente en el almacén de secretos del entorno de publicación:
+Veil convierte la pantalla de inicio en una capa discreta del sistema. En lugar de llenarla con widgets, prioriza la **continuidad ambiental**: recuerda actividades públicas que Android ya expone —como reproducción multimedia, navegación o progreso— y facilita retomarlas.
+
+Inicio permanece limpio. A su alrededor, el usuario elige cuatro espacios de trabajo con una jerarquía visual clara, datos reales y accesos rápidos estables.
+
+## Capturas
+
+<p align="center">
+  <a href="docs/screenshots/home.webp"><img src="docs/screenshots/home.webp" alt="Inicio de Veil" width="18%"></a>
+  <a href="docs/screenshots/media.webp"><img src="docs/screenshots/media.webp" alt="Vista Media" width="18%"></a>
+  <a href="docs/screenshots/games.webp"><img src="docs/screenshots/games.webp" alt="Vista Juegos" width="18%"></a>
+  <a href="docs/screenshots/device.webp"><img src="docs/screenshots/device.webp" alt="Vista Dispositivo" width="18%"></a>
+  <a href="docs/screenshots/everything.webp"><img src="docs/screenshots/everything.webp" alt="Everything" width="18%"></a>
+</p>
+
+<p align="center"><sub>Inicio · Media · Juegos · Dispositivo · Everything</sub></p>
+
+## Qué hace diferente a Veil
+
+- **Continuidad ambiental:** Inicio destaca la actividad pública más relevante que Android permite reanudar, sin leer conversaciones ni inferir actividad privada.
+- **Espacios de trabajo editoriales:** cada vista tiene una finalidad concreta y una composición diseñada, no una cuadrícula genérica de widgets.
+- **El fondo sigue siendo protagonista:** superficies oscuras y translúcidas conservan la presencia del wallpaper y mantienen el contenido legible.
+- **Dock contextual:** cada espacio dispone de cinco aplicaciones configurables que permanecen en posiciones estables.
+- **Everything:** un cajón alfabético con búsqueda local, acciones de aplicación y accesos directos a ajustes del sistema.
+- **Datos honestos:** si falta un permiso, proveedor o dato, la geometría se mantiene y Veil muestra un estado vacío claro en lugar de inventar información.
+
+## Espacios de trabajo
+
+**Inicio** es fijo. El usuario selecciona y ordena otras cuatro vistas desde el catálogo integrado:
+
+| Vista | Función principal |
+| --- | --- |
+| **Inicio** | Hora, tiempo, accesos esenciales y la actividad más relevante para continuar. |
+| **Planificación** | Agenda, notas rápidas locales y temporizador Pomodoro. |
+| **Concentración** | Sesiones de Focus, próximo evento y las mismas notas rápidas. |
+| **Media** | Sesión multimedia activa, controles compatibles, salida y contexto de colección. |
+| **Juegos** | Ranking público de Steam, noticias oficiales y biblioteca local de juegos Android. |
+| **Dispositivo** | Estado del sistema, batería, conectividad y accesos directos a ajustes. |
+| **En movimiento** | Navegación pública compatible, tiempo y próximo evento. |
+
+Las vistas se publican como parte de la aplicación: no hay plugins ejecutables, layouts descargados ni un editor de geometría. El proceso interno para añadir una composición está documentado en [Añadir un espacio de trabajo](docs/ADDING_WORKSPACE.md).
+
+## Interacción
+
+- Desliza horizontalmente para cambiar entre Inicio y los cuatro espacios activos.
+- Desliza hacia arriba para abrir **Everything**.
+- Pulsa Home con Veil abierto para alternar entre Everything e Inicio.
+- Mantén pulsada una aplicación para abrirla, consultar su información o solicitar su desinstalación.
+- Mantén pulsado un icono del dock para sustituirlo o eliminarlo; toca un hueco vacío para elegir una aplicación.
+- Personaliza pantallas, color de acento, legibilidad, wallpaper, accesos y acciones de Inicio desde **Ajustes de Veil**.
+
+## Instalación
+
+Veil requiere **Android 6.0 (API 23) o posterior**. Al ser un launcher, Android pedirá confirmar qué aplicación debe gestionar la pantalla de inicio.
+
+### Desde un APK
+
+1. Descarga el APK desde [GitHub Releases](https://github.com/VicentUCF/Veil/releases) cuando haya una compilación publicada.
+2. Abre el archivo en el dispositivo y permite temporalmente la instalación desde esa fuente si Android lo solicita.
+3. Inicia Veil y pulsa **Launcher predeterminado** en sus ajustes, o ve a **Ajustes de Android → Aplicaciones predeterminadas → Aplicación de inicio**.
+4. Elige Veil y completa la selección inicial de pantallas.
+
+Los permisos de calendario, ubicación aproximada, notificaciones, alarmas y visualización de audio son opcionales y se solicitan únicamente cuando una función los necesita.
+
+### Desde el código fuente
+
+Necesitas JDK 17, Android SDK Platform 37 y `adb`. Activa la depuración USB, conecta el dispositivo y comprueba que aparezca como autorizado:
+
+```bash
+adb devices
+```
+
+Después compila e instala la variante de depuración:
+
+```bash
+git clone https://github.com/VicentUCF/Veil.git
+cd Veil
+./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+En Windows utiliza `gradlew.bat assembleDebug`. La opción `-r` conserva la configuración existente cuando actualizas una instalación firmada con la misma clave de depuración.
+
+## Privacidad
+
+Veil no incorpora cuentas, publicidad, analítica ni backend propio. Las aplicaciones instaladas, preferencias, notas, búsquedas y datos de calendario se procesan localmente.
+
+Las únicas conexiones de producto son las necesarias para consultar el tiempo en Open-Meteo mediante ubicación aproximada y el contenido público de Steam mientras Juegos está visible. El acceso opcional a notificaciones mantiene señales restringidas en memoria y excluye llamadas, mensajes, correo, alarmas y contenido social.
+
+Consulta la [política de privacidad](docs/PRIVACY_POLICY.md) y la [declaración de seguridad de datos](docs/DATA_SAFETY.md) para conocer el detalle.
+
+## Tecnología y estado del proyecto
+
+- Aplicación Android nativa con Kotlin, AndroidX, Jetpack Compose, Coroutines y StateFlow.
+- Un único módulo `app`, sin framework de inyección de dependencias ni base de datos.
+- Integración HOME real, diseño edge-to-edge y orientación vertical como prioridad.
+- `minSdk 23`, `targetSdk 37` y namespace `dev.vicent.veil`.
+- Versión actual: **v0.1.0**.
+
+Para verificar el proyecto:
+
+```bash
+./gradlew test assembleDebug
+```
+
+La dirección del producto, el alcance de v0.1 y sus límites están definidos en [PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md).
+
+## Publicación de producción
+
+Las builds `release` están cerradas por defecto. El proceso falla si no encuentra una firma de publicación, una política de privacidad HTTPS accesible y un correo de contacto válido.
 
 ```text
 VEIL_UPLOAD_STORE_FILE=/ruta/absoluta/upload.jks
@@ -13,54 +125,9 @@ VEIL_PRIVACY_POLICY_URL=https://…
 VEIL_PRIVACY_CONTACT=...
 ```
 
-Después ejecuta `./gradlew clean test lint bundleRelease` y verifica el AAB/APK con las herramientas oficiales de Android. El gate comprueba también que la URL de privacidad responda públicamente con contenido HTML o texto, y la app incorpora el enlace y el contacto configurados. No guardes el keystore ni sus contraseñas en el repositorio. La política fuente está en [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md) y la hoja para Play Console en [`docs/DATA_SAFETY.md`](docs/DATA_SAFETY.md).
-
-Veil is an Android launcher inspired by the philosophy of Arch Linux and Qtile, translated for touch rather than copied from the desktop.
-
-The repository contains a functional launcher with Android Home integration, real application discovery and launching, a curated workspace catalog, Ambient Continuity, a searchable application drawer, and a quiet wallpaper-first Home UI.
-
-## Catálogo de pantallas
-
-Inicio permanece fijo y sin dock. Cada usuario elige y ordena otras cuatro vistas compiladas con Veil: Planificación, Concentración, Media, Juegos, Dispositivo y En movimiento. Las vistas son composiciones editoriales explícitas, no widgets ni plugins, y una actualización puede añadir opciones al catálogo sin activarlas automáticamente.
-
-El flujo interno para diseñar y publicar una vista nueva está documentado en [`docs/ADDING_WORKSPACE.md`](docs/ADDING_WORKSPACE.md).
-
-## Ambient Continuity
-
-Inicio shows one relevant ongoing activity when Android exposes it: navigation, active or recently paused media, or progress. Media specializes in the current media session. The other catalog views remain focused compositions with deterministic fallbacks.
-
-Veil asks for Android notification-listener access contextually. This access is optional, content remains in memory, and Ambient Continuity deliberately ignores calls, conversations, email, alarms, social notifications, and unrelated notifications. Without access, every launcher and drawer feature continues to work normally.
-
-The same optional access powers a separate privacy-preserving signal on Inicio app rows and selected-view docks. A small dot means Android currently exposes at least one relevant, badge-eligible notification for that app. It never shows content or a count, does not claim to measure unread messages, and disappears only when Android removes the last relevant notification.
-
-## Bootstrap verification
+Configura estos valores únicamente en el almacén de secretos del entorno de publicación y ejecuta:
 
 ```bash
-./gradlew assembleDebug
+./gradlew clean test lint bundleRelease
 ```
 
-The product direction and implementation guardrails are documented in [PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md).
-
-## Configuration
-
-Veil ships vendor-neutral semantic defaults rather than a single developer's app list. Each initial slot contains alternatives from several providers; Planificación, Concentración, Media and Juegos can also use Android application categories as deterministic fallbacks. Inicio, Dispositivo and En movimiento leave a missing semantic slot empty instead of inserting an unrelated app.
-
-Runtime preferences live in the internal **Ajustes de Veil** screen, available from Everything and Dispositivo. **Pantallas** selects and orders the four catalog views around Inicio. View apps are edited directly where they appear: hold an app to replace or remove it, or tap an empty `+` slot. Once a view is customized, its five exact package positions are persisted by stable view identity and Veil no longer refills or reorders them automatically.
-
-The bounded product defaults and palette remain declared in [`LauncherConfig.kt`](app/src/main/java/dev/vicent/veil/config/LauncherConfig.kt); normal personalization does not require editing source code.
-
-Veil displays the real system wallpaper through the Android window. The visual concept images are kept under [`docs/design`](docs/design) as references and are not bundled into the APK.
-
-The settings screen also offers five accessible accent presets, Android 12+ dynamic color, a **Fuente de Inicio** submenu with light/dark foreground, three fixed text weights and an optional intensity-adjustable contrast filter behind every view, the system wallpaper chooser, permission/special-access status, HOME-role selection and a preferred music provider.
-
-## Application drawer
-
-- Swipe upward on Home to open the complete alphabetical application list.
-- Press Home while Veil is already running to open the drawer directly.
-- Press Home again while the drawer is open to return to the clean Home screen.
-- Search by application label or package name; accents do not affect matching.
-- Search also exposes direct links to common Android settings such as Wi-Fi, Bluetooth, display, sound, battery, security, and accessibility.
-- The SYSTEM section always includes an action to activate or review Ambient Continuity access.
-- That action also explains and manages the content-free application notification signals.
-- Press the keyboard search action to open the first result, or use Back / `CERRAR` to return Home.
-- Long-press an application on Home or in the drawer to open its action sheet: Open, App info, or Android's uninstall confirmation.
