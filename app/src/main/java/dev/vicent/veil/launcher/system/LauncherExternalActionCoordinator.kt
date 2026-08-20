@@ -27,6 +27,16 @@ class LauncherExternalActionCoordinator(
         }
     }
 
+    fun openSearchResult(app: LauncherApp, query: String) {
+        if (appLauncher().launch(app)) {
+            controller().recordSuccessfulSearchSelection(query, app.packageName)
+            markLaunched()
+            controller().closeDrawer()
+        } else {
+            controller().removeUnavailableApp(app.packageName)
+        }
+    }
+
     fun openSetting(shortcut: SettingsShortcut) {
         if (settingsLauncher().launch(shortcut)) {
             markLaunched()

@@ -274,6 +274,7 @@
     <string name="drawer_system">SISTEMA</string>
     <string name="drawer_loading_apps">BUSCANDO APLICACIONES…</string>
     <string name="drawer_veil_settings_search">ajustes configuracion preferencias veil tema color acento fondo wallpaper permisos privacidad launcher</string>
+    <string name="drawer_continuity_search">continuidad notificaciones acceso permiso actividad actual</string>
     <string name="drawer_settings_search_prefix">ajustes configuracion sistema</string>
     <string name="drawer_open_veil_settings">Abrir Ajustes de Veil</string>
     <string name="drawer_veil_settings">Ajustes de Veil</string>

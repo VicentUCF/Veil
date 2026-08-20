@@ -25,6 +25,7 @@ data class LauncherNavigationActions(
 
 data class LauncherAppActions(
     val onAppSelected: (LauncherApp) -> Unit,
+    val onSearchAppSelected: (LauncherApp, String) -> Unit,
     val onSettingsSelected: (SettingsShortcut) -> Unit,
     val onAppInfoSelected: (LauncherApp) -> Unit,
     val onAppUninstallSelected: (LauncherApp) -> Unit,

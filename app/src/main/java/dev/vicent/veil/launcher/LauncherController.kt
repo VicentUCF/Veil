@@ -18,6 +18,7 @@ import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
 import dev.vicent.veil.launcher.repository.LauncherPreferencesRepository
 import dev.vicent.veil.launcher.repository.QuickNotesRepository
+import dev.vicent.veil.launcher.repository.SearchLearningRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.SteamGameRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
@@ -42,6 +43,7 @@ class LauncherController(
     private val audioMixerRepository: AudioMixerRepository,
     private val steamGameRepository: SteamGameRepository,
     private val preferencesRepository: LauncherPreferencesRepository,
+    private val searchLearningRepository: SearchLearningRepository,
     private val accessMonitor: LauncherAccessMonitor,
     contexts: List<LauncherContext>,
     private val quickActionCount: Int,
@@ -54,6 +56,7 @@ class LauncherController(
         LauncherUiState(
             contexts = contextResolver.emptyContexts,
             preferences = preferencesRepository.state.value,
+            searchLearning = searchLearningRepository.state.value,
             access = accessMonitor.snapshot(),
             gameFeed = steamGameRepository.state.value,
             isContinuityOnboardingDismissed =
@@ -72,6 +75,7 @@ class LauncherController(
         audioMixerRepository = audioMixerRepository,
         steamGameRepository = steamGameRepository,
         preferencesRepository = preferencesRepository,
+        searchLearningRepository = searchLearningRepository,
         contextResolver = contextResolver,
         state = mutableState,
         timeProvider = timeProvider,
@@ -195,6 +199,10 @@ class LauncherController(
         checklist: List<QuickNoteChecklistItem>,
     ) = quickNotesRepository.update(id, title, type, body, checklist)
     fun deleteQuickNote(id: Long) = quickNotesRepository.delete(id)
+
+    fun recordSuccessfulSearchSelection(query: String, packageName: String) {
+        searchLearningRepository.recordSuccessfulSelection(query, packageName)
+    }
 
     fun openDrawer() = navigationCoordinator.openDrawer()
 

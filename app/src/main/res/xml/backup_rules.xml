@@ -4,4 +4,5 @@
     <exclude domain="sharedpref" path="veil_notification_access.xml" />
     <exclude domain="sharedpref" path="veil_launcher_preferences.xml" />
     <exclude domain="sharedpref" path="veil_game_feed.xml" />
+    <exclude domain="sharedpref" path="veil_search_learning.xml" />
 </full-backup-content>

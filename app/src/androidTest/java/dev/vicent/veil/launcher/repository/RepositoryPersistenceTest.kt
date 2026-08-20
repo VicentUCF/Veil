@@ -25,6 +25,7 @@ class RepositoryPersistenceTest {
             LauncherPreferencesRepository.PREFERENCES_NAME,
             QuickNotesRepository.PREFERENCES_NAME,
             FocusTimerStore.PREFERENCES_NAME,
+            SearchLearningRepository.PREFERENCES_NAME,
         ).forEach { name ->
             context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
         }
@@ -77,5 +78,22 @@ class RepositoryPersistenceTest {
         )
 
         assertEquals(7_000L, restored.remainingMillis)
+    }
+
+    @Test
+    fun searchLearningSurvivesRepositoryRecreationAndRemovesMissingApps() {
+        val now = 100_000L
+        SearchLearningRepository(context, TimeProvider { now }).apply {
+            recordSuccessfulSelection("Ínsta", "com.instagram.android")
+            recordSuccessfulSelection("insta", "com.instagram.android")
+        }
+
+        val restored = SearchLearningRepository(context, TimeProvider { now })
+        val entry = restored.state.value.entries.single()
+        assertEquals("insta", entry.query)
+        assertEquals(2, entry.selectionCount)
+
+        restored.retainInstalledPackages(emptySet())
+        assertEquals(0, restored.state.value.entries.size)
     }
 }

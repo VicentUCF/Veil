@@ -1,6 +1,7 @@
 package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.AudioMixerState
+import dev.vicent.veil.launcher.model.AppSearchLearningState
 import dev.vicent.veil.launcher.model.CalendarEventSummary
 import dev.vicent.veil.launcher.model.ContinuityItem
 import dev.vicent.veil.launcher.model.FocusTimerState
@@ -31,6 +32,7 @@ sealed interface ResolvedQuickAction {
 data class LauncherUiState(
     val contexts: List<ResolvedLauncherContext>,
     val installedApps: List<LauncherApp> = emptyList(),
+    val searchLearning: AppSearchLearningState = AppSearchLearningState(),
     val activeContextIndex: Int = 0,
     val isLoading: Boolean = true,
     val navigation: LauncherNavigationState = LauncherNavigationState(),

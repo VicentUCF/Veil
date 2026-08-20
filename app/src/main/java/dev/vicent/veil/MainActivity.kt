@@ -31,6 +31,7 @@ import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
 import dev.vicent.veil.launcher.repository.LauncherPreferencesRepository
 import dev.vicent.veil.launcher.repository.QuickNotesRepository
+import dev.vicent.veil.launcher.repository.SearchLearningRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.SteamGameRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
             audioMixerRepository = AudioMixerRepository(applicationContext),
             steamGameRepository = SteamGameRepository(applicationContext),
             preferencesRepository = preferencesRepository,
+            searchLearningRepository = SearchLearningRepository(applicationContext),
             accessMonitor = accessMonitor,
             contexts = LauncherConfig.contexts,
             quickActionCount = LauncherConfig.QUICK_ACTION_COUNT,
@@ -182,6 +184,7 @@ class MainActivity : ComponentActivity() {
                     ),
                     appActions = LauncherAppActions(
                         onAppSelected = externalActions::openApp,
+                        onSearchAppSelected = externalActions::openSearchResult,
                         onSettingsSelected = externalActions::openSetting,
                         onAppInfoSelected = externalActions::openAppInfo,
                         onAppUninstallSelected = externalActions::requestUninstall,

@@ -62,10 +62,14 @@ internal fun LauncherDrawerLayer(
     ) {
         AppDrawer(
             installedApps = state.installedApps,
+            searchLearning = state.searchLearning,
             settingsShortcuts = settingsShortcuts,
             isLoading = state.isLoading,
-            onAppSelected = appActions.onAppSelected,
-            onAppLongPressed = { onAppActionsRequested(AppActionsTarget(it)) },
+            isOpen = state.isDrawerOpen,
+            onAppSelected = appActions.onSearchAppSelected,
+            onAppLongPressed = { app, query ->
+                onAppActionsRequested(AppActionsTarget(app = app, searchQuery = query))
+            },
             onSettingsSelected = appActions.onSettingsSelected,
             onVeilSettingsSelected = navigationActions.onOpenSettings,
             continuityAccessGranted = state.continuityAccessGranted,

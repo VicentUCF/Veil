@@ -1,6 +1,6 @@
 # Hoja de declaración Data Safety
 
-Estado técnico comprobado el 13 de agosto de 2026. Esta hoja describe el binario actual de Veil; debe revisarse de nuevo si cambia el código, un proveedor o el formulario de Google Play.
+Estado técnico comprobado el 20 de agosto de 2026. Esta hoja describe el binario actual de Veil; debe revisarse de nuevo si cambia el código, un proveedor o el formulario de Google Play.
 
 ## Respuestas generales
 
@@ -26,10 +26,12 @@ Según el comportamiento actual, no se declaran como recopilados porque no se tr
 
 - aplicaciones instaladas;
 - eventos del calendario;
-- notas rápidas y preferencias;
+- notas rápidas, preferencias y asociaciones locales acotadas entre consultas de Everything y apps elegidas;
 - claves y paquetes de señales de notificación;
 - FFT transitorio de la mezcla de audio;
 - temporizadores y configuración del launcher.
+
+El aprendizaje de Everything no usa `UsageStats`, no observa aperturas fuera de su propio buscador y no se transmite. Conserva como máximo 100 asociaciones durante 90 días y se excluye de backup y transferencia.
 
 El permiso `RECORD_AUDIO` no implica que Veil recopile grabaciones: el binario solo analiza localmente el espectro de salida mientras la app está visible, MEDIA está visible y hay reproducción. No almacena ni transmite audio.
 

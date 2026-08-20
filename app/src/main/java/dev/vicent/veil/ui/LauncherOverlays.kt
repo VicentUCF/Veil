@@ -15,6 +15,7 @@ internal data class AppActionsTarget(
     val app: LauncherApp,
     val contextKind: LauncherContextKind? = null,
     val slotIndex: Int? = null,
+    val searchQuery: String? = null,
 )
 
 internal enum class LauncherDisclosure {
@@ -98,7 +99,12 @@ internal fun LauncherOverlays(
             onDismiss = onAppActionsDismissed,
             onOpen = {
                 onAppActionsDismissed()
-                appActions.onAppSelected(app)
+                val query = target.searchQuery
+                if (query.isNullOrBlank()) {
+                    appActions.onAppSelected(app)
+                } else {
+                    appActions.onSearchAppSelected(app, query)
+                }
             },
             onAppInfo = {
                 onAppActionsDismissed()

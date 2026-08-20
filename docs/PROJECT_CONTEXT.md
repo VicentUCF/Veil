@@ -42,7 +42,7 @@ Applications shown in the dock must not be repeated as portal rows inside the sa
 
 CURRENT app rows and the four contextual docks may show one restrained binary dot when Android exposes at least one active, badge-eligible notification for that package. The dot never contains a count or content, does not claim to represent unread state and remains synchronized with Android rather than being cleared locally when the app opens. Everything, workspace tiles and the top rail do not show these indicators.
 
-Everything preserves the full alphabetical app list, search, settings shortcuts and app actions. Its SYSTEM section opens the essential Veil settings screen as well as Android settings. App discovery remains cached and outside Compose.
+Everything preserves the full alphabetical app list, adaptive local search, settings shortcuts and app actions. With an empty query the list remains purely alphabetical. After typing, deterministic text relevance is refined by the successful query-to-app choices made inside Everything; no dock or workspace launch trains search. The bounded local learning retains at most 100 normalized query/package associations for 90 days, is excluded from backup and transfer, and never uses `UsageStats` or leaves the device. Its SYSTEM section opens the essential Veil settings screen as well as Android settings. App discovery remains cached and outside Compose.
 
 ## Essential launcher settings
 
@@ -61,6 +61,10 @@ Notification-listener access is explicit and optional. Supported public signals 
 Media may expose title, artist, artwork, position, duration and supported transport controls through `MediaSession`. Navigation and progress use only their public ongoing notifications. Private notification categories—calls, messages, email, alarms and social—remain excluded from Ambient Continuity.
 
 Notification indicators use a separate content-free projection of notification-listener events. Veil retains only notification keys and package names in memory, respects Android's channel badge setting where available and excludes its own notifications, ongoing/foreground services, media, navigation and progress. This signal is optional, is cleared when access is revoked or the listener disconnects, and never enters Ambient Continuity.
+
+### Everything search learning
+
+Search personalization observes only successful launches from a non-empty Everything query. It stores the normalized query, selected package, bounded selection count and last selection time. Failed searches, keystrokes, settings actions, dock launches and workspace launches are not stored. Entries expire after 90 days, the store is capped at 100 associations and packages are removed when their application is uninstalled. The data remains local, is excluded from cloud backup and device transfer, and can be removed through Android's clear-data or uninstall actions.
 
 ### Calendar
 
@@ -93,7 +97,7 @@ No data is transmitted except the disclosed Open-Meteo weather request and the o
 - Native Kotlin, Android APIs, AndroidX, Jetpack Compose, Coroutines and StateFlow.
 - A single `app` module and no dependency-injection or state-management framework.
 - Android integrations live in repositories/system adapters; composables receive small immutable states and callbacks.
-- SharedPreferences is allowed only for Focus state, weather cache, the bounded Steam public-content cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement and the bounded launcher preferences: accent, CURRENT text tone/weight, wallpaper-scrim state/intensity, preferred music provider and five nullable app-package slots per context. Do not add Room or broader configuration persistence.
+- SharedPreferences is allowed only for Focus state, weather cache, the bounded Steam public-content cache, the bounded WORK quick-note list, the one-bit notification-access onboarding acknowledgement, the bounded Everything search-learning store and the bounded launcher preferences: accent, CURRENT text tone/weight, wallpaper-scrim state/intensity, preferred music provider and five nullable app-package slots per context. Do not add Room or broader configuration persistence.
 - Keep Android handles such as `MediaController`, `PendingIntent`, cursors and listeners outside Compose state. A bounded bitmap is acceptable media display data.
 - Prefer platform APIs. No runtime third-party dependency is currently required.
 
@@ -126,7 +130,7 @@ Do not introduce a generic widget engine or speculative plugin architecture. Eac
 
 ## Explicit non-goals
 
-Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, app prediction, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, custom font families, editable grid geometry, theme export, manual launcher backups, smart-home controls, a gesture editor or a general user-customization system. The bounded accent/CURRENT-readability/wallpaper/access/app screen above is the only customization exception. The sole badge-like surface is the binary, content-free active-notification dot defined above.
+Do not add Android widgets, conversation reading, notification counts or previews, a notification inbox, UsageStats, Accessibility inference, AI, wallpaper analysis, prediction from activity outside Veil, cloud accounts, backend services, analytics, icon packs, arbitrary overlays, folders, app hiding, custom font families, editable grid geometry, theme export, manual launcher backups, smart-home controls, a gesture editor or a general user-customization system. The bounded local query-to-app learning defined for Everything is the sole prediction exception. The bounded accent/CURRENT-readability/wallpaper/access/app screen above is the only customization exception. The sole badge-like surface is the binary, content-free active-notification dot defined above.
 
 Do not promise access to third-party internal state such as a Kindle chapter unless that application publishes a compatible Android session or notification. Veil cannot embed or transform another application's task as if it were a desktop window.
 

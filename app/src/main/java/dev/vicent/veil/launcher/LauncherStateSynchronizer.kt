@@ -9,6 +9,7 @@ import dev.vicent.veil.launcher.repository.CalendarRepository
 import dev.vicent.veil.launcher.repository.FocusTimerRepository
 import dev.vicent.veil.launcher.repository.LauncherPreferencesRepository
 import dev.vicent.veil.launcher.repository.QuickNotesRepository
+import dev.vicent.veil.launcher.repository.SearchLearningRepository
 import dev.vicent.veil.launcher.repository.SteamGameRepository
 import dev.vicent.veil.launcher.repository.SystemStatusRepository
 import dev.vicent.veil.launcher.repository.WeatherRepository
@@ -28,6 +29,7 @@ internal class LauncherStateSynchronizer(
     private val audioMixerRepository: AudioMixerRepository,
     private val steamGameRepository: SteamGameRepository,
     private val preferencesRepository: LauncherPreferencesRepository,
+    private val searchLearningRepository: SearchLearningRepository,
     private val contextResolver: LauncherContextResolver,
     private val state: MutableStateFlow<LauncherUiState>,
     private val timeProvider: TimeProvider,
@@ -53,6 +55,11 @@ internal class LauncherStateSynchronizer(
                             appScanComplete = !currentState.isLoading,
                         )
                 }
+            }
+        }
+        scope.launch {
+            searchLearningRepository.state.collect { learning ->
+                state.update { it.copy(searchLearning = learning) }
             }
         }
         scope.launch {
@@ -95,6 +102,11 @@ internal class LauncherStateSynchronizer(
         }
         scope.launch {
             val installedApps = appRepository.loadLaunchableApps()
+            if (installedApps.isNotEmpty()) {
+                searchLearningRepository.retainInstalledPackages(
+                    installedApps.mapTo(mutableSetOf(), LauncherApp::packageName),
+                )
+            }
             state.update { currentState ->
                 currentState.withInstalledApps(
                     installedApps = installedApps,
@@ -143,6 +155,11 @@ internal class LauncherStateSynchronizer(
     fun refreshApps(scope: CoroutineScope) {
         scope.launch {
             val installedApps = appRepository.refreshLaunchableApps()
+            if (installedApps.isNotEmpty()) {
+                searchLearningRepository.retainInstalledPackages(
+                    installedApps.mapTo(mutableSetOf(), LauncherApp::packageName),
+                )
+            }
             state.update { currentState ->
                 currentState.withInstalledApps(installedApps)
             }
@@ -150,6 +167,7 @@ internal class LauncherStateSynchronizer(
     }
 
     fun removeUnavailableApp(packageName: String) {
+        searchLearningRepository.removePackage(packageName)
         state.update { currentState ->
             currentState.withInstalledApps(
                 currentState.installedApps.filterNot { app ->

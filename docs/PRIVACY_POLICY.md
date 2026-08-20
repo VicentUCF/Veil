@@ -1,12 +1,13 @@
 # Política de privacidad de Veil
 
-Última actualización: 13 de agosto de 2026.
+Última actualización: 20 de agosto de 2026.
 
 Veil es un launcher Android sin cuentas de usuario, publicidad, analítica, rastreadores ni backend propio.
 
 ## Datos procesados en el dispositivo
 
 - Lista de aplicaciones instaladas y preferencias del launcher, para mostrar y configurar el inicio.
+- Aprendizaje local de Everything. Solo después de abrir correctamente una app desde una búsqueda no vacía, Veil conserva la consulta normalizada, el paquete elegido, un contador acotado y la fecha de la última elección. No guarda pulsaciones, búsquedas fallidas ni aperturas desde docks o workspaces. Mantiene como máximo 100 asociaciones durante 90 días y las excluye de copias de seguridad y transferencias.
 - Eventos próximos del calendario, solo con permiso y para mostrarlos en el workspace.
 - Señales de notificaciones compatibles, solo con acceso explícito. Veil conserva en memoria claves y nombres de paquete necesarios para indicadores sin contenido; no muestra ni persiste el texto de las notificaciones.
 - Espectro de salida de audio, solo con permiso de micrófono, mientras Veil está en primer plano, MEDIA está visible y hay reproducción. El FFT es transitorio y no se guarda ni transmite.
@@ -26,7 +27,7 @@ Los accesos a calendario, ubicación aproximada, notificaciones, audio, alarmas 
 
 ## Compartición, venta y conservación
 
-Veil no vende datos ni los comparte con fines publicitarios. No existe una cuenta remota de Veil. Los únicos destinatarios externos son Open-Meteo y Steam para las funciones descritas. Los datos locales permanecen hasta que el usuario los borra; las señales transitorias se eliminan al perder el acceso o finalizar la sesión relevante.
+Veil no vende datos ni los comparte con fines publicitarios. No existe una cuenta remota de Veil. Los únicos destinatarios externos son Open-Meteo y Steam para las funciones descritas. Los datos locales permanecen hasta que el usuario los borra, salvo el aprendizaje de búsqueda, que además caduca automáticamente a los 90 días; las señales transitorias se eliminan al perder el acceso o finalizar la sesión relevante.
 
 ## Publicación y contacto
 

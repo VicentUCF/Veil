@@ -93,6 +93,7 @@ fun LauncherScreen(
     ) = navigationActions
     val (
         onAppSelected,
+        _,
         onSettingsSelected,
         _,
         _,

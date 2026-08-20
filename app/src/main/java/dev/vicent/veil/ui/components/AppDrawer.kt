@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -41,6 +42,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -49,19 +51,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.vicent.veil.launcher.model.LauncherApp
+import dev.vicent.veil.launcher.model.AppSearchLearningState
 import dev.vicent.veil.launcher.model.SettingsShortcut
+import dev.vicent.veil.launcher.AppSearchCandidate
+import dev.vicent.veil.launcher.AppSearchPolicy
+import dev.vicent.veil.launcher.normalizeSearchText
 import dev.vicent.veil.R
 import dev.vicent.veil.ui.theme.LocalVeilPalette
-import java.text.Normalizer
-import java.util.Locale
 
 @Composable
 fun AppDrawer(
     installedApps: List<LauncherApp>,
+    searchLearning: AppSearchLearningState,
     settingsShortcuts: List<SettingsShortcut>,
     isLoading: Boolean,
-    onAppSelected: (LauncherApp) -> Unit,
-    onAppLongPressed: (LauncherApp) -> Unit,
+    isOpen: Boolean,
+    onAppSelected: (LauncherApp, String) -> Unit,
+    onAppLongPressed: (LauncherApp, String) -> Unit,
     onSettingsSelected: (SettingsShortcut) -> Unit,
     onVeilSettingsSelected: () -> Unit,
     continuityAccessGranted: Boolean,
@@ -72,13 +78,19 @@ fun AppDrawer(
     val palette = LocalVeilPalette.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var query by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    val rankingTimeMillis = remember { System.currentTimeMillis() }
     val veilSettingsSearchTerms = stringResource(R.string.drawer_veil_settings_search)
+    val continuitySearchTerms = stringResource(R.string.drawer_continuity_search)
     val settingsSearchPrefix = stringResource(R.string.drawer_settings_search_prefix)
     val normalizedTerms = remember(query) {
         query.normalizeForSearch().split(Regex("\\s+")).filter(String::isNotBlank)
     }
     val veilSettingsVisible = remember(query, veilSettingsSearchTerms) {
         veilSettingsMatches(query, veilSettingsSearchTerms)
+    }
+    val continuityVisible = remember(query, continuitySearchTerms) {
+        AppSearchPolicy.matches(query, continuitySearchTerms)
     }
     val visibleSettings = remember(settingsShortcuts, normalizedTerms, settingsSearchPrefix) {
         if (normalizedTerms.isEmpty()) {
@@ -87,23 +99,56 @@ fun AppDrawer(
             settingsShortcuts.filter { shortcut ->
                 val searchable = "$settingsSearchPrefix ${shortcut.label} " +
                     shortcut.searchTerms
-                val normalizedSearchable = searchable.normalizeForSearch()
-                normalizedTerms.all(normalizedSearchable::contains)
+                AppSearchPolicy.matches(query, searchable)
             }
         }
     }
-    val visibleApps = remember(installedApps, normalizedTerms) {
+    val searchCandidates = remember(installedApps) {
+        installedApps.mapIndexed { index, app ->
+            AppSearchCandidate(
+                packageName = app.packageName,
+                label = app.label,
+                sourceIndex = index,
+            )
+        }
+    }
+    val appsByPackage = remember(installedApps) {
+        installedApps.associateBy(LauncherApp::packageName)
+    }
+    val visibleApps = remember(
+        installedApps,
+        searchCandidates,
+        appsByPackage,
+        query,
+        searchLearning,
+        rankingTimeMillis,
+    ) {
         if (normalizedTerms.isEmpty()) {
             installedApps
         } else {
-            installedApps.filter { app ->
-                val searchable = "${app.label} ${app.packageName}".normalizeForSearch()
-                normalizedTerms.all(searchable::contains)
-            }
+            AppSearchPolicy.rank(
+                candidates = searchCandidates,
+                rawQuery = query,
+                learning = searchLearning.entries,
+                nowMillis = rankingTimeMillis,
+            ).mapNotNull { appsByPackage[it.packageName] }
         }
     }
     val firstResult = visibleApps.firstOrNull()
-        ?: if (veilSettingsVisible) VeilSettingsResult else visibleSettings.firstOrNull()
+        ?: when {
+            veilSettingsVisible -> VeilSettingsResult
+            continuityVisible -> ContinuityAccessResult
+            else -> visibleSettings.firstOrNull()
+        }
+
+    LaunchedEffect(query) {
+        if (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0) {
+            listState.scrollToItem(0)
+        }
+    }
+    LaunchedEffect(isOpen) {
+        if (!isOpen) query = ""
+    }
 
     Column(
         modifier = modifier
@@ -111,22 +156,32 @@ fun AppDrawer(
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .imePadding(),
     ) {
-        DrawerHeader(onClose = onClose)
+        DrawerHeader(
+            onClose = {
+                query = ""
+                onClose()
+            },
+        )
         SearchField(
             query = query,
             onQueryChanged = { query = it },
             onClear = { query = "" },
             onSubmit = {
+                if (query.isBlank()) return@SearchField
                 when (firstResult) {
                     VeilSettingsResult -> onVeilSettingsSelected()
+                    ContinuityAccessResult -> onContinuityAccessSelected()
                     is SettingsShortcut -> onSettingsSelected(firstResult)
-                    is LauncherApp -> onAppSelected(firstResult)
+                    is LauncherApp -> onAppSelected(firstResult, query)
                 }
             },
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
         )
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
             if (visibleApps.isNotEmpty()) {
                 item(key = "apps-header") {
                     DrawerSectionLabel(
@@ -151,28 +206,33 @@ fun AppDrawer(
                 ) { app ->
                     DrawerAppRow(
                         app = app,
-                        onClick = { onAppSelected(app) },
+                        onClick = { onAppSelected(app, query) },
                         onLongClick = {
                             keyboardController?.hide()
-                            onAppLongPressed(app)
+                            onAppLongPressed(app, query)
                         },
                     )
                 }
             }
 
-            item(key = "system-header") {
-                DrawerSectionLabel(text = stringResource(R.string.drawer_system))
+            val hasSystemResults = veilSettingsVisible || continuityVisible || visibleSettings.isNotEmpty()
+            if (hasSystemResults) {
+                item(key = "system-header") {
+                    DrawerSectionLabel(text = stringResource(R.string.drawer_system))
+                }
             }
             if (veilSettingsVisible) {
                 item(key = "veil-settings") {
                     VeilSettingsRow(onClick = onVeilSettingsSelected)
                 }
             }
-            item(key = "continuity-access") {
-                ContinuityAccessRow(
-                    accessGranted = continuityAccessGranted,
-                    onClick = onContinuityAccessSelected,
-                )
+            if (continuityVisible) {
+                item(key = "continuity-access") {
+                    ContinuityAccessRow(
+                        accessGranted = continuityAccessGranted,
+                        onClick = onContinuityAccessSelected,
+                    )
+                }
             }
             if (visibleSettings.isNotEmpty()) {
                 items(visibleSettings, key = { "settings-${it.id}" }) { shortcut ->
@@ -183,7 +243,13 @@ fun AppDrawer(
                 }
             }
 
-            if (!isLoading && !veilSettingsVisible && visibleSettings.isEmpty() && visibleApps.isEmpty()) {
+            if (
+                !isLoading &&
+                !veilSettingsVisible &&
+                !continuityVisible &&
+                visibleSettings.isEmpty() &&
+                visibleApps.isEmpty()
+            ) {
                 item(key = "empty") {
                     EmptyResult(query = query)
                 }
@@ -201,13 +267,10 @@ fun AppDrawer(
 }
 
 private data object VeilSettingsResult
+private data object ContinuityAccessResult
 
-internal fun veilSettingsMatches(query: String, searchable: String): Boolean {
-    val terms = query.normalizeForSearch().split(Regex("\\s+")).filter(String::isNotBlank)
-    if (terms.isEmpty()) return true
-    val normalizedSearchable = searchable.normalizeForSearch()
-    return terms.all(normalizedSearchable::contains)
-}
+internal fun veilSettingsMatches(query: String, searchable: String): Boolean =
+    AppSearchPolicy.matches(query, searchable)
 
 @Composable
 private fun ContinuityAccessRow(
@@ -223,7 +286,7 @@ private fun ContinuityAccessRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .height(56.dp)
             .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
             .padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -395,6 +458,7 @@ private fun SearchField(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 14.dp)
+                .testTag(APP_DRAWER_SEARCH_TEST_TAG)
                 .focusRequester(focusRequester),
         )
         if (query.isNotEmpty()) {
@@ -455,28 +519,17 @@ private fun DrawerAppRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LauncherAppIcon(app = app, size = 28.dp)
-        Column(modifier = Modifier.padding(start = 20.dp)) {
-            BasicText(
-                text = app.label,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = TextStyle(
-                    color = palette.contentPrimary,
-                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
-                    fontSize = 16.sp,
-                ),
-            )
-            BasicText(
-                text = app.packageName,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = TextStyle(
-                    color = palette.contentMuted,
-                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.system,
-                    fontSize = 10.sp,
-                ),
-            )
-        }
+        BasicText(
+            text = app.label,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(
+                color = palette.contentPrimary,
+                fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
+                fontSize = 16.sp,
+            ),
+            modifier = Modifier.padding(start = 20.dp),
+        )
     }
 }
 
@@ -546,9 +599,6 @@ private fun EmptyResult(query: String) {
     }
 }
 
-internal fun String.normalizeForSearch(): String = Normalizer
-    .normalize(this, Normalizer.Form.NFD)
-    .replace(COMBINING_MARKS, "")
-    .lowercase(Locale.ROOT)
+internal fun String.normalizeForSearch(): String = normalizeSearchText(this)
 
-private val COMBINING_MARKS = Regex("\\p{M}+")
+internal const val APP_DRAWER_SEARCH_TEST_TAG = "app-drawer-search"
