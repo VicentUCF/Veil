@@ -5,6 +5,8 @@ import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
+import dev.vicent.veil.launcher.model.HomeButtonGesture
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
@@ -18,6 +20,7 @@ data class LauncherNavigationActions(
     val onOpenSettings: () -> Unit,
     val onCloseSettings: () -> Unit,
     val onOpenMusicProviderPicker: () -> Unit,
+    val onOpenHomeButtonPicker: (HomeButtonGesture) -> Unit,
     val onOpenContextSlotPicker: (LauncherContextKind, Int) -> Unit,
     val onHomeButtonTap: () -> Unit,
     val onHomeButtonLongPress: () -> Unit,
@@ -32,6 +35,7 @@ data class LauncherAppActions(
     val onExternalLinkSelected: (String) -> Unit,
     val onPrivacyPolicySelected: () -> Boolean,
     val onSettingsAppSelected: (String) -> Unit,
+    val onHomeButtonActionSelected: (HomeButtonActionSpec) -> Unit,
     val onMusicProviderCleared: () -> Unit,
     val onContextSlotCleared: (LauncherContextKind, Int) -> Unit,
 )

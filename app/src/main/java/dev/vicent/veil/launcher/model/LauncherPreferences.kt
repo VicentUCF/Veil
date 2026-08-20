@@ -57,7 +57,39 @@ data class LauncherPreferences(
     val wallpaperScrimIntensity: Float = 0.5f,
     val musicProviderPackage: String? = null,
     val contextAppOverrides: Map<LauncherContextKind, List<String?>> = emptyMap(),
+    val homeButtonConfig: HomeButtonConfig = HomeButtonConfig(
+        onTap = HomeButtonActionSpec.Everything,
+        onLongPress = HomeButtonActionSpec.Everything,
+    ),
 )
+
+object HomeButtonActionPreferencesPolicy {
+    private const val EVERYTHING = "everything"
+    private const val VEIL_SETTINGS = "veil_settings"
+    private const val APP_PREFIX = "app:"
+    private const val SETTING_PREFIX = "setting:"
+
+    fun encode(action: HomeButtonActionSpec): String = when (action) {
+        HomeButtonActionSpec.Everything -> EVERYTHING
+        HomeButtonActionSpec.VeilSettings -> VEIL_SETTINGS
+        is HomeButtonActionSpec.App -> APP_PREFIX + action.packageCandidates.firstOrNull().orEmpty()
+        is HomeButtonActionSpec.Setting -> SETTING_PREFIX + action.id
+    }
+
+    fun decode(value: String?, fallback: HomeButtonActionSpec): HomeButtonActionSpec = when {
+        value == EVERYTHING -> HomeButtonActionSpec.Everything
+        value == VEIL_SETTINGS -> HomeButtonActionSpec.VeilSettings
+        value?.startsWith(APP_PREFIX) == true -> value.removePrefix(APP_PREFIX)
+            .takeIf(String::isNotBlank)
+            ?.let { HomeButtonActionSpec.App(listOf(it)) }
+            ?: fallback
+        value?.startsWith(SETTING_PREFIX) == true -> value.removePrefix(SETTING_PREFIX)
+            .takeIf(String::isNotBlank)
+            ?.let(HomeButtonActionSpec::Setting)
+            ?: fallback
+        else -> fallback
+    }
+}
 
 object LauncherPreferencesPolicy {
     fun decodeAppearance(

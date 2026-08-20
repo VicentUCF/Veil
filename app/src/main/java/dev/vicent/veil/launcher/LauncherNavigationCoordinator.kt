@@ -2,6 +2,7 @@ package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.SettingsAppTarget
+import dev.vicent.veil.launcher.model.HomeButtonGesture
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
@@ -57,6 +58,18 @@ internal class LauncherNavigationCoordinator(
                 current.navigation.openSettings()
             },
             settingsAppTarget = SettingsAppTarget.MusicProvider,
+            settingsPickerReturnsToSettings = current.isSettingsOpen,
+        )
+    }
+
+    fun openHomeButtonPicker(gesture: HomeButtonGesture) = state.update { current ->
+        current.copy(
+            navigation = if (current.isSettingsOpen) {
+                current.navigation
+            } else {
+                current.navigation.openSettings()
+            },
+            settingsAppTarget = SettingsAppTarget.HomeButton(gesture),
             settingsPickerReturnsToSettings = current.isSettingsOpen,
         )
     }

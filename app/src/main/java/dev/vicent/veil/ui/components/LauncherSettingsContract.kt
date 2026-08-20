@@ -8,13 +8,18 @@ import dev.vicent.veil.launcher.model.LauncherAccessState
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherPreferences
 import dev.vicent.veil.launcher.model.SettingsAppTarget
+import dev.vicent.veil.launcher.model.SettingsShortcut
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
+import dev.vicent.veil.launcher.model.HomeButtonGesture
 
 data class LauncherSettingsUiState(
     val preferences: LauncherPreferences,
     val access: LauncherAccessState,
     val installedApps: List<LauncherApp>,
+    val settingsShortcuts: List<SettingsShortcut>,
     val appTarget: SettingsAppTarget?,
     val showFontSettings: Boolean,
+    val showHomeButtonSettings: Boolean,
     val systemAccent: Color?,
     val publisherInfo: LauncherPublisherInfo,
 )
@@ -27,6 +32,7 @@ data class LauncherPublisherInfo(
 data class SettingsNavigationActions(
     val onBack: () -> Unit,
     val onOpenFontSettings: () -> Unit,
+    val onOpenHomeButtonSettings: () -> Unit,
 )
 
 data class SettingsAppearanceActions(
@@ -41,7 +47,9 @@ data class SettingsAppearanceActions(
 
 data class SettingsAppActions(
     val onOpenMusicProviderPicker: () -> Unit,
+    val onOpenHomeButtonPicker: (HomeButtonGesture) -> Unit,
     val onSettingsAppSelected: (String) -> Unit,
+    val onHomeButtonActionSelected: (HomeButtonActionSpec) -> Unit,
     val onMusicProviderCleared: () -> Unit,
 )
 

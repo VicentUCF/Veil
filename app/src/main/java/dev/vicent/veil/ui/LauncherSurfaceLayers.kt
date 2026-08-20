@@ -83,7 +83,9 @@ internal fun LauncherDrawerLayer(
 @Composable
 internal fun LauncherSettingsLayer(
     state: LauncherUiState,
+    settingsShortcuts: List<SettingsShortcut>,
     showFontSettings: Boolean,
+    showHomeButtonSettings: Boolean,
     systemAccent: Color?,
     publisherInfo: LauncherPublisherInfo,
     navigationActions: LauncherNavigationActions,
@@ -92,6 +94,7 @@ internal fun LauncherSettingsLayer(
     appearanceActions: LauncherAppearanceActions,
     onBack: () -> Unit,
     onFontSettingsRequested: () -> Unit,
+    onHomeButtonSettingsRequested: () -> Unit,
     onDisclosureRequested: (LauncherDisclosure) -> Unit,
 ) {
     AnimatedVisibility(
@@ -121,14 +124,17 @@ internal fun LauncherSettingsLayer(
                 preferences = state.preferences,
                 access = state.access,
                 installedApps = state.installedApps,
+                settingsShortcuts = settingsShortcuts,
                 appTarget = state.settingsAppTarget,
                 showFontSettings = showFontSettings,
+                showHomeButtonSettings = showHomeButtonSettings,
                 systemAccent = systemAccent,
                 publisherInfo = publisherInfo,
             ),
             navigationActions = SettingsNavigationActions(
                 onBack = onBack,
                 onOpenFontSettings = onFontSettingsRequested,
+                onOpenHomeButtonSettings = onHomeButtonSettingsRequested,
             ),
             appearanceActions = SettingsAppearanceActions(
                 onAccentSelected = appearanceActions.onAccentSelected,
@@ -141,7 +147,9 @@ internal fun LauncherSettingsLayer(
             ),
             appActions = SettingsAppActions(
                 onOpenMusicProviderPicker = navigationActions.onOpenMusicProviderPicker,
+                onOpenHomeButtonPicker = navigationActions.onOpenHomeButtonPicker,
                 onSettingsAppSelected = appActions.onSettingsAppSelected,
+                onHomeButtonActionSelected = appActions.onHomeButtonActionSelected,
                 onMusicProviderCleared = appActions.onMusicProviderCleared,
             ),
             accessActions = settingsAccessActions(

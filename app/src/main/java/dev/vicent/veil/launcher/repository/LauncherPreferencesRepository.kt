@@ -9,11 +9,21 @@ import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.ContextAppPreferencesPolicy
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
+import dev.vicent.veil.launcher.model.HomeButtonActionPreferencesPolicy
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
+import dev.vicent.veil.launcher.model.HomeButtonConfig
+import dev.vicent.veil.launcher.model.HomeButtonGesture
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class LauncherPreferencesRepository(context: Context) {
+class LauncherPreferencesRepository(
+    context: Context,
+    private val defaultHomeButtonConfig: HomeButtonConfig = HomeButtonConfig(
+        onTap = HomeButtonActionSpec.Everything,
+        onLongPress = HomeButtonActionSpec.Everything,
+    ),
+) {
     private val preferences = context.applicationContext.getSharedPreferences(
         PREFERENCES_NAME,
         Context.MODE_PRIVATE,
@@ -74,6 +84,24 @@ class LauncherPreferencesRepository(context: Context) {
         mutableState.value = next
     }
 
+    fun setHomeButtonAction(gesture: HomeButtonGesture, action: HomeButtonActionSpec) {
+        val currentConfig = mutableState.value.homeButtonConfig
+        val nextConfig = when (gesture) {
+            HomeButtonGesture.TAP -> currentConfig.copy(onTap = action)
+            HomeButtonGesture.LONG_PRESS -> currentConfig.copy(onLongPress = action)
+        }
+        preferences.edit {
+            putString(
+                when (gesture) {
+                    HomeButtonGesture.TAP -> KEY_HOME_BUTTON_TAP
+                    HomeButtonGesture.LONG_PRESS -> KEY_HOME_BUTTON_LONG_PRESS
+                },
+                HomeButtonActionPreferencesPolicy.encode(action),
+            )
+        }
+        mutableState.value = mutableState.value.copy(homeButtonConfig = nextConfig)
+    }
+
     fun setContextSlot(
         kind: LauncherContextKind,
         slotIndex: Int,
@@ -127,6 +155,16 @@ class LauncherPreferencesRepository(context: Context) {
         return base.copy(
             musicProviderPackage = preferences.getString(KEY_MUSIC_PROVIDER, null),
             contextAppOverrides = overrides,
+            homeButtonConfig = HomeButtonConfig(
+                onTap = HomeButtonActionPreferencesPolicy.decode(
+                    preferences.getString(KEY_HOME_BUTTON_TAP, null),
+                    defaultHomeButtonConfig.onTap,
+                ),
+                onLongPress = HomeButtonActionPreferencesPolicy.decode(
+                    preferences.getString(KEY_HOME_BUTTON_LONG_PRESS, null),
+                    defaultHomeButtonConfig.onLongPress,
+                ),
+            ),
         )
     }
 
@@ -145,5 +183,7 @@ class LauncherPreferencesRepository(context: Context) {
         private const val KEY_WALLPAPER_SCRIM_ENABLED = "wallpaper_scrim_enabled"
         private const val KEY_WALLPAPER_SCRIM_INTENSITY = "wallpaper_scrim_intensity"
         private const val KEY_MUSIC_PROVIDER = "music_provider_package"
+        private const val KEY_HOME_BUTTON_TAP = "home_button_tap"
+        private const val KEY_HOME_BUTTON_LONG_PRESS = "home_button_long_press"
     }
 }

@@ -40,6 +40,9 @@ import dev.vicent.veil.R
 import dev.vicent.veil.launcher.model.AppCategory
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.SettingsAppTarget
+import dev.vicent.veil.launcher.model.SettingsShortcut
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
+import dev.vicent.veil.launcher.model.HomeButtonGesture
 import dev.vicent.veil.ui.theme.LocalVeilPalette
 import java.text.Normalizer
 import java.util.Locale
@@ -48,8 +51,10 @@ import java.util.Locale
 internal fun SettingsAppPicker(
     target: SettingsAppTarget,
     installedApps: List<LauncherApp>,
+    settingsShortcuts: List<SettingsShortcut>,
     onBack: () -> Unit,
     onSelected: (String) -> Unit,
+    onHomeButtonActionSelected: (HomeButtonActionSpec) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val palette = LocalVeilPalette.current
@@ -70,11 +75,29 @@ internal fun SettingsAppPicker(
     }
     val title = when (target) {
         SettingsAppTarget.MusicProvider -> stringResource(R.string.picker_music_title)
+        is SettingsAppTarget.HomeButton -> when (target.gesture) {
+            HomeButtonGesture.TAP -> stringResource(R.string.picker_home_button_tap_title)
+            HomeButtonGesture.LONG_PRESS -> stringResource(R.string.picker_home_button_long_press_title)
+        }
         is SettingsAppTarget.ContextSlot -> stringResource(
             R.string.picker_context_slot_title,
             target.kind.name.lowercase(),
             target.slotIndex + 1,
         )
+    }
+    val everythingLabel = stringResource(R.string.home_button_action_everything)
+    val veilSettingsLabel = stringResource(R.string.home_button_action_veil_settings)
+    val showEverything = normalizedQuery.isBlank() ||
+        everythingLabel.normalizeAppSearch().contains(normalizedQuery)
+    val showVeilSettings = normalizedQuery.isBlank() ||
+        veilSettingsLabel.normalizeAppSearch().contains(normalizedQuery)
+    val filteredSettingsShortcuts = remember(settingsShortcuts, normalizedQuery) {
+        settingsShortcuts.filter { shortcut ->
+            normalizedQuery.isBlank() ||
+                "${shortcut.label} ${shortcut.searchTerms}"
+                    .normalizeAppSearch()
+                    .contains(normalizedQuery)
+        }
     }
 
     Column(
@@ -119,8 +142,15 @@ internal fun SettingsAppPicker(
             SettingsDescription(
                 stringResource(R.string.picker_music_description),
             )
+        } else if (target is SettingsAppTarget.HomeButton) {
+            SettingsDescription(stringResource(R.string.picker_home_button_description))
         }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (target is SettingsAppTarget.HomeButton) {
+                item(key = "apps-label") {
+                    SettingsSectionLabel(stringResource(R.string.picker_home_button_apps))
+                }
+            }
             items(apps, key = LauncherApp::packageName) { app ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -155,12 +185,128 @@ internal fun SettingsAppPicker(
                     BasicText(">", style = workspaceMonoStyle(palette.accentActive, 11))
                 }
             }
-            if (apps.isEmpty()) {
+            if (target is SettingsAppTarget.HomeButton) {
+                if (apps.isEmpty() && normalizedQuery.isBlank()) {
+                    item(key = "no-installed-apps") {
+                        SettingsDescription(stringResource(R.string.picker_no_apps_available))
+                    }
+                }
+                if (filteredSettingsShortcuts.isNotEmpty()) {
+                    item(key = "system-settings-label") {
+                        SettingsSectionLabel(
+                            stringResource(R.string.picker_home_button_system_settings),
+                        )
+                    }
+                    items(
+                        filteredSettingsShortcuts,
+                        key = { "function-setting-${it.id}" },
+                    ) { shortcut ->
+                        HomeButtonFunctionRow(
+                            label = shortcut.label,
+                            detail = stringResource(
+                                R.string.home_button_action_android_setting_detail,
+                            ),
+                            onClick = {
+                                onHomeButtonActionSelected(
+                                    HomeButtonActionSpec.Setting(shortcut.id),
+                                )
+                            },
+                        )
+                    }
+                }
+                if (showEverything || showVeilSettings) {
+                    item(key = "functions-label") {
+                        SettingsSectionLabel(stringResource(R.string.picker_home_button_functions))
+                    }
+                }
+                if (showEverything) {
+                    item(key = "function-everything") {
+                        HomeButtonFunctionRow(
+                            label = everythingLabel,
+                            detail = stringResource(R.string.home_button_action_everything_detail),
+                            onClick = {
+                                onHomeButtonActionSelected(HomeButtonActionSpec.Everything)
+                            },
+                        )
+                    }
+                }
+                if (showVeilSettings) {
+                    item(key = "function-veil-settings") {
+                        HomeButtonFunctionRow(
+                            label = veilSettingsLabel,
+                            detail = stringResource(R.string.home_button_action_veil_settings_detail),
+                            onClick = {
+                                onHomeButtonActionSelected(HomeButtonActionSpec.VeilSettings)
+                            },
+                        )
+                    }
+                }
+                if (
+                    normalizedQuery.isNotBlank() &&
+                    apps.isEmpty() &&
+                    !showEverything &&
+                    !showVeilSettings &&
+                    filteredSettingsShortcuts.isEmpty()
+                ) {
+                    item(key = "empty") {
+                        SettingsDescription(stringResource(R.string.picker_no_matches))
+                    }
+                }
+            } else if (apps.isEmpty()) {
                 item(key = "empty") {
                     SettingsDescription(stringResource(R.string.picker_no_matches))
                 }
             }
             item(key = "bottom-space") { Spacer(modifier = Modifier.height(24.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun HomeButtonFunctionRow(
+    label: String,
+    detail: String,
+    onClick: () -> Unit,
+) {
+    val palette = LocalVeilPalette.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.action_choose_named, label),
+                onClick = onClick,
+            )
+            .padding(horizontal = 20.dp, vertical = 11.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(38.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(9.dp))
+                .background(palette.subtleFill),
+        ) {
+            BasicText("›", style = workspaceMonoStyle(palette.accentActive, 14))
+        }
+        Column(modifier = Modifier.weight(1f).padding(start = 14.dp)) {
+            BasicText(
+                label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = TextStyle(
+                    color = palette.contentPrimary,
+                    fontFamily = dev.vicent.veil.ui.theme.LocalVeilTypography.current.content,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+            )
+            BasicText(
+                detail,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = workspaceMonoStyle(palette.contentMuted, 8),
+            )
         }
     }
 }

@@ -87,6 +87,7 @@ fun LauncherScreen(
         onOpenSettings,
         onCloseSettings,
         onOpenMusicProviderPicker,
+        onOpenHomeButtonPicker,
         onOpenContextSlotPicker,
         onHomeButtonTap,
         onHomeButtonLongPress,
@@ -98,6 +99,7 @@ fun LauncherScreen(
         _,
         _,
         onExternalLinkSelected,
+        _,
         _,
         _,
         _,
@@ -138,9 +140,17 @@ fun LauncherScreen(
     var appWithOpenActions by remember { mutableStateOf<AppActionsTarget?>(null) }
     var activeDisclosure by remember { mutableStateOf<LauncherDisclosure?>(null) }
     var showFontSettings by remember { mutableStateOf(false) }
+    var showHomeButtonSettings by remember { mutableStateOf(false) }
 
     val handleSettingsBack = {
-        if (showFontSettings) showFontSettings = false else onCloseSettings()
+        when {
+            showFontSettings -> showFontSettings = false
+            showHomeButtonSettings -> showHomeButtonSettings = false
+            else -> onCloseSettings()
+        }
+    }
+    val handleSettingsSurfaceBack = {
+        if (state.settingsAppTarget != null) onCloseSettings() else handleSettingsBack()
     }
 
     LaunchedEffect(state.isDrawerOpen) {
@@ -152,7 +162,10 @@ fun LauncherScreen(
         }
     }
     LaunchedEffect(state.isSettingsOpen) {
-        if (!state.isSettingsOpen) showFontSettings = false
+        if (!state.isSettingsOpen) {
+            showFontSettings = false
+            showHomeButtonSettings = false
+        }
     }
 
     val contextCount = state.contexts.size
@@ -421,24 +434,32 @@ fun LauncherScreen(
         )
         LauncherSettingsLayer(
             state = state,
+            settingsShortcuts = settingsShortcuts,
             showFontSettings = showFontSettings,
+            showHomeButtonSettings = showHomeButtonSettings,
             systemAccent = systemAccent,
             publisherInfo = publisherInfo,
             navigationActions = navigationActions,
             appActions = appActions,
             accessActions = accessActions,
             appearanceActions = appearanceActions,
-            onBack = handleSettingsBack,
+            onBack = handleSettingsSurfaceBack,
             onFontSettingsRequested = { showFontSettings = true },
+            onHomeButtonSettingsRequested = { showHomeButtonSettings = true },
             onDisclosureRequested = { activeDisclosure = it },
         )
     }
 
     BackHandler {
-        when (launcherBackAction(state.navigation.surface, showFontSettings)) {
+        when (
+            launcherBackAction(
+                state.navigation.surface,
+                showFontSettings || showHomeButtonSettings || state.settingsAppTarget != null,
+            )
+        ) {
             LauncherBackAction.KEEP_HOME -> Unit
             LauncherBackAction.CLOSE_EVERYTHING -> onCloseDrawer()
-            LauncherBackAction.CLOSE_SETTINGS_DETAIL -> showFontSettings = false
+            LauncherBackAction.CLOSE_SETTINGS_DETAIL -> handleSettingsSurfaceBack()
             LauncherBackAction.CLOSE_SETTINGS -> onCloseSettings()
         }
     }

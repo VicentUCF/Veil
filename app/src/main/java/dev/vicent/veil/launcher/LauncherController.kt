@@ -8,6 +8,8 @@ import dev.vicent.veil.launcher.model.ContinuityAction
 import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
+import dev.vicent.veil.launcher.model.HomeButtonGesture
 import dev.vicent.veil.launcher.model.AudioChannel
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
 import dev.vicent.veil.launcher.model.QuickNoteType
@@ -230,6 +232,9 @@ class LauncherController(
 
     fun openMusicProviderPicker() = navigationCoordinator.openMusicProviderPicker()
 
+    fun openHomeButtonPicker(gesture: HomeButtonGesture) =
+        navigationCoordinator.openHomeButtonPicker(gesture)
+
     fun openContextSlotPicker(kind: LauncherContextKind, slotIndex: Int) {
         navigationCoordinator.openContextSlotPicker(kind, slotIndex)
     }
@@ -238,6 +243,10 @@ class LauncherController(
         val currentState = mutableState.value
         when (val target = currentState.settingsAppTarget) {
             SettingsAppTarget.MusicProvider -> preferencesRepository.setMusicProvider(packageName)
+            is SettingsAppTarget.HomeButton -> preferencesRepository.setHomeButtonAction(
+                target.gesture,
+                HomeButtonActionSpec.App(listOf(packageName)),
+            )
             is SettingsAppTarget.ContextSlot -> preferencesRepository.setContextSlot(
                 kind = target.kind,
                 slotIndex = target.slotIndex,
@@ -246,6 +255,12 @@ class LauncherController(
             )
             null -> return
         }
+        navigationCoordinator.completeAppSelection()
+    }
+
+    fun selectHomeButtonAction(action: HomeButtonActionSpec) {
+        val target = mutableState.value.settingsAppTarget as? SettingsAppTarget.HomeButton ?: return
+        preferencesRepository.setHomeButtonAction(target.gesture, action)
         navigationCoordinator.completeAppSelection()
     }
 

@@ -10,11 +10,41 @@ import dev.vicent.veil.launcher.model.LauncherSurface
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.WallpaperScrimPolicy
+import dev.vicent.veil.launcher.model.HomeButtonActionPreferencesPolicy
+import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 import org.junit.Test
 
 class LauncherSettingsTest {
+    @Test
+    fun `home button actions round trip through bounded preferences`() {
+        val actions = listOf(
+            HomeButtonActionSpec.Everything,
+            HomeButtonActionSpec.VeilSettings,
+            HomeButtonActionSpec.App(listOf("com.example.camera")),
+            HomeButtonActionSpec.Setting("display"),
+        )
+
+        actions.forEach { action ->
+            assertEquals(
+                action,
+                HomeButtonActionPreferencesPolicy.decode(
+                    HomeButtonActionPreferencesPolicy.encode(action),
+                    HomeButtonActionSpec.Everything,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `invalid home button preference preserves configured fallback`() {
+        val fallback = HomeButtonActionSpec.App(listOf("camera.one", "camera.two"))
+
+        assertEquals(fallback, HomeButtonActionPreferencesPolicy.decode("app:", fallback))
+        assertEquals(fallback, HomeButtonActionPreferencesPolicy.decode("future", fallback))
+    }
+
     @Test
     fun `preference codec round trips every accent`() {
         AccentMode.entries.forEach { mode ->

@@ -101,6 +101,7 @@ class LauncherExternalActionCoordinator(
     fun performHomeButtonAction(action: HomeButtonActionSpec, state: LauncherUiState) {
         when (action) {
             HomeButtonActionSpec.Everything -> controller().openDrawer()
+            HomeButtonActionSpec.VeilSettings -> controller().openSettings()
             is HomeButtonActionSpec.App -> {
                 val appsByPackage = state.installedApps.associateBy(LauncherApp::packageName)
                 val app = action.packageCandidates.firstNotNullOfOrNull(appsByPackage::get)

@@ -3,6 +3,8 @@ package dev.vicent.veil.launcher.model
 sealed interface SettingsAppTarget {
     data object MusicProvider : SettingsAppTarget
 
+    data class HomeButton(val gesture: HomeButtonGesture) : SettingsAppTarget
+
     data class ContextSlot(
         val kind: LauncherContextKind,
         val slotIndex: Int,

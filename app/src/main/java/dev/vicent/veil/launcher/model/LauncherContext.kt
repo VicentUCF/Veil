@@ -14,8 +14,14 @@ sealed interface QuickActionSpec {
 /** The two deliberately small, source-configured bindings for CURRENT's action button. */
 sealed interface HomeButtonActionSpec {
     data object Everything : HomeButtonActionSpec
+    data object VeilSettings : HomeButtonActionSpec
     data class App(val packageCandidates: List<String>) : HomeButtonActionSpec
     data class Setting(val id: String) : HomeButtonActionSpec
+}
+
+enum class HomeButtonGesture {
+    TAP,
+    LONG_PRESS,
 }
 
 data class HomeButtonConfig(

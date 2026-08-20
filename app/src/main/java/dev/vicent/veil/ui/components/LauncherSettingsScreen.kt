@@ -46,12 +46,14 @@ fun LauncherSettingsScreen(
         preferences,
         access,
         installedApps,
+        settingsShortcuts,
         appTarget,
         showFontSettings,
+        showHomeButtonSettings,
         systemAccent,
         publisherInfo,
     ) = state
-    val (onBack, onOpenFontSettings) = navigationActions
+    val (onBack, onOpenFontSettings, onOpenHomeButtonSettings) = navigationActions
     val (
         onAccentSelected,
         onHomeTextToneSelected,
@@ -63,7 +65,9 @@ fun LauncherSettingsScreen(
     ) = appearanceActions
     val (
         onOpenMusicProviderPicker,
+        onOpenHomeButtonPicker,
         onSettingsAppSelected,
+        onHomeButtonActionSelected,
         onMusicProviderCleared,
     ) = appActions
     val (
@@ -90,8 +94,10 @@ fun LauncherSettingsScreen(
         SettingsAppPicker(
             target = appTarget,
             installedApps = installedApps,
+            settingsShortcuts = settingsShortcuts,
             onBack = onBack,
             onSelected = onSettingsAppSelected,
+            onHomeButtonActionSelected = onHomeButtonActionSelected,
             modifier = modifier,
         )
         return
@@ -105,6 +111,18 @@ fun LauncherSettingsScreen(
             onHomeTextWeightSelected = onHomeTextWeightSelected,
             onWallpaperScrimEnabledChanged = onWallpaperScrimEnabledChanged,
             onWallpaperScrimIntensityChanged = onWallpaperScrimIntensityChanged,
+            modifier = modifier,
+        )
+        return
+    }
+
+    if (showHomeButtonSettings) {
+        HomeButtonSettings(
+            preferences = preferences,
+            installedApps = installedApps,
+            settingsShortcuts = settingsShortcuts,
+            onBack = onBack,
+            onOpenPicker = onOpenHomeButtonPicker,
             modifier = modifier,
         )
         return
@@ -176,6 +194,14 @@ fun LauncherSettingsScreen(
 
             item(key = "apps-label") {
                 SettingsSectionLabel(stringResource(R.string.settings_section_apps))
+            }
+            item(key = "home-button-settings") {
+                SettingsActionRow(
+                    title = stringResource(R.string.settings_home_button_title),
+                    detail = stringResource(R.string.settings_home_button_description),
+                    status = stringResource(R.string.state_open),
+                    onClick = onOpenHomeButtonSettings,
+                )
             }
             item(key = "music-provider") {
                 val provider = preferences.musicProviderPackage?.let { packageName ->

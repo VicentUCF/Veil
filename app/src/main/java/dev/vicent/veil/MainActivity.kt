@@ -57,7 +57,9 @@ class MainActivity : ComponentActivity() {
         privacyPolicyUrl = BuildConfig.PRIVACY_POLICY_URL,
         privacyContact = BuildConfig.PRIVACY_CONTACT,
     )
-    private val preferencesRepository by lazy { LauncherPreferencesRepository(applicationContext) }
+    private val preferencesRepository by lazy {
+        LauncherPreferencesRepository(applicationContext, LauncherConfig.homeButton)
+    }
     private val accessMonitor by lazy { LauncherAccessMonitor(applicationContext) }
     private val controller by lazy {
         LauncherController(
@@ -171,13 +173,17 @@ class MainActivity : ComponentActivity() {
                         onOpenSettings = controller::openSettings,
                         onCloseSettings = controller::closeSettings,
                         onOpenMusicProviderPicker = controller::openMusicProviderPicker,
+                        onOpenHomeButtonPicker = controller::openHomeButtonPicker,
                         onOpenContextSlotPicker = controller::openContextSlotPicker,
                         onHomeButtonTap = {
-                            externalActions.performHomeButtonAction(LauncherConfig.homeButton.onTap, state)
+                            externalActions.performHomeButtonAction(
+                                state.preferences.homeButtonConfig.onTap,
+                                state,
+                            )
                         },
                         onHomeButtonLongPress = {
                             externalActions.performHomeButtonAction(
-                                LauncherConfig.homeButton.onLongPress,
+                                state.preferences.homeButtonConfig.onLongPress,
                                 state,
                             )
                         },
@@ -191,6 +197,7 @@ class MainActivity : ComponentActivity() {
                         onExternalLinkSelected = externalActions::openExternalLink,
                         onPrivacyPolicySelected = externalActions::openPrivacyPolicy,
                         onSettingsAppSelected = controller::selectSettingsApp,
+                        onHomeButtonActionSelected = controller::selectHomeButtonAction,
                         onMusicProviderCleared = controller::clearMusicProvider,
                         onContextSlotCleared = controller::clearContextSlot,
                     ),
