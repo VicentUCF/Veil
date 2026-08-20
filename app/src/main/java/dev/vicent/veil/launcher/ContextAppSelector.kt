@@ -47,9 +47,12 @@ object ContextAppSelector {
     }
 
     private fun wantedCategory(kind: LauncherContextKind): AppCategory? = when (kind) {
-        LauncherContextKind.WORK -> AppCategory.WORK
+        LauncherContextKind.WORK, LauncherContextKind.FOCUS -> AppCategory.WORK
         LauncherContextKind.MEDIA -> AppCategory.MEDIA
         LauncherContextKind.GAME -> AppCategory.GAME
-        else -> null
+        LauncherContextKind.CURRENT,
+        LauncherContextKind.TOOLS,
+        LauncherContextKind.ON_THE_GO,
+        -> null
     }
 }

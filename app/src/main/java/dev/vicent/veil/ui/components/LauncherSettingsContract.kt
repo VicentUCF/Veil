@@ -7,6 +7,8 @@ import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.LauncherAccessState
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherPreferences
+import dev.vicent.veil.launcher.model.LauncherContext
+import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.SettingsAppTarget
 import dev.vicent.veil.launcher.model.SettingsShortcut
 import dev.vicent.veil.launcher.model.HomeButtonActionSpec
@@ -20,6 +22,8 @@ data class LauncherSettingsUiState(
     val appTarget: SettingsAppTarget?,
     val showFontSettings: Boolean,
     val showHomeButtonSettings: Boolean,
+    val showWorkspaceSettings: Boolean,
+    val workspaceCatalog: List<LauncherContext>,
     val systemAccent: Color?,
     val publisherInfo: LauncherPublisherInfo,
 )
@@ -33,6 +37,13 @@ data class SettingsNavigationActions(
     val onBack: () -> Unit,
     val onOpenFontSettings: () -> Unit,
     val onOpenHomeButtonSettings: () -> Unit,
+    val onOpenWorkspaceSettings: () -> Unit,
+)
+
+data class SettingsWorkspaceActions(
+    val onWorkspaceReplaced: (Int, LauncherContextKind) -> Unit,
+    val onWorkspaceMoved: (Int, Int) -> Unit,
+    val onWorkspaceSetupCompleted: () -> Unit,
 )
 
 data class SettingsAppearanceActions(

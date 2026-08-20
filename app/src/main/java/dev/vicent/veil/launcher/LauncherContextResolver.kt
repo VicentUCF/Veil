@@ -2,14 +2,22 @@ package dev.vicent.veil.launcher
 
 import dev.vicent.veil.launcher.model.LauncherApp
 import dev.vicent.veil.launcher.model.LauncherContext
+import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.LauncherPreferences
 import dev.vicent.veil.launcher.model.QuickActionSpec
 
 internal class LauncherContextResolver(
-    contexts: List<LauncherContext>,
+    private val workspaceCatalog: List<LauncherContext>,
     private val quickActionCount: Int,
 ) {
-    val emptyContexts: List<ResolvedLauncherContext> = contexts.map { context ->
+    private val catalogByKind = workspaceCatalog.associateBy(LauncherContext::kind)
+
+    val selectableCatalog: List<LauncherContext> = workspaceCatalog.filter {
+        it.kind != LauncherContextKind.CURRENT
+    }
+
+    fun emptyContexts(preferences: LauncherPreferences): List<ResolvedLauncherContext> =
+        contextsFor(preferences).map { context ->
         ResolvedLauncherContext(definition = context, apps = emptyList())
     }
 
@@ -21,7 +29,8 @@ internal class LauncherContextResolver(
         val appsByPackage = installedApps.associateBy(LauncherApp::packageName)
         val candidates = installedApps.map { AppCandidate(it.packageName, it.category) }
 
-        return emptyContexts.map { context ->
+        return contextsFor(preferences).map { definition ->
+            val context = ResolvedLauncherContext(definition = definition, apps = emptyList())
             val override = preferences.contextAppOverrides[context.definition.kind]
             if (override != null) {
                 val slots = (override + List(quickActionCount) { null }).take(quickActionCount)
@@ -76,8 +85,8 @@ internal class LauncherContextResolver(
 
     fun priorityPackageNames(preferences: LauncherPreferences): List<String> =
         buildList {
-            emptyContexts.forEach { context ->
-                context.definition.quickActions.forEach { action ->
+            workspaceCatalog.forEach { context ->
+                context.quickActions.forEach { action ->
                     if (action is QuickActionSpec.App) addAll(action.packageCandidates)
                 }
             }
@@ -85,6 +94,11 @@ internal class LauncherContextResolver(
                 slots.forEach { packageName -> if (packageName != null) add(packageName) }
             }
         }.distinct()
+
+    private fun contextsFor(preferences: LauncherPreferences): List<LauncherContext> = buildList {
+        catalogByKind[LauncherContextKind.CURRENT]?.let(::add)
+        preferences.selectedWorkspaceKinds.forEach { kind -> catalogByKind[kind]?.let(::add) }
+    }
 
     private fun List<ResolvedQuickAction>.padWithEmptySlots(): List<ResolvedQuickAction> =
         (this + List(quickActionCount) { index ->

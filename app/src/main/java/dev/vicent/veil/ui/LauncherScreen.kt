@@ -44,6 +44,7 @@ import dev.vicent.veil.ui.components.ContextDock
 import dev.vicent.veil.ui.components.LauncherPublisherInfo
 import dev.vicent.veil.ui.components.TopBar
 import dev.vicent.veil.ui.components.WorkspaceDashboard
+import dev.vicent.veil.ui.components.WorkspaceSettingsScreen
 import dev.vicent.veil.ui.theme.VeilMotion
 import kotlinx.coroutines.launch
 
@@ -78,6 +79,7 @@ fun LauncherScreen(
     accessActions: LauncherAccessActions,
     workspaceActions: LauncherWorkspaceActions,
     appearanceActions: LauncherAppearanceActions,
+    catalogActions: LauncherCatalogActions,
     modifier: Modifier = Modifier,
 ) {
     val (
@@ -141,11 +143,13 @@ fun LauncherScreen(
     var activeDisclosure by remember { mutableStateOf<LauncherDisclosure?>(null) }
     var showFontSettings by remember { mutableStateOf(false) }
     var showHomeButtonSettings by remember { mutableStateOf(false) }
+    var showWorkspaceSettings by remember { mutableStateOf(false) }
 
     val handleSettingsBack = {
         when {
             showFontSettings -> showFontSettings = false
             showHomeButtonSettings -> showHomeButtonSettings = false
+            showWorkspaceSettings -> showWorkspaceSettings = false
             else -> onCloseSettings()
         }
     }
@@ -165,6 +169,7 @@ fun LauncherScreen(
         if (!state.isSettingsOpen) {
             showFontSettings = false
             showHomeButtonSettings = false
+            showWorkspaceSettings = false
         }
     }
 
@@ -437,15 +442,18 @@ fun LauncherScreen(
             settingsShortcuts = settingsShortcuts,
             showFontSettings = showFontSettings,
             showHomeButtonSettings = showHomeButtonSettings,
+            showWorkspaceSettings = showWorkspaceSettings,
             systemAccent = systemAccent,
             publisherInfo = publisherInfo,
             navigationActions = navigationActions,
             appActions = appActions,
             accessActions = accessActions,
             appearanceActions = appearanceActions,
+            catalogActions = catalogActions,
             onBack = handleSettingsSurfaceBack,
             onFontSettingsRequested = { showFontSettings = true },
             onHomeButtonSettingsRequested = { showHomeButtonSettings = true },
+            onWorkspaceSettingsRequested = { showWorkspaceSettings = true },
             onDisclosureRequested = { activeDisclosure = it },
         )
     }
@@ -454,7 +462,8 @@ fun LauncherScreen(
         when (
             launcherBackAction(
                 state.navigation.surface,
-                showFontSettings || showHomeButtonSettings || state.settingsAppTarget != null,
+                showFontSettings || showHomeButtonSettings || showWorkspaceSettings ||
+                    state.settingsAppTarget != null,
             )
         ) {
             LauncherBackAction.KEEP_HOME -> Unit
@@ -465,7 +474,8 @@ fun LauncherScreen(
     }
 
     val showAutomaticContinuityDisclosure =
-        !state.continuityAccessGranted && !state.isContinuityOnboardingDismissed
+        state.preferences.workspaceSetupCompleted &&
+            !state.continuityAccessGranted && !state.isContinuityOnboardingDismissed
     LauncherOverlays(
         activeDisclosure = activeDisclosure,
         showAutomaticContinuityDisclosure = showAutomaticContinuityDisclosure,
@@ -476,4 +486,18 @@ fun LauncherScreen(
         onDisclosureDismissed = { activeDisclosure = null },
         onAppActionsDismissed = { appWithOpenActions = null },
     )
+
+    if (!state.preferences.workspaceSetupCompleted) {
+        BackHandler { catalogActions.onWorkspaceSetupCompleted() }
+        WorkspaceSettingsScreen(
+            preferences = state.preferences,
+            catalog = state.workspaceCatalog,
+            firstRun = true,
+            onBack = catalogActions.onWorkspaceSetupCompleted,
+            onWorkspaceReplaced = catalogActions.onWorkspaceReplaced,
+            onWorkspaceMoved = catalogActions.onWorkspaceMoved,
+            onComplete = catalogActions.onWorkspaceSetupCompleted,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 }

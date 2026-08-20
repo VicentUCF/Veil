@@ -7,6 +7,7 @@ import dev.vicent.veil.launcher.TimeProvider
 import dev.vicent.veil.launcher.model.AccentMode
 import dev.vicent.veil.launcher.model.FocusTimerStatus
 import dev.vicent.veil.launcher.model.HomeTextTone
+import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.model.QuickNoteType
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -44,6 +45,26 @@ class RepositoryPersistenceTest {
         assertEquals(AccentMode.SKY, restored.accentMode)
         assertEquals(HomeTextTone.DARK, restored.homeTextTone)
         assertEquals(0.73f, restored.wallpaperScrimIntensity)
+    }
+
+    @Test
+    fun workspaceSelectionAndSetupSurviveRepositoryRecreation() {
+        val repository = LauncherPreferencesRepository(context)
+        val replacement = LauncherContextKind.entries.first {
+            it != LauncherContextKind.CURRENT &&
+                it !in repository.state.value.selectedWorkspaceKinds
+        }
+        repository.apply {
+            replaceWorkspace(0, replacement)
+            moveWorkspace(0, 3)
+            completeWorkspaceSetup()
+        }
+        val expected = repository.state.value.selectedWorkspaceKinds
+
+        val restored = LauncherPreferencesRepository(context).state.value
+
+        assertEquals(expected, restored.selectedWorkspaceKinds)
+        assertEquals(true, restored.workspaceSetupCompleted)
     }
 
     @Test

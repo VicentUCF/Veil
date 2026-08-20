@@ -3,6 +3,8 @@ package dev.vicent.veil.launcher
 import dev.vicent.veil.launcher.model.CalendarEventSummary
 import dev.vicent.veil.launcher.model.FocusTimerStatus
 import dev.vicent.veil.launcher.model.LauncherContextKind
+import dev.vicent.veil.launcher.model.WorkspaceCapability
+import dev.vicent.veil.config.LauncherConfig
 import java.util.Calendar
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -13,12 +15,14 @@ class WorkspaceDataPolicyTest {
     fun `dock stays hidden only in current`() {
         assertEquals(false, WorkspaceLayoutPolicy.showsContextDock(LauncherContextKind.CURRENT))
         assertEquals(
-            listOf(true, true, true, true),
+            listOf(true, true, true, true, true, true),
             listOf(
                 LauncherContextKind.WORK,
+                LauncherContextKind.FOCUS,
                 LauncherContextKind.MEDIA,
                 LauncherContextKind.GAME,
                 LauncherContextKind.TOOLS,
+                LauncherContextKind.ON_THE_GO,
             ).map(WorkspaceLayoutPolicy::showsContextDock),
         )
     }
@@ -37,6 +41,30 @@ class WorkspaceDataPolicyTest {
         assertEquals(
             listOf("one", "two", "three"),
             AgendaPolicy.workEvents(events, now).map(CalendarEventSummary::title),
+        )
+    }
+
+    @Test
+    fun `network and permission backed data activates only for declaring view`() {
+        val byKind = LauncherConfig.workspaceCatalog.associateBy { it.kind }
+
+        assertEquals(
+            setOf(LauncherContextKind.CURRENT, LauncherContextKind.ON_THE_GO),
+            byKind.values.filter {
+                WorkspaceActivationPolicy.uses(it, WorkspaceCapability.WEATHER)
+            }.mapTo(mutableSetOf()) { it.kind },
+        )
+        assertEquals(
+            setOf(LauncherContextKind.GAME),
+            byKind.values.filter {
+                WorkspaceActivationPolicy.uses(it, WorkspaceCapability.STEAM)
+            }.mapTo(mutableSetOf()) { it.kind },
+        )
+        assertEquals(
+            setOf(LauncherContextKind.MEDIA),
+            byKind.values.filter {
+                WorkspaceActivationPolicy.uses(it, WorkspaceCapability.AUDIO)
+            }.mapTo(mutableSetOf()) { it.kind },
         )
     }
 

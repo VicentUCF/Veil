@@ -10,6 +10,7 @@ import dev.vicent.veil.launcher.model.LauncherSurface
 import dev.vicent.veil.launcher.model.HomeTextTone
 import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.WallpaperScrimPolicy
+import dev.vicent.veil.launcher.model.WorkspaceSelectionPolicy
 import dev.vicent.veil.launcher.model.HomeButtonActionPreferencesPolicy
 import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import kotlin.test.assertTrue
@@ -160,6 +161,69 @@ class LauncherSettingsTest {
 
         assertEquals(LauncherSurface.SETTINGS, settings.surface)
         assertEquals(LauncherSurface.EVERYTHING, settings.closeSettings().surface)
+    }
+
+    @Test
+    fun `workspace selection drops unknown and duplicate values then fills four slots`() {
+        assertEquals(
+            listOf(
+                LauncherContextKind.MEDIA,
+                LauncherContextKind.WORK,
+                LauncherContextKind.FOCUS,
+                LauncherContextKind.TOOLS,
+            ),
+            WorkspaceSelectionPolicy.decode(
+                persistedValues = listOf("media", "future", "MEDIA", "work"),
+            ),
+        )
+    }
+
+    @Test
+    fun `workspace replacement rejects duplicates and current`() {
+        val current = WorkspaceSelectionPolicy.RECOMMENDED_SELECTION
+        val available = LauncherContextKind.entries
+            .filterNot { it == LauncherContextKind.CURRENT }
+            .toSet()
+
+        assertEquals(
+            current,
+            WorkspaceSelectionPolicy.replace(current, 0, LauncherContextKind.MEDIA, available),
+        )
+        assertEquals(
+            current,
+            WorkspaceSelectionPolicy.replace(current, 0, LauncherContextKind.CURRENT, available),
+        )
+        assertEquals(
+            listOf(
+                LauncherContextKind.GAME,
+                LauncherContextKind.FOCUS,
+                LauncherContextKind.MEDIA,
+                LauncherContextKind.TOOLS,
+            ),
+            WorkspaceSelectionPolicy.replace(current, 0, LauncherContextKind.GAME, available),
+        )
+    }
+
+    @Test
+    fun `workspace movement preserves all identities`() {
+        val available = LauncherContextKind.entries
+            .filterNot { it == LauncherContextKind.CURRENT }
+            .toSet()
+
+        assertEquals(
+            listOf(
+                LauncherContextKind.FOCUS,
+                LauncherContextKind.MEDIA,
+                LauncherContextKind.WORK,
+                LauncherContextKind.TOOLS,
+            ),
+            WorkspaceSelectionPolicy.move(
+                WorkspaceSelectionPolicy.RECOMMENDED_SELECTION,
+                from = 0,
+                to = 2,
+                availableKinds = available,
+            ),
+        )
     }
 
     @Test

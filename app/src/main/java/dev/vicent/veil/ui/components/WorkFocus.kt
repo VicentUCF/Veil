@@ -47,6 +47,7 @@ import kotlin.math.sin
 internal fun WorkPomodoroTile(
     focus: FocusTimerState,
     compact: Boolean,
+    primary: Boolean = false,
     onStart: (Int) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -56,9 +57,14 @@ internal fun WorkPomodoroTile(
     var showDialog by remember { mutableStateOf(false) }
     CozyTile(
         label = stringResource(R.string.focus_tile_label),
+        prominent = primary,
         onClick = { showDialog = true },
         modifier = Modifier.fillMaxWidth().heightIn(
-            min = if (compact) 112.dp else WorkspaceLayoutTokens.SECONDARY_TILE_HEIGHT,
+            min = when {
+                primary -> WorkspaceLayoutTokens.PRIMARY_TILE_HEIGHT
+                compact -> 112.dp
+                else -> WorkspaceLayoutTokens.SECONDARY_TILE_HEIGHT
+            },
         ),
     ) {
         PomodoroDial(focus)

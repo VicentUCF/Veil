@@ -106,6 +106,22 @@ fun WorkspaceDashboard(
                 onQuickNoteUpdated,
                 onQuickNoteDeleted,
             )
+            LauncherContextKind.FOCUS -> FocusWorkspace(
+                state = state.focusWorkspaceState(),
+                compact = compact,
+                onCalendarPermissionRequested = onCalendarPermissionRequested,
+                onCalendarEventSelected = onCalendarEventSelected,
+                onCalendarEventCreateRequested = onCalendarEventCreateRequested,
+                onCalendarOpenRequested = onCalendarOpenRequested,
+                onGoogleCalendarConfigureRequested = onGoogleCalendarConfigureRequested,
+                onFocusStart = onFocusStart,
+                onFocusPause = onFocusPause,
+                onFocusResume = onFocusResume,
+                onFocusFinish = onFocusFinish,
+                onQuickNoteAdded = onQuickNoteAdded,
+                onQuickNoteUpdated = onQuickNoteUpdated,
+                onQuickNoteDeleted = onQuickNoteDeleted,
+            )
             LauncherContextKind.MEDIA -> MediaWorkspace(
                 state.mediaWorkspaceState(),
                 compact,
@@ -130,6 +146,15 @@ fun WorkspaceDashboard(
                 compact,
                 onVeilSettingsSelected,
                 onSettingsSelected = { id -> settingsShortcuts.find { it.id == id }?.let(onSettingsSelected) },
+            )
+            LauncherContextKind.ON_THE_GO -> OnTheGoWorkspace(
+                state = state.onTheGoWorkspaceState(),
+                compact = compact,
+                onContinuityAccessRequested = onContinuityAccessRequested,
+                onLocationPermissionRequested = onLocationPermissionRequested,
+                onCalendarPermissionRequested = onCalendarPermissionRequested,
+                onCalendarEventSelected = onCalendarEventSelected,
+                onContinuityAction = onContinuityAction,
             )
         }
     }

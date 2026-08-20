@@ -20,6 +20,7 @@ import dev.vicent.veil.ui.components.SettingsAccessActions
 import dev.vicent.veil.ui.components.SettingsAppActions
 import dev.vicent.veil.ui.components.SettingsAppearanceActions
 import dev.vicent.veil.ui.components.SettingsNavigationActions
+import dev.vicent.veil.ui.components.SettingsWorkspaceActions
 import dev.vicent.veil.ui.theme.VeilMotion
 
 @Composable
@@ -86,15 +87,18 @@ internal fun LauncherSettingsLayer(
     settingsShortcuts: List<SettingsShortcut>,
     showFontSettings: Boolean,
     showHomeButtonSettings: Boolean,
+    showWorkspaceSettings: Boolean,
     systemAccent: Color?,
     publisherInfo: LauncherPublisherInfo,
     navigationActions: LauncherNavigationActions,
     appActions: LauncherAppActions,
     accessActions: LauncherAccessActions,
     appearanceActions: LauncherAppearanceActions,
+    catalogActions: LauncherCatalogActions,
     onBack: () -> Unit,
     onFontSettingsRequested: () -> Unit,
     onHomeButtonSettingsRequested: () -> Unit,
+    onWorkspaceSettingsRequested: () -> Unit,
     onDisclosureRequested: (LauncherDisclosure) -> Unit,
 ) {
     AnimatedVisibility(
@@ -128,6 +132,8 @@ internal fun LauncherSettingsLayer(
                 appTarget = state.settingsAppTarget,
                 showFontSettings = showFontSettings,
                 showHomeButtonSettings = showHomeButtonSettings,
+                showWorkspaceSettings = showWorkspaceSettings,
+                workspaceCatalog = state.workspaceCatalog,
                 systemAccent = systemAccent,
                 publisherInfo = publisherInfo,
             ),
@@ -135,6 +141,7 @@ internal fun LauncherSettingsLayer(
                 onBack = onBack,
                 onOpenFontSettings = onFontSettingsRequested,
                 onOpenHomeButtonSettings = onHomeButtonSettingsRequested,
+                onOpenWorkspaceSettings = onWorkspaceSettingsRequested,
             ),
             appearanceActions = SettingsAppearanceActions(
                 onAccentSelected = appearanceActions.onAccentSelected,
@@ -151,6 +158,11 @@ internal fun LauncherSettingsLayer(
                 onSettingsAppSelected = appActions.onSettingsAppSelected,
                 onHomeButtonActionSelected = appActions.onHomeButtonActionSelected,
                 onMusicProviderCleared = appActions.onMusicProviderCleared,
+            ),
+            workspaceActions = SettingsWorkspaceActions(
+                onWorkspaceReplaced = catalogActions.onWorkspaceReplaced,
+                onWorkspaceMoved = catalogActions.onWorkspaceMoved,
+                onWorkspaceSetupCompleted = catalogActions.onWorkspaceSetupCompleted,
             ),
             accessActions = settingsAccessActions(
                 state = state,

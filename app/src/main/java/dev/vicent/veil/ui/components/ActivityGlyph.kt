@@ -22,6 +22,7 @@ import dev.vicent.veil.ui.theme.LocalVeilPalette
 enum class ActivityGlyphKind {
     CURRENT,
     WORK,
+    FOCUS,
     MEDIA,
     GAME,
     TOOLS,
@@ -66,9 +67,11 @@ internal fun activityGlyphFor(
 fun LauncherContextKind.activityGlyph(): ActivityGlyphKind = when (this) {
     LauncherContextKind.CURRENT -> ActivityGlyphKind.CURRENT
     LauncherContextKind.WORK -> ActivityGlyphKind.WORK
+    LauncherContextKind.FOCUS -> ActivityGlyphKind.FOCUS
     LauncherContextKind.MEDIA -> ActivityGlyphKind.MEDIA
     LauncherContextKind.GAME -> ActivityGlyphKind.GAME
     LauncherContextKind.TOOLS -> ActivityGlyphKind.TOOLS
+    LauncherContextKind.ON_THE_GO -> ActivityGlyphKind.NAVIGATION
 }
 
 @Composable
@@ -111,6 +114,28 @@ fun ActivityGlyph(
                 drawLine(glyphColor, Offset(w * .39f, h * .34f), Offset(w * .39f, h * .24f), stroke.width)
                 drawLine(glyphColor, Offset(w * .39f, h * .24f), Offset(w * .61f, h * .24f), stroke.width)
                 drawLine(glyphColor, Offset(w * .61f, h * .24f), Offset(w * .61f, h * .34f), stroke.width)
+            }
+            ActivityGlyphKind.FOCUS -> {
+                drawCircle(
+                    color = glyphColor,
+                    radius = w * .28f,
+                    center = center.copy(y = h * .54f),
+                    style = stroke,
+                )
+                drawLine(
+                    glyphColor,
+                    Offset(center.x, h * .18f),
+                    Offset(center.x, h * .26f),
+                    stroke.width,
+                    StrokeCap.Round,
+                )
+                drawLine(
+                    glyphColor,
+                    center.copy(y = h * .54f),
+                    Offset(w * .62f, h * .39f),
+                    stroke.width,
+                    StrokeCap.Round,
+                )
             }
             ActivityGlyphKind.MEDIA -> {
                 val triangle = Path().apply {

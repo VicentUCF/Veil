@@ -31,6 +31,7 @@ sealed interface ResolvedQuickAction {
 
 data class LauncherUiState(
     val contexts: List<ResolvedLauncherContext>,
+    val workspaceCatalog: List<LauncherContext> = emptyList(),
     val installedApps: List<LauncherApp> = emptyList(),
     val searchLearning: AppSearchLearningState = AppSearchLearningState(),
     val activeContextIndex: Int = 0,

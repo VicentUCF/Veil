@@ -33,6 +33,21 @@ internal data class MediaWorkspaceUiState(
     val musicProvider: LauncherApp?,
 )
 
+internal data class FocusWorkspaceUiState(
+    val calendarAccessGranted: Boolean,
+    val calendarEvents: List<CalendarEventSummary>,
+    val quickNotes: List<QuickNote>,
+    val focusTimer: FocusTimerState,
+)
+
+internal data class OnTheGoWorkspaceUiState(
+    val continuityAccessGranted: Boolean,
+    val calendarAccessGranted: Boolean,
+    val navigation: ContinuityItem.Navigation?,
+    val calendarEvents: List<CalendarEventSummary>,
+    val weather: WeatherState,
+)
+
 internal fun LauncherUiState.currentHomeState() = CurrentHomeUiState(
     preferences = preferences,
     weather = weather,
@@ -55,6 +70,21 @@ internal fun LauncherUiState.mediaWorkspaceState() = MediaWorkspaceUiState(
     musicProvider = preferences.musicProviderPackage?.let { packageName ->
         installedApps.firstOrNull { app -> app.packageName == packageName }
     },
+)
+
+internal fun LauncherUiState.focusWorkspaceState() = FocusWorkspaceUiState(
+    calendarAccessGranted = calendarAccessGranted,
+    calendarEvents = calendarEvents,
+    quickNotes = quickNotes,
+    focusTimer = focusTimer,
+)
+
+internal fun LauncherUiState.onTheGoWorkspaceState() = OnTheGoWorkspaceUiState(
+    continuityAccessGranted = continuityAccessGranted,
+    calendarAccessGranted = calendarAccessGranted,
+    navigation = currentContinuity as? ContinuityItem.Navigation,
+    calendarEvents = calendarEvents,
+    weather = weather,
 )
 
 internal fun LauncherUiState.toolsWorkspaceState(): SystemStatus = systemStatus

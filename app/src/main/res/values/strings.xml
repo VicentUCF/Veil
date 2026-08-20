@@ -29,6 +29,7 @@
     <!-- Veil settings -->
     <string name="settings_header_title">ajustes_de_veil</string>
     <string name="settings_section_appearance">APARIENCIA</string>
+    <string name="settings_section_workspaces">PANTALLAS</string>
     <string name="settings_section_apps">APLICACIONES</string>
     <string name="settings_section_access_privacy">ACCESOS Y PRIVACIDAD</string>
     <string name="settings_section_system">SISTEMA</string>
@@ -44,7 +45,7 @@
     <string name="settings_dynamic_color_unavailable">Disponible desde Android 12</string>
     <string name="settings_wallpaper_title">Fondo de pantalla</string>
     <string name="settings_wallpaper_detail">Gestionado por Android; Veil no guarda la imagen</string>
-    <string name="settings_current_font_title">Fuente de CURRENT</string>
+    <string name="settings_current_font_title">Fuente de Inicio</string>
     <string name="settings_current_font_detail">Texto e iconos %1$s · %2$s</string>
     <string name="settings_music_provider">Proveedor de música</string>
     <string name="settings_music_provider_empty">Elige qué app abre el estado vacío de MEDIA</string>
@@ -53,6 +54,28 @@
     <string name="settings_home_button_tap">Pulsación</string>
     <string name="settings_home_button_long_press">Pulsación larga</string>
     <string name="settings_context_edit_hint">Para cambiar las apps de una página, mantén pulsada su app en el workspace. Los huecos vacíos muestran +.</string>
+    <string name="settings_workspaces_title">Pantallas activas</string>
+    <string name="settings_workspaces_detail">Inicio fijo y cuatro vistas elegidas por ti</string>
+    <string name="settings_workspaces_header">pantallas</string>
+    <string name="settings_workspaces_intro">Inicio permanece fijo. Elige y ordena cuatro vistas del catálogo de Veil.</string>
+    <string name="settings_workspace_home_fixed">Inicio · fijo</string>
+    <string name="settings_workspace_home_detail">Continuidad, hora, tiempo y accesos esenciales</string>
+    <string name="settings_workspace_position">Posición %1$d</string>
+    <string name="settings_workspace_replace">Reemplazar</string>
+    <string name="settings_workspace_move_before">Mover antes</string>
+    <string name="settings_workspace_move_after">Mover después</string>
+    <string name="settings_workspace_choose_title">elegir vista</string>
+    <string name="settings_workspace_requirements">Accesos opcionales: %1$s</string>
+    <string name="settings_workspace_no_requirements">Sin accesos adicionales</string>
+    <string name="settings_workspace_retiring">Disponible durante esta versión de transición</string>
+    <string name="settings_workspace_done">Usar estas pantallas</string>
+    <string name="settings_workspace_welcome_title">monta tu Veil</string>
+    <string name="settings_workspace_welcome_body">Hemos preparado cuatro vistas equilibradas. Puedes aceptarlas ahora y cambiarlas cuando quieras desde Ajustes.</string>
+    <string name="workspace_requirement_calendar">calendario</string>
+    <string name="workspace_requirement_location">ubicación aproximada</string>
+    <string name="workspace_requirement_continuity">notificaciones</string>
+    <string name="workspace_requirement_audio">audio</string>
+    <string name="workspace_requirement_network">red</string>
     <string name="settings_continuity_title">Señales y Ambient Continuity</string>
     <string name="settings_continuity_detail">Continuidad y puntos de actividad sin contenido</string>
     <string name="settings_calendar_title">Calendario</string>
@@ -76,9 +99,9 @@
     <string name="settings_android_title">Ajustes de Android</string>
     <string name="settings_android_detail">Configuración completa del dispositivo</string>
     <string name="settings_reset_title">Restaurar apariencia de Veil</string>
-    <string name="settings_reset_detail">Restaura acento y legibilidad de CURRENT</string>
+    <string name="settings_reset_detail">Restaura acento y legibilidad de Inicio</string>
     <string name="settings_reset_dialog_title">restaurar apariencia</string>
-    <string name="settings_reset_dialog_body">El acento volverá al coral; el texto y los iconos de CURRENT, a claros y finos. El filtro suave se activará. El wallpaper y los accesos de Android no cambiarán.</string>
+    <string name="settings_reset_dialog_body">El acento volverá al coral; el texto y los iconos de Inicio, a claros y finos. El filtro suave se activará. El wallpaper y los accesos de Android no cambiarán.</string>
     <string name="settings_privacy_dialog_title">política de privacidad</string>
     <string name="settings_privacy_open_web">Abrir web</string>
     <string name="settings_privacy_body">Veil no tiene cuentas, publicidad, analítica ni backend propio. Las apps instaladas, calendario, preferencias y notas se procesan en el dispositivo.\n\nCon permiso opcional, las señales de notificación se mantienen solo en memoria y sin contenido; el espectro de audio es transitorio y solo funciona con Veil visible, MEDIA visible y audio reproduciéndose.\n\nEl tiempo envía ubicación aproximada a Open-Meteo por HTTPS. GAME consulta datos públicos de Steam por HTTPS. Estos proveedores reciben la IP necesaria para la conexión.\n\nPuedes revocar los accesos desde Android. Las notas rápidas se excluyen de copias y transferencias del dispositivo. La política pública y el contacto del editor se publican también en la ficha de distribución.</string>
@@ -108,13 +131,13 @@
 
     <!-- Floating Home button -->
     <string name="home_button_settings_header">botón_flotante</string>
-    <string name="home_button_settings_description">Asigna una acción distinta a cada gesto del botón flotante de CURRENT.</string>
+    <string name="home_button_settings_description">Asigna una acción distinta a cada gesto del botón flotante de Inicio.</string>
     <string name="picker_no_matches">No hay aplicaciones que coincidan con la búsqueda.</string>
     <string name="picker_no_app">Sin aplicación</string>
 
     <!-- CURRENT appearance -->
     <string name="appearance_header">fuente_current</string>
-    <string name="appearance_intro">Ajusta el texto y los iconos que CURRENT dibuja sobre el wallpaper. El filtro suave asociado se aplica a todas las vistas. Los cambios se guardan al tocarlos.</string>
+    <string name="appearance_intro">Ajusta el texto y los iconos que Inicio dibuja sobre el wallpaper. El filtro suave asociado se aplica a todas las vistas. Los cambios se guardan al tocarlos.</string>
     <string name="appearance_section_color">COLOR</string>
     <string name="appearance_tone_light">Claro</string>
     <string name="appearance_tone_light_plural">claros</string>
@@ -310,7 +333,7 @@
 
     <!-- WORK quick notes -->
     <string name="notes_tile_label">Notas rápidas</string>
-    <string name="notes_empty">Captura una idea sin salir de WORK.</string>
+    <string name="notes_empty">Captura una idea sin salir de esta vista.</string>
     <string name="notes_edit_named">Editar %1$s</string>
     <string name="notes_add">Añadir</string>
     <string name="notes_new_title">nueva nota</string>
@@ -318,7 +341,7 @@
     <string name="action_delete">Eliminar</string>
     <string name="action_save">Guardar</string>
     <string name="notes_title_field">título</string>
-    <string name="notes_title_hint">visible en WORK · %1$d/%2$d</string>
+    <string name="notes_title_hint">visible en tus vistas · %1$d/%2$d</string>
     <string name="notes_content_field">contenido</string>
     <string name="notes_content_hint">texto libre · %1$d/%2$d</string>
     <string name="notes_add_item">+ elemento</string>
@@ -366,11 +389,37 @@
     <string name="current_secondary_quick_action">Acción rápida secundaria</string>
     <string name="percentage_value">%1$d%%</string>
     <string name="appearance_sample" translatable="false">Aa</string>
-    <string name="context_current">CURRENT</string>
-    <string name="context_work">WORK</string>
+    <string name="context_current">INICIO</string>
+    <string name="context_work">PLAN</string>
+    <string name="context_focus">FOCUS</string>
     <string name="context_media">MEDIA</string>
-    <string name="context_game">GAME</string>
-    <string name="context_tools">TOOLS</string>
+    <string name="context_game">JUEGO</string>
+    <string name="context_tools">EQUIPO</string>
+    <string name="context_on_the_go">RUTA</string>
+    <string name="workspace_current_title">Inicio</string>
+    <string name="workspace_current_description">Continuidad, hora, tiempo y accesos esenciales.</string>
+    <string name="workspace_planning_title">Planificación</string>
+    <string name="workspace_planning_description">Agenda principal, notas rápidas y progreso de trabajo.</string>
+    <string name="workspace_focus_title">Concentración</string>
+    <string name="workspace_focus_description">Temporizador Focus principal, próxima cita y notas.</string>
+    <string name="workspace_media_title">Media</string>
+    <string name="workspace_media_description">Sesión multimedia, controles de sonido y proveedor musical.</string>
+    <string name="workspace_game_title">Juegos</string>
+    <string name="workspace_game_description">Steam público, noticias y biblioteca de juegos Android.</string>
+    <string name="workspace_device_title">Dispositivo</string>
+    <string name="workspace_device_description">Sistema, batería, conectividad y accesos a ajustes.</string>
+    <string name="workspace_on_the_go_title">En movimiento</string>
+    <string name="workspace_on_the_go_description">Navegación pública, tiempo y próxima cita.</string>
+    <string name="focus_workspace_agenda">Próxima cita</string>
+    <string name="focus_workspace_no_event">No hay citas próximas.</string>
+    <string name="on_the_go_navigation">Navegación</string>
+    <string name="on_the_go_no_navigation">Sin ruta activa</string>
+    <string name="on_the_go_no_navigation_body">Inicia una ruta en una aplicación compatible para continuarla aquí.</string>
+    <string name="on_the_go_open_route">Continuar ruta</string>
+    <string name="on_the_go_weather">Tiempo</string>
+    <string name="on_the_go_weather_range">sensación %1$s° · mín %2$s° · máx %3$s°</string>
+    <string name="on_the_go_next_event">Próxima cita</string>
+    <string name="on_the_go_no_event">Sin citas próximas.</string>
     <string name="current_weather_value">%1$s° %2$s</string>
     <string name="current_weather_stale">DESACTUALIZADO</string>
     <string name="current_weather_enable">ACTIVAR TIEMPO</string>

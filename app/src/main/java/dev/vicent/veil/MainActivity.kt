@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.vicent.veil.config.AccentPalette
 import dev.vicent.veil.config.LauncherConfig
 import dev.vicent.veil.launcher.LauncherController
+import dev.vicent.veil.launcher.model.LauncherContextKind
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
 import dev.vicent.veil.launcher.repository.AppRepository
 import dev.vicent.veil.launcher.repository.AudioMixerRepository
@@ -45,6 +46,7 @@ import dev.vicent.veil.launcher.system.LauncherExternalActionCoordinator
 import dev.vicent.veil.ui.LauncherAccessActions
 import dev.vicent.veil.ui.LauncherAppActions
 import dev.vicent.veil.ui.LauncherAppearanceActions
+import dev.vicent.veil.ui.LauncherCatalogActions
 import dev.vicent.veil.ui.LauncherNavigationActions
 import dev.vicent.veil.ui.LauncherScreen
 import dev.vicent.veil.ui.LauncherWorkspaceActions
@@ -58,7 +60,14 @@ class MainActivity : ComponentActivity() {
         privacyContact = BuildConfig.PRIVACY_CONTACT,
     )
     private val preferencesRepository by lazy {
-        LauncherPreferencesRepository(applicationContext, LauncherConfig.homeButton)
+        LauncherPreferencesRepository(
+            context = applicationContext,
+            defaultHomeButtonConfig = LauncherConfig.homeButton,
+            availableWorkspaceKinds = LauncherConfig.workspaceCatalog
+                .map { it.kind }
+                .filterNot { it == LauncherContextKind.CURRENT }
+                .toSet(),
+        )
     }
     private val accessMonitor by lazy { LauncherAccessMonitor(applicationContext) }
     private val controller by lazy {
@@ -75,7 +84,7 @@ class MainActivity : ComponentActivity() {
             preferencesRepository = preferencesRepository,
             searchLearningRepository = SearchLearningRepository(applicationContext),
             accessMonitor = accessMonitor,
-            contexts = LauncherConfig.contexts,
+            workspaceCatalog = LauncherConfig.workspaceCatalog,
             quickActionCount = LauncherConfig.QUICK_ACTION_COUNT,
             scope = lifecycleScope,
         )
@@ -247,6 +256,11 @@ class MainActivity : ComponentActivity() {
                         onWallpaperScrimEnabledChanged = controller::setWallpaperScrimEnabled,
                         onWallpaperScrimIntensityChanged = controller::setWallpaperScrimIntensity,
                         onResetAppearance = controller::resetAppearance,
+                    ),
+                    catalogActions = LauncherCatalogActions(
+                        onWorkspaceReplaced = controller::replaceWorkspace,
+                        onWorkspaceMoved = controller::moveWorkspace,
+                        onWorkspaceSetupCompleted = controller::completeWorkspaceSetup,
                     ),
                 )
             }

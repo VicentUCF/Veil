@@ -39,6 +39,7 @@ fun LauncherSettingsScreen(
     navigationActions: SettingsNavigationActions,
     appearanceActions: SettingsAppearanceActions,
     appActions: SettingsAppActions,
+    workspaceActions: SettingsWorkspaceActions,
     accessActions: SettingsAccessActions,
     modifier: Modifier = Modifier,
 ) {
@@ -50,10 +51,17 @@ fun LauncherSettingsScreen(
         appTarget,
         showFontSettings,
         showHomeButtonSettings,
+        showWorkspaceSettings,
+        workspaceCatalog,
         systemAccent,
         publisherInfo,
     ) = state
-    val (onBack, onOpenFontSettings, onOpenHomeButtonSettings) = navigationActions
+    val (
+        onBack,
+        onOpenFontSettings,
+        onOpenHomeButtonSettings,
+        onOpenWorkspaceSettings,
+    ) = navigationActions
     val (
         onAccentSelected,
         onHomeTextToneSelected,
@@ -70,6 +78,11 @@ fun LauncherSettingsScreen(
         onHomeButtonActionSelected,
         onMusicProviderCleared,
     ) = appActions
+    val (
+        onWorkspaceReplaced,
+        onWorkspaceMoved,
+        onWorkspaceSetupCompleted,
+    ) = workspaceActions
     val (
         onContinuitySelected,
         onCalendarSelected,
@@ -123,6 +136,20 @@ fun LauncherSettingsScreen(
             settingsShortcuts = settingsShortcuts,
             onBack = onBack,
             onOpenPicker = onOpenHomeButtonPicker,
+            modifier = modifier,
+        )
+        return
+    }
+
+    if (showWorkspaceSettings) {
+        WorkspaceSettingsScreen(
+            preferences = preferences,
+            catalog = workspaceCatalog,
+            firstRun = false,
+            onBack = onBack,
+            onWorkspaceReplaced = onWorkspaceReplaced,
+            onWorkspaceMoved = onWorkspaceMoved,
+            onComplete = onWorkspaceSetupCompleted,
             modifier = modifier,
         )
         return
@@ -192,6 +219,17 @@ fun LauncherSettingsScreen(
                 )
             }
 
+            item(key = "workspaces-label") {
+                SettingsSectionLabel(stringResource(R.string.settings_section_workspaces))
+            }
+            item(key = "workspaces") {
+                SettingsActionRow(
+                    title = stringResource(R.string.settings_workspaces_title),
+                    detail = stringResource(R.string.settings_workspaces_detail),
+                    status = stringResource(R.string.state_open),
+                    onClick = onOpenWorkspaceSettings,
+                )
+            }
             item(key = "apps-label") {
                 SettingsSectionLabel(stringResource(R.string.settings_section_apps))
             }

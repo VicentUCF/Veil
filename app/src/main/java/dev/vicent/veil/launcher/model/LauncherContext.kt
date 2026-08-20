@@ -3,8 +3,27 @@ package dev.vicent.veil.launcher.model
 data class LauncherContext(
     val id: String,
     val kind: LauncherContextKind,
+    val titleResource: Int,
+    val descriptionResource: Int,
+    val capabilities: Set<WorkspaceCapability> = emptySet(),
+    val availability: WorkspaceAvailability = WorkspaceAvailability.AVAILABLE,
     val quickActions: List<QuickActionSpec> = emptyList(),
 )
+
+enum class WorkspaceCapability {
+    CALENDAR,
+    WEATHER,
+    CONTINUITY,
+    WORK_PROGRESS,
+    AUDIO,
+    STEAM,
+    SYSTEM_STATUS,
+}
+
+enum class WorkspaceAvailability {
+    AVAILABLE,
+    RETIRING,
+}
 
 sealed interface QuickActionSpec {
     data class App(val packageCandidates: List<String>) : QuickActionSpec
@@ -32,7 +51,9 @@ data class HomeButtonConfig(
 enum class LauncherContextKind {
     CURRENT,
     WORK,
+    FOCUS,
     MEDIA,
     GAME,
     TOOLS,
+    ON_THE_GO,
 }

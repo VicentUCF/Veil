@@ -11,6 +11,7 @@ import dev.vicent.veil.launcher.model.HomeTextWeight
 import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import dev.vicent.veil.launcher.model.HomeButtonGesture
 import dev.vicent.veil.launcher.model.AudioChannel
+import dev.vicent.veil.launcher.model.WorkspaceCapability
 import dev.vicent.veil.launcher.model.QuickNoteChecklistItem
 import dev.vicent.veil.launcher.model.QuickNoteType
 import dev.vicent.veil.launcher.repository.AmbientContinuityRepository
@@ -28,6 +29,7 @@ import dev.vicent.veil.launcher.system.LauncherAccessMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,16 +49,17 @@ class LauncherController(
     private val preferencesRepository: LauncherPreferencesRepository,
     private val searchLearningRepository: SearchLearningRepository,
     private val accessMonitor: LauncherAccessMonitor,
-    contexts: List<LauncherContext>,
+    workspaceCatalog: List<LauncherContext>,
     private val quickActionCount: Int,
     private val scope: CoroutineScope,
     timeProvider: TimeProvider = SystemTimeProvider,
 ) {
-    private val contextResolver = LauncherContextResolver(contexts, quickActionCount)
+    private val contextResolver = LauncherContextResolver(workspaceCatalog, quickActionCount)
 
     private val mutableState = MutableStateFlow(
         LauncherUiState(
-            contexts = contextResolver.emptyContexts,
+            contexts = contextResolver.emptyContexts(preferencesRepository.state.value),
+            workspaceCatalog = contextResolver.selectableCatalog,
             preferences = preferencesRepository.state.value,
             searchLearning = searchLearningRepository.state.value,
             access = accessMonitor.snapshot(),
@@ -154,14 +157,15 @@ class LauncherController(
     fun refreshVisibleData() {
         systemStatusRepository.refresh()
         val currentState = mutableState.value
-        val contextKind = currentState.contexts.getOrNull(currentState.activeContextIndex)
+        val activeContext = currentState.contexts.getOrNull(currentState.activeContextIndex)
             ?.definition
-            ?.kind
-        refreshCalendar(currentState.calendarAccessGranted)
-        if (contextKind == LauncherContextKind.CURRENT) {
+        if (WorkspaceActivationPolicy.uses(activeContext, WorkspaceCapability.CALENDAR)) {
+            refreshCalendar(currentState.calendarAccessGranted)
+        }
+        if (WorkspaceActivationPolicy.uses(activeContext, WorkspaceCapability.WEATHER)) {
             refreshWeather(currentState.locationAccessGranted)
         }
-        if (contextKind == LauncherContextKind.GAME) {
+        if (WorkspaceActivationPolicy.uses(activeContext, WorkspaceCapability.STEAM)) {
             gameRefreshJob?.cancel()
             gameRefreshJob = scope.launch { steamGameRepository.refresh() }
         }
@@ -275,6 +279,18 @@ class LauncherController(
         )
     }
 
+    fun replaceWorkspace(position: Int, kind: LauncherContextKind) {
+        preferencesRepository.replaceWorkspace(position, kind)
+        refreshAfterWorkspaceChange()
+    }
+
+    fun moveWorkspace(from: Int, to: Int) {
+        preferencesRepository.moveWorkspace(from, to)
+        refreshAfterWorkspaceChange()
+    }
+
+    fun completeWorkspaceSetup() = preferencesRepository.completeWorkspaceSetup()
+
     fun refreshAccessState() {
         val access = accessMonitor.snapshot()
         setContinuityAccessGranted(access.continuityGranted)
@@ -285,7 +301,10 @@ class LauncherController(
     fun selectContext(index: Int) {
         if (index !in mutableState.value.contexts.indices) return
         audioMixerRepository.setMediaWorkspaceVisible(
-            mutableState.value.contexts[index].definition.kind == LauncherContextKind.MEDIA,
+            WorkspaceActivationPolicy.uses(
+                mutableState.value.contexts[index].definition,
+                WorkspaceCapability.AUDIO,
+            ),
         )
         mutableState.update { currentState ->
             currentState.copy(activeContextIndex = index)
@@ -314,6 +333,19 @@ class LauncherController(
     private fun refreshWeather(accessGranted: Boolean) {
         weatherRefreshJob?.cancel()
         weatherRefreshJob = scope.launch { weatherRepository.refresh(accessGranted) }
+    }
+
+    private fun refreshAfterWorkspaceChange() {
+        scope.launch {
+            yield()
+            val activeDefinition = mutableState.value.contexts
+                .getOrNull(mutableState.value.activeContextIndex)
+                ?.definition
+            audioMixerRepository.setMediaWorkspaceVisible(
+                WorkspaceActivationPolicy.uses(activeDefinition, WorkspaceCapability.AUDIO),
+            )
+            refreshVisibleData()
+        }
     }
 
     private companion object {

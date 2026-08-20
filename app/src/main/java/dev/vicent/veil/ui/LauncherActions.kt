@@ -80,3 +80,9 @@ data class LauncherAppearanceActions(
     val onWallpaperScrimIntensityChanged: (Float) -> Unit,
     val onResetAppearance: () -> Unit,
 )
+
+data class LauncherCatalogActions(
+    val onWorkspaceReplaced: (Int, LauncherContextKind) -> Unit,
+    val onWorkspaceMoved: (Int, Int) -> Unit,
+    val onWorkspaceSetupCompleted: () -> Unit,
+)

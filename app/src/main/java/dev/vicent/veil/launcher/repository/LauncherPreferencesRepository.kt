@@ -13,6 +13,7 @@ import dev.vicent.veil.launcher.model.HomeButtonActionPreferencesPolicy
 import dev.vicent.veil.launcher.model.HomeButtonActionSpec
 import dev.vicent.veil.launcher.model.HomeButtonConfig
 import dev.vicent.veil.launcher.model.HomeButtonGesture
+import dev.vicent.veil.launcher.model.WorkspaceSelectionPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +24,16 @@ class LauncherPreferencesRepository(
         onTap = HomeButtonActionSpec.Everything,
         onLongPress = HomeButtonActionSpec.Everything,
     ),
+    private val availableWorkspaceKinds: Set<LauncherContextKind> = LauncherContextKind.entries
+        .filterNot { it == LauncherContextKind.CURRENT }
+        .toSet(),
 ) {
+    private val isUpgradeInstall = runCatching {
+        @Suppress("DEPRECATION")
+        context.packageManager.getPackageInfo(context.packageName, 0).let { packageInfo ->
+            packageInfo.lastUpdateTime > packageInfo.firstInstallTime
+        }
+    }.getOrDefault(false)
     private val preferences = context.applicationContext.getSharedPreferences(
         PREFERENCES_NAME,
         Context.MODE_PRIVATE,
@@ -118,6 +128,44 @@ class LauncherPreferencesRepository(
         writeContextOverride(kind, slots)
     }
 
+    fun replaceWorkspace(position: Int, kind: LauncherContextKind) {
+        writeWorkspaceSelection(
+            WorkspaceSelectionPolicy.replace(
+                current = mutableState.value.selectedWorkspaceKinds,
+                position = position,
+                replacement = kind,
+                availableKinds = availableWorkspaceKinds,
+            ),
+        )
+    }
+
+    fun moveWorkspace(from: Int, to: Int) {
+        writeWorkspaceSelection(
+            WorkspaceSelectionPolicy.move(
+                current = mutableState.value.selectedWorkspaceKinds,
+                from = from,
+                to = to,
+                availableKinds = availableWorkspaceKinds,
+            ),
+        )
+    }
+
+    fun completeWorkspaceSetup() {
+        preferences.edit { putBoolean(KEY_WORKSPACE_SETUP_COMPLETED, true) }
+        mutableState.value = mutableState.value.copy(workspaceSetupCompleted = true)
+    }
+
+    private fun writeWorkspaceSelection(selected: List<LauncherContextKind>) {
+        val normalized = WorkspaceSelectionPolicy.normalize(
+            selected = selected,
+            availableKinds = availableWorkspaceKinds,
+        )
+        preferences.edit {
+            putString(KEY_SELECTED_WORKSPACES, normalized.joinToString(",", transform = Enum<*>::name))
+        }
+        mutableState.value = mutableState.value.copy(selectedWorkspaceKinds = normalized)
+    }
+
     private fun writeContextOverride(kind: LauncherContextKind, slots: List<String?>) {
         val normalized = ContextAppPreferencesPolicy.normalize(slots, CONTEXT_SLOT_COUNT)
         preferences.edit {
@@ -152,9 +200,26 @@ class LauncherPreferencesRepository(
                 preferences.getString(contextSlotKey(kind, index), null)
             }
         }.toMap()
+        val fallbackSelection = if (isUpgradeInstall) {
+            WorkspaceSelectionPolicy.LEGACY_SELECTION
+        } else {
+            WorkspaceSelectionPolicy.RECOMMENDED_SELECTION
+        }
+        val persistedSelection = preferences.getString(KEY_SELECTED_WORKSPACES, null)
+            ?.split(',')
+            ?.filter(String::isNotBlank)
         return base.copy(
             musicProviderPackage = preferences.getString(KEY_MUSIC_PROVIDER, null),
             contextAppOverrides = overrides,
+            selectedWorkspaceKinds = WorkspaceSelectionPolicy.decode(
+                persistedValues = persistedSelection,
+                availableKinds = availableWorkspaceKinds,
+                fallback = fallbackSelection,
+            ),
+            workspaceSetupCompleted = preferences.getBoolean(
+                KEY_WORKSPACE_SETUP_COMPLETED,
+                isUpgradeInstall,
+            ),
             homeButtonConfig = HomeButtonConfig(
                 onTap = HomeButtonActionPreferencesPolicy.decode(
                     preferences.getString(KEY_HOME_BUTTON_TAP, null),
@@ -185,5 +250,7 @@ class LauncherPreferencesRepository(
         private const val KEY_MUSIC_PROVIDER = "music_provider_package"
         private const val KEY_HOME_BUTTON_TAP = "home_button_tap"
         private const val KEY_HOME_BUTTON_LONG_PRESS = "home_button_long_press"
+        private const val KEY_SELECTED_WORKSPACES = "selected_workspaces"
+        private const val KEY_WORKSPACE_SETUP_COMPLETED = "workspace_setup_completed"
     }
 }
