@@ -31,6 +31,8 @@ Veil no vende datos ni los comparte con fines publicitarios. No existe una cuent
 
 ## Publicación y contacto
 
+Contacto de privacidad: [vicentciscar17@gmail.com](mailto:vicentciscar17@gmail.com).
+
 Antes de distribuir una versión de producción, el editor debe publicar este documento en una URL HTTPS activa e indicar un contacto de privacidad monitorizado. El build de release exige ambos valores mediante `VEIL_PRIVACY_POLICY_URL` y `VEIL_PRIVACY_CONTACT`, evitando publicar accidentalmente una ficha incompleta.
 
 Los cambios materiales de esta política se reflejarán en la fecha de actualización y en la copia pública enlazada desde la ficha de la aplicación.

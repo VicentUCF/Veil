@@ -102,7 +102,7 @@ Consulta la [política de privacidad](docs/PRIVACY_POLICY.md) y la [declaración
 - Un único módulo `app`, sin framework de inyección de dependencias ni base de datos.
 - Integración HOME real, diseño edge-to-edge y orientación vertical como prioridad.
 - `minSdk 23`, `targetSdk 37` y namespace `dev.vicent.veil`.
-- Versión actual: **v0.1.0**.
+- Versión estable actual: **v1.0** (`versionCode 3`).
 
 Para verificar el proyecto:
 
@@ -128,6 +128,7 @@ VEIL_PRIVACY_CONTACT=...
 Configura estos valores únicamente en el almacén de secretos del entorno de publicación y ejecuta:
 
 ```bash
-./gradlew clean test lint bundleRelease
+./gradlew clean testDebugUnitTest lintRelease assembleRelease bundleRelease
 ```
 
+La misma clave de publicación debe firmar todas las actualizaciones. Perderla, sustituirla o exponerla impide actualizar una instalación existente de Veil de forma segura. Consulta el procedimiento completo en [RELEASING.md](docs/RELEASING.md).
