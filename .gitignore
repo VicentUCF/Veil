@@ -9,3 +9,6 @@ captures/
 .cxx/
 *.jks
 *.keystore
+*.p12
+*.pfx
+signing.env
